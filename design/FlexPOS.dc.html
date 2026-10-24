@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#ecebe6;font-family:'IBM Plex Sans Thai',system-ui,sans-serif;color:#17191c}*{box-sizing:border-box}a{color:#1d7a57}a:hover{color:#145c41}button{font-family:inherit}input{font-family:inherit}</style>
+</helmet>
+<div style="display:flex;height:100vh;min-height:720px;min-width:1024px;background:#f6f5f1">
+  <nav style="width:84px;flex:none;background:#17191c;display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:6px">
+    <div style="width:44px;height:44px;border-radius:12px;background:#2f9e74;color:#fff;display:grid;place-items:center;font-weight:700;font-size:18px;margin-bottom:14px">F</div>
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+      <button onClick="{{ n.go }}" style="width:68px;height:60px;border:0;border-radius:12px;background:{{ n.bg }};color:{{ n.fg }};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:500">
+        <span style="font-size:17px;line-height:1;font-family:'IBM Plex Mono',monospace">{{ n.glyph }}</span>{{ n.label }}
+      </button>
+    </sc-for>
+    <div style="flex:1"></div>
+    <div style="width:40px;height:40px;border-radius:50%;background:#3a3d42;color:#fff;display:grid;place-items:center;font-size:14px;font-weight:600">นภ</div>
+  </nav>
+
+  <sc-if value="{{ isPos }}" hint-placeholder-val="{{ true }}">
+  <main style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <header style="height:72px;flex:none;display:flex;align-items:center;gap:16px;padding:0 24px;border-bottom:1px solid #e3e1da;background:#fff">
+      <div style="display:flex;flex-direction:column">
+        <span style="font-weight:600;font-size:17px">คาเฟ่ใบชา · สาขาอารีย์</span>
+        <span style="font-size:13px;color:#5f6368">กะ #128 · เปิดโดย นภัส · 07:58</span>
+      </div>
+      <div style="flex:1;max-width:520px;margin-left:auto;display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;border:1px solid #dcdad2;border-radius:12px;background:#faf9f6">
+        <span style="color:#8a8d91;font-size:16px">⌕</span>
+        <input value="{{ q }}" onChange="{{ onSearch }}" placeholder="ค้นหาชื่อ, SKU หรือสแกนบาร์โค้ด" style="flex:1;border:0;outline:0;background:transparent;font-size:15px;color:#17191c">
+        <span style="font:500 12px 'IBM Plex Mono',monospace;color:#6b6e72;border:1px solid #dcdad2;border-radius:6px;padding:2px 6px;white-space:nowrap;flex:none">Ctrl K</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1d7a57;background:#e5f3ec;padding:8px 12px;border-radius:999px;font-weight:500;white-space:nowrap;flex:none"><span style="width:8px;height:8px;border-radius:50%;background:#2f9e74"></span>ออนไลน์ · LAN Host</div>
+    </header>
+    <div style="flex:1;display:flex;min-height:0">
+      <section style="flex:1;display:flex;flex-direction:column;min-width:0;padding:20px 24px 24px;gap:16px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ cats }}" as="c" hint-placeholder-count="6">
+            <button onClick="{{ c.pick }}" style="height:44px;padding:0 18px;border-radius:999px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none">{{ c.name }}<span style="font-size:12px;opacity:.7">{{ c.count }}</span></button>
+          </sc-for>
+        </div>
+        <div style="flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;align-content:start">
+          <sc-for list="{{ products }}" as="p" hint-placeholder-count="12">
+            <button onClick="{{ p.add }}" style="border:1px solid #e3e1da;background:#fff;border-radius:14px;padding:0;text-align:left;cursor:pointer;overflow:hidden;display:flex;flex-direction:column" style-hover="border-color:#2f9e74;box-shadow:0 4px 14px rgba(23,25,28,.08)" style-active="transform:scale(.98)">
+              <div style="height:84px;background:{{ p.tint }};display:flex;align-items:flex-end;justify-content:space-between;padding:10px">
+                <span style="font:600 12px 'IBM Plex Mono',monospace;color:rgba(23,25,28,.55)">{{ p.sku }}</span>
+                <sc-if value="{{ p.inCart }}" hint-placeholder-val="{{ false }}"><span style="min-width:26px;height:26px;border-radius:13px;background:#17191c;color:#fff;font-size:13px;font-weight:600;display:grid;place-items:center;padding:0 6px">{{ p.qty }}</span></sc-if>
+              </div>
+              <div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:15px;font-weight:500;line-height:1.3">{{ p.name }}</span>
+                <span style="font-size:15px;font-weight:600;color:#1d7a57;font-variant-numeric:tabular-nums">{{ p.priceText }}</span>
+              </div>
+            </button>
+          </sc-for>
+          <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+            <div style="grid-column:1/-1;padding:48px;text-align:center;color:#5f6368;font-size:15px">ไม่พบสินค้าที่ตรงกับ “{{ q }}” · ลองค้นด้วย SKU หรือสแกนบาร์โค้ด</div>
+          </sc-if>
+        </div>
+      </section>
+
+      <aside style="width:380px;flex:none;background:#fff;border-left:1px solid #e3e1da;display:flex;flex-direction:column">
+        <div style="padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #efede7">
+          <button onClick="{{ openPick }}" style="display:flex;align-items:center;gap:10px;border:1px solid #dcdad2;background:#faf9f6;border-radius:12px;padding:6px 12px;cursor:pointer;text-align:left;min-height:48px"><span style="display:flex;flex-direction:column"><span style="font-weight:600;font-size:17px;color:#17191c">{{ billTitle }}</span><span style="font-size:13px;color:#5f6368">{{ itemCountText }}</span></span><span style="font-size:12px;color:#5f6368">▼</span></button>
+          <div style="display:flex;gap:6px">
+            <button style="height:40px;padding:0 12px;border:1px solid #dcdad2;background:#fff;border-radius:10px;font-size:14px;cursor:pointer">พักบิล</button>
+            <button onClick="{{ clear }}" style="height:40px;padding:0 12px;border:1px solid #dcdad2;background:#fff;border-radius:10px;font-size:14px;cursor:pointer;color:#b3261e">ล้าง</button>
+          </div>
+        </div>
+        <button style="margin:12px 20px 0;height:48px;border:1px dashed #cfccc2;background:#faf9f6;border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:14px;color:#5f6368;cursor:pointer">
+          <span style="width:28px;height:28px;border-radius:50%;background:#e5f3ec;color:#1d7a57;display:grid;place-items:center;font-weight:600">+</span>เลือกสมาชิก / สะสมแต้ม
+        </button>
+        <div style="flex:1;overflow:auto;padding:8px 20px">
+          <sc-for list="{{ rounds }}" as="r" hint-placeholder-count="0">
+            <div style="display:flex;flex-direction:column;border-bottom:1px solid #f1efe9;padding:10px 0">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#5f6368;padding-bottom:4px"><span>{{ r.label }}</span><span>ส่งครัวแล้ว</span></div>
+              <sc-for list="{{ r.items }}" as="i" hint-placeholder-count="2">
+                <div style="display:flex;gap:10px;padding:5px 0;font-size:15px;align-items:baseline"><span style="font-weight:600;min-width:26px;color:#3c4043">{{ i.q }}×</span><span style="flex:1;color:#3c4043">{{ i.n }}</span><span style="font-variant-numeric:tabular-nums;color:#3c4043">{{ i.t }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <sc-if value="{{ showNewHeader }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:14px 0 0;color:#1d7a57;font-weight:600"><span>สั่งเพิ่มที่เคาน์เตอร์</span><span style="background:#e5f3ec;padding:2px 8px;border-radius:999px">ยังไม่ส่งครัว</span></div>
+          </sc-if>
+          <sc-for list="{{ lines }}" as="l" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1efe9">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:15px;font-weight:500">{{ l.name }}</span>
+                <span style="font-size:13px;color:#5f6368;font-variant-numeric:tabular-nums">{{ l.unitText }}</span>
+              </div>
+              <div style="display:flex;align-items:center;border:1px solid #dcdad2;border-radius:10px;overflow:hidden">
+                <button onClick="{{ l.dec }}" style="width:40px;height:40px;border:0;background:#faf9f6;font-size:18px;cursor:pointer">−</button>
+                <span style="width:34px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums">{{ l.qty }}</span>
+                <button onClick="{{ l.inc }}" style="width:40px;height:40px;border:0;background:#faf9f6;font-size:18px;cursor:pointer">+</button>
+              </div>
+              <span style="width:72px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{ l.totalText }}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:56px 12px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center">
+              <span style="font-weight:600;font-size:16px">ยังไม่มีรายการ</span>
+              <span style="font-size:14px;color:#5f6368;text-wrap:pretty">แตะสินค้าทางซ้าย หรือสแกนบาร์โค้ดได้ทันทีโดยไม่ต้องคลิกช่องค้นหา</span>
+            </div>
+          </sc-if>
+        </div>
+        <div style="padding:16px 20px 20px;border-top:1px solid #efede7;display:flex;flex-direction:column;gap:8px;font-variant-numeric:tabular-nums">
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:#5f6368"><span>ยอดรวม</span><span>{{ subText }}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:#5f6368"><span>ส่วนลดสมาชิก 5%</span><span style="color:#1d7a57">{{ discText }}</span></div>
+          <sc-if value="{{ showVat }}" hint-placeholder-val="{{ false }}"><div style="display:flex;justify-content:space-between;font-size:14px;color:#5f6368"><span>VAT 7%</span><span>{{ vatText }}</span></div></sc-if>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"><span style="font-size:16px;font-weight:600">ยอดชำระ</span><span style="font-size:30px;font-weight:700">{{ totalText }}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+            <button style="height:48px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer">ส่วนลดบิล</button>
+            <button style="height:48px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer">แยกบิล</button>
+          </div>
+          <sc-if value="{{ isTable }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ sendToTable }}" disabled="{{ noPending }}" style="height:52px;border:1px solid #1d7a57;background:#fff;color:#1d7a57;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;opacity:{{ sendOp }}">ส่งครัว · เพิ่มเข้าบิล{{ billTitle }}</button>
+          </sc-if>
+          <button onClick="{{ openPay }}" disabled="{{ cartEmpty }}" style="height:64px;border:0;border-radius:14px;background:#1d7a57;color:#fff;font-size:19px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0 22px;opacity:{{ payOpacity }}" style-hover="background:#145c41"><span>{{ payLabel }}</span><span style="font:500 13px 'IBM Plex Mono',monospace;opacity:.8">F12</span></button>
+        </div>
+      </aside>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isDash }}" hint-placeholder-val="{{ false }}">
+  <main style="flex:1;overflow:auto;padding:28px 32px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div><div style="font-size:14px;color:#5f6368">{{ dRangeText }}</div><h1 style="margin:2px 0 0;font-size:28px;font-weight:600">ภาพรวม</h1></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:4px;background:#fff;border:1px solid #e3e1da;border-radius:12px;padding:4px">
+          <sc-for list="{{ dRanges }}" as="r" hint-placeholder-count="3">
+            <button onClick="{{ r.pick }}" style="height:36px;padding:0 14px;border-radius:9px;border:0;background:{{ r.bg }};color:{{ r.fg }};font-size:14px;cursor:pointer;white-space:nowrap">{{ r.label }}</button>
+          </sc-for>
+        </div>
+        <button style="height:44px;padding:0 16px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:14px;cursor:pointer;white-space:nowrap">ส่งออก CSV</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+        <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:14px;color:#5f6368">{{ k.label }}</span>
+          <span style="font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25">{{ k.value }}</span>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap"><span style="font-weight:600;color:{{ k.deltaColor }};background:{{ k.deltaBg }};padding:1px 8px;border-radius:999px;font-variant-numeric:tabular-nums">{{ k.delta }}</span><span style="color:#5f6368">{{ k.sub }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:12px">
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">{{ chartTitle }}</span><span style="font-size:13px;color:#5f6368">{{ chartPeak }}</span></div>
+          <div style="display:flex;gap:14px;font-size:12px;color:#5f6368"><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#1d7a57"></span>{{ chartCur }}</span><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#dcdad2"></span>{{ chartPrev }}</span></div>
+        </div>
+        <div style="position:relative;height:220px;display:flex;align-items:flex-end;gap:{{ chartGap }};padding-left:44px">
+          <sc-for list="{{ gridLines }}" as="g" hint-placeholder-count="4">
+            <div style="position:absolute;left:44px;right:0;bottom:{{ g.pos }};border-top:1px dashed #ebe9e3"><span style="position:absolute;left:-44px;top:-9px;font-size:11px;color:#8a8d91;font-variant-numeric:tabular-nums">{{ g.label }}</span></div>
+          </sc-for>
+          <sc-for list="{{ bars }}" as="b" hint-placeholder-count="12">
+            <div style="flex:1;height:100%;display:flex;align-items:flex-end;gap:2px;position:relative;min-width:0">
+              <div style="flex:1;height:{{ b.prev }};background:#e3e1da;border-radius:4px 4px 1px 1px"></div>
+              <div style="flex:1;height:{{ b.cur }};background:{{ b.color }};border-radius:4px 4px 1px 1px"></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:{{ chartGap }};padding-left:44px">
+          <sc-for list="{{ bars }}" as="b" hint-placeholder-count="12"><span style="flex:1;text-align:center;font-size:11px;color:#6b6e72;font-variant-numeric:tabular-nums;min-width:0">{{ b.label }}</span></sc-for>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#2f9e74"></span>ตอนนี้</span><span style="font-size:13px;color:#5f6368">อัปเดตสด</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-variant-numeric:tabular-nums">
+          <div style="background:#f6f5f1;border-radius:12px;padding:12px"><div style="font-size:12px;color:#5f6368">โต๊ะที่ยังไม่เก็บเงิน</div><div style="font-size:22px;font-weight:600">{{ openCount }}</div></div>
+          <div style="background:#f6f5f1;border-radius:12px;padding:12px"><div style="font-size:12px;color:#5f6368">ยอดรอเก็บ</div><div style="font-size:22px;font-weight:600">{{ openTotal }}</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ openList }}" as="o" hint-placeholder-count="4">
+            <button onClick="{{ o.go }}" style="display:flex;align-items:center;gap:10px;padding:10px 4px;border:0;border-bottom:1px solid #f1efe9;background:transparent;cursor:pointer;text-align:left;width:100%" style-hover="background:#faf9f6">
+              <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:500;color:#17191c">{{ o.name }}</span><span style="font-size:12px;color:#5f6368">{{ o.meta }}</span></span>
+              <span style="font-weight:600;font-variant-numeric:tabular-nums;color:#17191c">{{ o.total }}</span><span style="color:#8a8d91">›</span>
+            </button>
+          </sc-for>
+          <sc-if value="{{ noOpen }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:#5f6368;padding:12px 0">ไม่มีโต๊ะค้างเก็บเงิน</span></sc-if>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:12px">
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div style="display:flex;justify-content:space-between"><span style="font-weight:600">สินค้าขายดี</span><span style="font-size:13px;color:#5f6368">ตามยอดขาย</span></div>
+        <div style="display:flex;flex-direction:column">
+          <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 56px 84px;gap:10px;font-size:12px;color:#6b6e72;padding-bottom:6px;border-bottom:1px solid #efede7"><span></span><span>สินค้า</span><span style="text-align:right">จำนวน</span><span style="text-align:right">ยอดขาย</span></div>
+          <sc-for list="{{ top }}" as="t" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 56px 84px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #f1efe9;font-variant-numeric:tabular-nums">
+              <span style="font:600 12px 'IBM Plex Mono',monospace;color:#8a8d91">{{ t.rank }}</span>
+              <span style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:14px">{{ t.name }}</span><span style="height:4px;border-radius:2px;background:#f1efe9;overflow:hidden"><span style="display:block;height:100%;width:{{ t.share }};background:#7cc4a4;border-radius:2px"></span></span></span>
+              <span style="text-align:right;font-size:14px;color:#3c4043">{{ t.qty }}</span>
+              <span style="text-align:right;font-size:14px;font-weight:600">{{ t.rev }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <span style="font-weight:600">ยอดขายตามหมวด</span>
+        <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px">
+          <sc-for list="{{ catMix }}" as="c" hint-placeholder-count="4"><div style="width:{{ c.pct }};background:{{ c.color }}"></div></sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ catMix }}" as="c" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1efe9;font-size:14px;font-variant-numeric:tabular-nums">
+              <span style="width:10px;height:10px;border-radius:3px;background:{{ c.color }};flex:none"></span><span style="flex:1">{{ c.name }}</span><span style="color:#5f6368">{{ c.pct }}</span><span style="width:76px;text-align:right;font-weight:600">{{ c.rev }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <span style="font-weight:600">พนักงาน</span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ staffPerf }}" as="p" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1efe9;font-variant-numeric:tabular-nums">
+              <span style="width:32px;height:32px;border-radius:50%;background:#e5f3ec;color:#145c41;display:grid;place-items:center;font-size:12px;font-weight:600;flex:none">{{ p.ini }}</span>
+              <span style="flex:1;display:flex;flex-direction:column;min-width:0"><span style="font-size:14px">{{ p.name }}</span><span style="font-size:12px;color:#5f6368">{{ p.meta }}</span></span>
+              <span style="font-size:14px;font-weight:600">{{ p.rev }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px">
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">สต็อกต้องดูแล</span><button onClick="{{ goProducts }}" style="border:0;background:transparent;color:#1d7a57;font-size:14px;font-weight:600;cursor:pointer;height:36px">ไปหน้าสินค้า ›</button></div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ lowStock }}" as="l" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1efe9;font-size:14px">
+              <span style="flex:1">{{ l.name }}</span><span style="font-size:12px;color:#5f6368">{{ l.rate }}</span>
+              <span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:{{ l.bg }};color:{{ l.fg }};white-space:nowrap;min-width:64px;text-align:center">{{ l.badge }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <span style="font-weight:600">ส่วนลดและการยกเลิก</span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ adjust }}" as="j" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1efe9;font-size:14px;font-variant-numeric:tabular-nums">
+              <span style="flex:1;display:flex;flex-direction:column"><span>{{ j.label }}</span><span style="font-size:12px;color:#5f6368">{{ j.meta }}</span></span><span style="font-weight:600;color:{{ j.fg }}">{{ j.value }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isProd }}" hint-placeholder-val="{{ false }}">
+  <main style="flex:1;overflow:auto;padding:28px 32px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div><div style="font-size:14px;color:#5f6368">{{ prodCountText }}</div><h1 style="margin:2px 0 0;font-size:28px;font-weight:600">สินค้า</h1></div>
+      <div style="display:flex;gap:8px">
+        <button style="height:44px;padding:0 16px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:15px;cursor:pointer;white-space:nowrap">นำเข้า CSV</button>
+        <button style="height:44px;padding:0 18px;border:0;background:#1d7a57;color:#fff;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap">+ เพิ่มสินค้า</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <sc-for list="{{ stockFilters }}" as="f" hint-placeholder-count="3">
+        <button onClick="{{ f.pick }}" style="height:40px;padding:0 14px;border-radius:999px;border:1px solid {{ f.bd }};background:{{ f.bg }};color:{{ f.fg }};font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap">{{ f.label }}</button>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:96px minmax(0,2fr) minmax(0,1fr) 110px 150px 96px;gap:12px;padding:12px 20px;background:#faf9f6;border-bottom:1px solid #efede7;font-size:13px;color:#5f6368;font-weight:500">
+        <span>SKU</span><span>ชื่อสินค้า</span><span>หมวด</span><span style="text-align:right">ราคา</span><span>สต็อก</span><span style="text-align:right">ขายอยู่</span>
+      </div>
+      <sc-for list="{{ prodRows }}" as="r" hint-placeholder-count="8">
+        <div style="display:grid;grid-template-columns:96px minmax(0,2fr) minmax(0,1fr) 110px 150px 96px;gap:12px;padding:0 20px;height:60px;align-items:center;border-bottom:1px solid #f1efe9;font-size:15px" style-hover="background:#faf9f6">
+          <span style="font:500 13px 'IBM Plex Mono',monospace;color:#5f6368">{{ r.sku }}</span>
+          <span style="display:flex;align-items:center;gap:12px;min-width:0"><span style="width:36px;height:36px;border-radius:9px;background:{{ r.tint }};flex:none"></span><span style="font-weight:500">{{ r.name }}</span></span>
+          <span style="color:#3c4043">{{ r.catName }}</span>
+          <span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500">{{ r.priceText }}</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="font-variant-numeric:tabular-nums;min-width:28px">{{ r.stock }}</span><span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:{{ r.badgeBg }};color:{{ r.badgeFg }}">{{ r.badge }}</span></span>
+          <span style="display:flex;justify-content:flex-end"><button onClick="{{ r.toggle }}" style="width:44px;height:26px;border-radius:13px;border:0;background:{{ r.swBg }};padding:3px;cursor:pointer;display:flex;justify-content:{{ r.swJust }}"><span style="width:20px;height:20px;border-radius:50%;background:#fff"></span></button></span>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+  <main style="flex:1;overflow:auto;padding:28px 32px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;align-content:flex-start">
+    <div style="width:220px;flex:none;display:flex;flex-direction:column;gap:4px">
+      <h1 style="margin:0 0 12px;font-size:28px;font-weight:600">ตั้งค่า</h1>
+      <sc-for list="{{ setSections }}" as="t" hint-placeholder-count="6">
+        <button onClick="{{ t.pick }}" style="height:44px;display:flex;align-items:center;padding:0 14px;border-radius:10px;font-size:15px;background:{{ t.bg }};color:{{ t.fg }};font-weight:{{ t.fw }};border:0;cursor:pointer;text-align:left">{{ t.label }}</button>
+      </sc-for>
+      <button onClick="{{ openWizard }}" style="margin-top:16px;height:44px;border:1px dashed #cfccc2;background:transparent;border-radius:10px;font-size:14px;color:#1d7a57;font-weight:500;cursor:pointer">เปิดตัวช่วยตั้งค่าร้าน</button>
+    </div>
+    <sc-if value="{{ setStore }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:16px;max-width:620px">
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:16px">
+        <span style="font-weight:600;font-size:17px">ข้อมูลร้านบนใบเสร็จ</span>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368;grid-column:1/-1">ชื่อร้าน<input value="คาเฟ่ใบชา · สาขาอารีย์" style="height:46px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:15px;color:#17191c;width:100%;min-width:0"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368">เลขผู้เสียภาษี<input value="0-1055-61234-56-7" style="height:46px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:15px;color:#17191c;width:100%;min-width:0;font-variant-numeric:tabular-nums"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368">เบอร์โทร<input value="02-123-4567" style="height:46px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:15px;color:#17191c;width:100%;min-width:0"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368;grid-column:1/-1">ข้อความท้ายใบเสร็จ<input value="ขอบคุณที่แวะมานะคะ · Wi-Fi: baicha2026" style="height:46px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:15px;color:#17191c;width:100%;min-width:0"></label>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:8px 22px">
+        <sc-for list="{{ toggles }}" as="g" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #f1efe9">
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:500">{{ g.label }}</span><span style="font-size:13px;color:#5f6368">{{ g.hint }}</span></div>
+            <button onClick="{{ g.toggle }}" style="width:48px;height:28px;border-radius:14px;border:0;background:{{ g.swBg }};padding:3px;cursor:pointer;display:flex;justify-content:{{ g.swJust }};flex:none"><span style="width:22px;height:22px;border-radius:50%;background:#fff"></span></button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="width:280px;flex:none;background:#fff;border:1px solid #e3e1da;border-radius:6px;padding:20px 18px;font:500 12px/1.6 'IBM Plex Mono','IBM Plex Sans Thai',monospace;color:#17191c;display:flex;flex-direction:column;gap:2px;box-shadow:0 6px 18px rgba(23,25,28,.06)">
+      <span style="font-size:11px;color:#8a8d91;margin-bottom:8px;font-family:'IBM Plex Sans Thai'">ตัวอย่างใบเสร็จ 80mm</span>
+      <span style="text-align:center;font-weight:600;font-size:14px;font-family:'IBM Plex Sans Thai'">คาเฟ่ใบชา · สาขาอารีย์</span>
+      <span style="text-align:center">TAX 0-1055-61234-56-7</span>
+      <span style="text-align:center;margin-bottom:8px">24/10/69 14:32 · #A-00481</span>
+      <span style="border-top:1px dashed #bdbab0;margin:4px 0"></span>
+      <span style="display:flex;justify-content:space-between;font-family:'IBM Plex Sans Thai'"><span>2× อเมริกาโน่เย็น</span><span>130.00</span></span>
+      <span style="display:flex;justify-content:space-between;font-family:'IBM Plex Sans Thai'"><span>1× มัทฉะลาเต้</span><span>85.00</span></span>
+      <span style="border-top:1px dashed #bdbab0;margin:4px 0"></span>
+      <sc-if value="{{ showVat }}" hint-placeholder-val="{{ false }}"><span style="display:flex;justify-content:space-between;font-family:'IBM Plex Sans Thai'"><span>VAT 7%</span><span>15.05</span></span></sc-if>
+      <span style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;font-family:'IBM Plex Sans Thai'"><span>รวม</span><span>{{ rcptTotal }}</span></span>
+      <span style="text-align:center;margin-top:10px;font-family:'IBM Plex Sans Thai';color:#3c4043">ขอบคุณที่แวะมานะคะ · Wi-Fi: baicha2026</span>
+    </div>
+    </sc-if>
+    <sc-if value="{{ setDev }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1 1 480px;min-width:0;max-width:760px;display:flex;flex-direction:column;gap:16px">
+      <div style="background:{{ prBannerBg }};border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px">
+        <span style="width:10px;height:10px;border-radius:50%;background:{{ prBannerDot }};flex:none"></span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600;color:{{ prBannerFg }}">{{ prBannerTitle }}</span><span style="font-size:13px;color:#3c4043">{{ prBannerSub }}</span></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center">
+        <span style="font-weight:600;font-size:17px">เครื่องพิมพ์ออเดอร์</span>
+        <div style="display:flex;gap:8px">
+          <button style="height:44px;padding:0 16px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:14px;cursor:pointer;white-space:nowrap">ค้นหาในเครือข่าย</button>
+          <button style="height:44px;padding:0 16px;border:0;background:#1d7a57;color:#fff;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">+ เพิ่มเครื่องพิมพ์</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ printers }}" as="p" hint-placeholder-count="3">
+          <div style="background:#fff;border:{{ p.bd }};border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:3px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:16px;font-weight:600">{{ p.name }}</span><span style="font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:{{ p.tagBg }};color:{{ p.tagFg }};white-space:nowrap">{{ p.tag }}</span></div>
+              <span style="font-size:13px;color:#5f6368">{{ p.model }}</span>
+              <span style="font:500 12px 'IBM Plex Mono',monospace;color:#6b6e72">{{ p.addr }}</span>
+            </div>
+            <button onClick="{{ p.test }}" disabled="{{ p.off }}" style="height:44px;padding:0 14px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:14px;cursor:pointer;white-space:nowrap;opacity:{{ p.op }}">ทดสอบพิมพ์</button>
+            <button onClick="{{ p.toggle }}" disabled="{{ p.off }}" style="height:44px;min-width:120px;padding:0 16px;border:{{ p.btnBd }};background:{{ p.btnBg }};color:{{ p.btnFg }};border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;opacity:{{ p.op }}">{{ p.btn }}</button>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:8px 22px">
+        <sc-for list="{{ prOpts }}" as="g" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #f1efe9">
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:500">{{ g.label }}</span><span style="font-size:13px;color:#5f6368">{{ g.hint }}</span></div>
+            <button onClick="{{ g.toggle }}" style="width:48px;height:28px;border-radius:14px;border:0;background:{{ g.swBg }};padding:3px;cursor:pointer;display:flex;justify-content:{{ g.swJust }};flex:none"><span style="width:22px;height:22px;border-radius:50%;background:#fff"></span></button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="width:260px;flex:none;background:#fff;border:1px solid #e3e1da;border-radius:6px;padding:18px 16px;font-family:'IBM Plex Sans Thai';color:#17191c;display:flex;flex-direction:column;gap:4px;box-shadow:0 6px 18px rgba(23,25,28,.06)">
+      <span style="font-size:11px;color:#8a8d91;margin-bottom:6px">ตัวอย่างใบออเดอร์ 80mm</span>
+      <span style="text-align:center;font-weight:700;font-size:26px">โต๊ะ A2</span>
+      <span style="text-align:center;font:500 12px 'IBM Plex Mono',monospace">#K-214 · 24/10/69 14:30</span>
+      <span style="text-align:center;font-size:12px">รับโดย นภัส</span>
+      <span style="border-top:1px dashed #bdbab0;margin:6px 0"></span>
+      <span style="font-size:16px;font-weight:600">1 × มัทฉะลาเต้</span>
+      <span style="font-size:13px;padding-left:22px">ใหญ่ · หวานน้อย</span>
+      <span style="font-size:13px;padding-left:22px">* ไม่ใส่น้ำแข็ง</span>
+      <span style="font-size:16px;font-weight:600;margin-top:4px">2 × ครัวซองต์เนยสด</span>
+      <span style="border-top:1px dashed #bdbab0;margin:6px 0"></span>
+      <span style="text-align:center;font-size:12px">รวม 3 รายการ</span>
+    </div>
+    </sc-if>
+    <sc-if value="{{ setStaff }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1 1 480px;min-width:0;max-width:820px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:flex-end"><button style="height:44px;padding:0 18px;border:0;background:#1d7a57;color:#fff;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap">+ เพิ่มพนักงาน</button></div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;overflow:hidden">
+        <sc-for list="{{ staff }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #f1efe9;flex-wrap:wrap">
+            <span style="width:40px;height:40px;border-radius:50%;background:#e5f3ec;color:#145c41;display:grid;place-items:center;font-weight:600;font-size:14px;flex:none">{{ p.ini }}</span>
+            <div style="flex:1;min-width:140px;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:500">{{ p.name }}</span><span style="font-size:13px;color:#5f6368">PIN ••••</span></div>
+            <span style="font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:#f6f5f1;white-space:nowrap">{{ p.role }}</span>
+            <span style="font-size:13px;color:#5f6368;min-width:190px">{{ p.perms }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isCust }}" hint-placeholder-val="{{ false }}">
+  <main style="flex:1;overflow:auto;padding:28px 32px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:1 1 480px;min-width:0;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+        <div><div style="font-size:14px;color:#5f6368">1,284 คน · ใหม่เดือนนี้ 46</div><h1 style="margin:2px 0 0;font-size:28px;font-weight:600">สมาชิก</h1></div>
+        <button style="height:44px;padding:0 18px;border:0;background:#1d7a57;color:#fff;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap">+ เพิ่มสมาชิก</button>
+      </div>
+      <div style="height:48px;display:flex;align-items:center;gap:10px;padding:0 14px;border:1px solid #dcdad2;border-radius:12px;background:#fff"><span style="color:#8a8d91">⌕</span><input placeholder="ค้นหาชื่อหรือเบอร์โทร" style="flex:1;border:0;outline:0;font-size:15px;min-width:0"></div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;overflow:hidden">
+        <sc-for list="{{ members }}" as="m" hint-placeholder-count="6">
+          <button onClick="{{ m.pick }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:12px 20px;border:0;border-bottom:1px solid #f1efe9;background:{{ m.bg }};cursor:pointer;text-align:left">
+            <span style="width:40px;height:40px;border-radius:50%;background:#e5f3ec;color:#145c41;display:grid;place-items:center;font-weight:600;font-size:14px;flex:none">{{ m.ini }}</span>
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:500;color:#17191c">{{ m.name }}</span><span style="font-size:13px;color:#5f6368;font-variant-numeric:tabular-nums">{{ m.phone }}</span></span>
+            <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:{{ m.tierBg }};color:{{ m.tierFg }};white-space:nowrap">{{ m.tier }}</span>
+            <span style="width:80px;text-align:right;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:#17191c">{{ m.pts }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex:0 1 320px;min-width:280px;background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="width:52px;height:52px;border-radius:50%;background:#e5f3ec;color:#145c41;display:grid;place-items:center;font-weight:600;font-size:17px">{{ mSel.ini }}</span><div style="display:flex;flex-direction:column"><span style="font-size:18px;font-weight:600">{{ mSel.name }}</span><span style="font-size:13px;color:#5f6368">{{ mSel.phone }} · สมาชิก {{ mSel.tier }}</span></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-variant-numeric:tabular-nums">
+        <div style="background:#f6f5f1;border-radius:12px;padding:12px"><div style="font-size:13px;color:#5f6368">แต้มคงเหลือ</div><div style="font-size:22px;font-weight:600">{{ mSel.pts }}</div></div>
+        <div style="background:#f6f5f1;border-radius:12px;padding:12px"><div style="font-size:13px;color:#5f6368">ยอดซื้อสะสม</div><div style="font-size:22px;font-weight:600">{{ mSel.spend }}</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:14px;font-weight:600;margin-bottom:6px">ประวัติล่าสุด</span>
+        <sc-for list="{{ mHist }}" as="x" hint-placeholder-count="3">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1efe9;font-size:14px;font-variant-numeric:tabular-nums"><span style="color:#3c4043">{{ x.d }}</span><span>{{ x.a }}</span><span style="color:#1d7a57">{{ x.p }}</span></div>
+        </sc-for>
+      </div>
+      <button onClick="{{ useMember }}" style="height:48px;border:1px solid #1d7a57;background:#fff;color:#1d7a57;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">ใช้กับบิลปัจจุบัน</button>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isOrders }}" hint-placeholder-val="{{ false }}">
+  <main style="flex:1;overflow:auto;padding:28px 32px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div><div style="font-size:14px;color:#5f6368">ส่งจากแอปพนักงาน · วันนี้ {{ ordCount }} ออเดอร์</div><h1 style="margin:2px 0 0;font-size:28px;font-weight:600">ออเดอร์</h1></div>
+      <button onClick="{{ goPrinters }}" style="display:flex;align-items:center;gap:8px;font-size:13px;color:{{ prBannerFg }};background:{{ prBannerBg }};padding:0 14px;height:40px;border:0;border-radius:999px;font-weight:500;white-space:nowrap;cursor:pointer"><span style="width:8px;height:8px;border-radius:50%;background:{{ prBannerDot }}"></span>{{ prShort }}</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:72px 96px minmax(0,1fr) 150px 210px;gap:14px;padding:12px 20px;background:#faf9f6;border-bottom:1px solid #efede7;font-size:13px;color:#5f6368;font-weight:500">
+        <span>เวลา</span><span>โต๊ะ</span><span>รายการ</span><span>พิมพ์ที่</span><span></span>
+      </div>
+      <sc-for list="{{ orderRows }}" as="o" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:72px 96px minmax(0,1fr) 150px 210px;gap:14px;padding:14px 20px;border-bottom:1px solid #f1efe9;align-items:center">
+          <span style="display:flex;flex-direction:column;font-variant-numeric:tabular-nums"><span style="font-size:15px;font-weight:600">{{ o.time }}</span><span style="font:500 11px 'IBM Plex Mono',monospace;color:#6b6e72">{{ o.id }}</span></span>
+          <span style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600">{{ o.table }}</span><span style="font-size:12px;color:#5f6368">{{ o.by }}</span></span>
+          <span style="font-size:14px;color:#3c4043;text-wrap:pretty">{{ o.items }}</span>
+          <span style="font-size:13px;color:#3c4043">{{ o.printer }}</span>
+          <span style="display:flex;gap:6px;justify-content:flex-end">
+            <button onClick="{{ o.reprint }}" style="height:40px;padding:0 12px;border:1px solid #dcdad2;background:#fff;border-radius:10px;font-size:14px;cursor:pointer;white-space:nowrap">พิมพ์ซ้ำ</button>
+            <button onClick="{{ o.bill }}" style="height:40px;padding:0 14px;border:0;background:#1d7a57;color:#fff;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">เก็บเงิน</button>
+          </span>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ wizOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:#f6f5f1;z-index:30;display:flex;flex-direction:column;align-items:center;padding:40px 24px;overflow:auto">
+    <div style="width:100%;max-width:720px;display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:11px;background:#2f9e74;color:#fff;display:grid;place-items:center;font-weight:700">F</div><span style="font-weight:600;font-size:17px">ตั้งค่าร้านใหม่</span></div>
+        <button onClick="{{ closeWizard }}" style="height:44px;padding:0 16px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:14px;cursor:pointer;white-space:nowrap">ข้ามไปก่อน</button>
+      </div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{ wizSteps }}" as="w" hint-placeholder-count="4">
+          <div style="flex:1;display:flex;flex-direction:column;gap:8px"><div style="height:4px;border-radius:2px;background:{{ w.bar }}"></div><span style="font-size:13px;color:{{ w.fg }};font-weight:{{ w.fw }}">{{ w.label }}</span></div>
+        </sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #e3e1da;border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:20px;min-height:380px">
+        <div><div style="font-size:14px;color:#5f6368">{{ wizStepText }}</div><h2 style="margin:4px 0 0;font-size:26px;font-weight:600">{{ wizTitle }}</h2></div>
+        <sc-if value="{{ wiz0 }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+            <sc-for list="{{ bizTypes }}" as="b" hint-placeholder-count="6">
+              <button onClick="{{ b.pick }}" style="height:96px;border:{{ b.bd }};background:{{ b.bg }};border-radius:14px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:14px;gap:2px;text-align:left"><span style="font-size:16px;font-weight:600;color:#17191c">{{ b.label }}</span><span style="font-size:13px;color:#5f6368">{{ b.hint }}</span></button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ wiz1 }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368;grid-column:1/-1">ชื่อร้าน<input value="คาเฟ่ใบชา" style="height:48px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:16px;color:#17191c;width:100%;min-width:0"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368">สาขา<input value="อารีย์" style="height:48px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:16px;color:#17191c;width:100%;min-width:0"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368">เบอร์โทร<input value="02-123-4567" style="height:48px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:16px;color:#17191c;width:100%;min-width:0"></label>
+          </div>
+        </sc-if>
+        <sc-if value="{{ wiz2 }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ vatOpts }}" as="v" hint-placeholder-count="3">
+              <button onClick="{{ v.pick }}" style="min-height:64px;border:{{ v.bd }};background:{{ v.bg }};border-radius:14px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;padding:12px 18px;gap:2px;text-align:left"><span style="font-size:16px;font-weight:600;color:#17191c">{{ v.label }}</span><span style="font-size:13px;color:#5f6368">{{ v.hint }}</span></button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ wiz3 }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#5f6368">หมายเลข PromptPay (เบอร์โทรหรือเลขผู้เสียภาษี)<input value="0-1055-61234-56-7" style="height:48px;border:1px solid #dcdad2;border-radius:10px;padding:0 12px;font-size:16px;color:#17191c;width:100%;min-width:0;font-variant-numeric:tabular-nums"></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span style="height:40px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#17191c;color:#fff;font-size:14px">เงินสด</span>
+              <span style="height:40px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#17191c;color:#fff;font-size:14px">PromptPay QR</span>
+              <span style="height:40px;display:flex;align-items:center;padding:0 14px;border-radius:999px;border:1px solid #dcdad2;font-size:14px">โอนเงิน</span>
+              <span style="height:40px;display:flex;align-items:center;padding:0 14px;border-radius:999px;border:1px solid #dcdad2;font-size:14px">บัตร</span>
+            </div>
+          </div>
+        </sc-if>
+        <div style="flex:1"></div>
+        <div style="display:flex;justify-content:space-between">
+          <button onClick="{{ wizBack }}" style="height:52px;padding:0 20px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:15px;cursor:pointer;white-space:nowrap;visibility:{{ backVis }}">ย้อนกลับ</button>
+          <button onClick="{{ wizNext }}" style="height:52px;min-width:180px;padding:0 24px;border:0;background:#1d7a57;color:#fff;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer">{{ nextLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ payOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:rgba(23,25,28,.45);display:grid;place-items:center;z-index:10">
+    <div style="width:760px;max-width:calc(100vw - 48px);background:#fff;border-radius:20px;overflow:hidden;display:flex;box-shadow:0 24px 64px rgba(0,0,0,.25)">
+      <div style="width:220px;flex:none;background:#f6f5f1;padding:20px 14px;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;color:#5f6368;padding:0 8px 8px">วิธีชำระเงิน</span>
+        <sc-for list="{{ methods }}" as="m" hint-placeholder-count="5">
+          <button onClick="{{ m.pick }}" style="height:52px;border:1px solid {{ m.bd }};background:{{ m.bg }};border-radius:12px;text-align:left;padding:0 14px;font-size:15px;font-weight:500;cursor:pointer;color:#17191c">{{ m.label }}</button>
+        </sc-for>
+      </div>
+      <div style="flex:1;padding:24px 28px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:14px;color:#5f6368">ยอดที่ต้องชำระ</div><div style="font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1">{{ totalText }}</div></div>
+          <button onClick="{{ closePay }}" style="width:44px;height:44px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <sc-if value="{{ isCash }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <sc-for list="{{ notes }}" as="n" hint-placeholder-count="6">
+                <button onClick="{{ n.tap }}" style="height:56px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:17px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums" style-hover="border-color:#1d7a57">{{ n.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-variant-numeric:tabular-nums">
+              <div style="background:#f6f5f1;border-radius:14px;padding:14px 16px"><div style="font-size:13px;color:#5f6368">รับเงิน</div><div style="font-size:24px;font-weight:600">{{ tenderedText }}</div></div>
+              <div style="background:{{ changeBg }};border-radius:14px;padding:14px 16px"><div style="font-size:13px;color:#5f6368">เงินทอน</div><div style="font-size:24px;font-weight:700;color:{{ changeFg }}">{{ changeText }}</div></div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isQr }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:20px;align-items:center">
+            <div style="width:184px;height:184px;flex:none;border:2px dashed #cfccc2;border-radius:14px;display:grid;place-items:center;text-align:center;font-size:13px;color:#8a8d91;padding:12px">PromptPay QR<br>(EMVCo)</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:14px;color:#3c4043">
+              <span style="font-weight:600;font-size:16px;color:#17191c">สแกนเพื่อชำระ</span>
+              <span>บัญชี: คาเฟ่ใบชา จำกัด</span>
+              <span style="font-variant-numeric:tabular-nums">เลขผู้เสียภาษี 0-1055-6xxxx-xx-x</span>
+              <span style="display:flex;align-items:center;gap:8px;color:#1d7a57"><span style="width:8px;height:8px;border-radius:50%;background:#2f9e74"></span>แสดงบนจอลูกค้าแล้ว</span>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isOtherMethod }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#f6f5f1;border-radius:14px;padding:18px;font-size:15px;color:#3c4043">บันทึกยอด {{ totalText }} เป็น “{{ methodLabel }}” แล้วกดยืนยัน</div>
+        </sc-if>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:10px">
+          <label style="flex:1;display:flex;align-items:center;gap:10px;font-size:14px;color:#3c4043"><input type="checkbox" checked style="width:20px;height:20px;accent-color:#1d7a57">พิมพ์ใบเสร็จ 80mm</label>
+          <button onClick="{{ confirm }}" disabled="{{ cantConfirm }}" style="height:60px;min-width:220px;border:0;border-radius:14px;background:#1d7a57;color:#fff;font-size:18px;font-weight:600;cursor:pointer;opacity:{{ confirmOpacity }}">ยืนยันการชำระ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ pickOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closePick }}" style="position:fixed;inset:0;background:rgba(23,25,28,.45);display:grid;place-items:center;z-index:10">
+    <div onClick="{{ stop }}" style="width:640px;max-width:calc(100vw - 48px);background:#fff;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 24px 64px rgba(0,0,0,.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column"><span style="font-size:20px;font-weight:600">เลือกบิล</span><span style="font-size:13px;color:#5f6368">รายการที่เลือกไว้จะไปรวมกับบิลเดิมของโต๊ะ</span></div><button onClick="{{ closePick }}" style="width:44px;height:44px;border:1px solid #dcdad2;background:#fff;border-radius:12px;font-size:18px;cursor:pointer">✕</button></div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+        <sc-for list="{{ pickTables }}" as="t" hint-placeholder-count="10">
+          <button onClick="{{ t.pick }}" style="height:88px;border:{{ t.bd }};background:{{ t.bg }};border-radius:14px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:10px 12px;text-align:left">
+            <span style="font-size:17px;font-weight:600;color:#17191c">{{ t.name }}</span>
+            <span style="font-size:12px;color:{{ t.fg }};font-variant-numeric:tabular-nums">{{ t.meta }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#17191c;color:#fff;padding:14px 18px;border-radius:12px;display:flex;gap:16px;align-items:center;font-size:15px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.2)">
+      <span>{{ toast }}</span><button onClick="{{ dismissToast }}" style="border:0;background:transparent;color:#7cc4a4;font-size:15px;font-weight:600;cursor:pointer">พิมพ์ซ้ำ</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const P=[
+{id:1,name:'อเมริกาโน่เย็น',sku:'C-101',price:6500,cat:'coffee',tint:'#e9dfd2'},
+{id:2,name:'ลาเต้ร้อน',sku:'C-102',price:7000,cat:'coffee',tint:'#efe3d3'},
+{id:3,name:'คาปูชิโน่',sku:'C-103',price:7000,cat:'coffee',tint:'#ebe0d0'},
+{id:4,name:'มอคค่าเย็น',sku:'C-104',price:8000,cat:'coffee',tint:'#e3d5c6'},
+{id:5,name:'ชาไทยเย็น',sku:'T-201',price:5500,cat:'tea',tint:'#f5dcc4'},
+{id:6,name:'มัทฉะลาเต้',sku:'T-202',price:8500,cat:'tea',tint:'#dbe8cf'},
+{id:7,name:'ชาเขียวมะลิ',sku:'T-203',price:5000,cat:'tea',tint:'#e4ecd6'},
+{id:8,name:'โซดาเลมอน',sku:'S-301',price:6000,cat:'soda',tint:'#f3efc8'},
+{id:9,name:'โซดาบลูฮาวาย',sku:'S-302',price:6000,cat:'soda',tint:'#d5e5ef'},
+{id:10,name:'ครัวซองต์เนยสด',sku:'B-401',price:7500,cat:'bakery',tint:'#f2e6cc'},
+{id:11,name:'บราวนี่',sku:'B-402',price:6500,cat:'bakery',tint:'#e2d6cc'},
+{id:12,name:'ชีสเค้กบลูเบอร์รี่',sku:'B-403',price:11000,cat:'bakery',tint:'#e4dcec'}];
+const CATS=[['all','ทั้งหมด'],['coffee','กาแฟ'],['tea','ชา'],['soda','โซดา'],['bakery','เบเกอรี่']];
+const fmt=s=>'฿'+(s/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+class Component extends DCLogic{
+state={screen:'pos',cat:'all',q:'',cart:{11:1},tsel:'A3',pickOpen:false,tb:{
+A2:[{by:'แอป · นภัส',time:'14:30',items:{6:1,10:2}}],
+A3:[{by:'แอป · นภัส',time:'13:50',items:{1:2,10:2}},{by:'แอป · นภัส',time:'14:21',items:{2:2,12:1}}],
+A5:[{by:'แอป · มายด์',time:'13:40',items:{7:2}}],
+B1:[{by:'แอป · ต้น',time:'14:15',items:{5:3}}],
+Q33:[{by:'แอป · มายด์',time:'14:08',items:{1:1,8:1}}]},payOpen:false,method:'cash',tendered:0,toast:''};
+set(k,v){this.setState({[k]:v})}
+add(id,d){this.setState(s=>{const c={...s.cart};c[id]=(c[id]||0)+d;if(c[id]<=0)delete c[id];return{cart:c}})}
+more(s){
+const MB=[['สม','สมหญิง แก้วใส','081-234-5678','Gold',2480,'฿24,800'],['ธน','ธนา พรหมมา','089-555-1020','Silver',860,'฿8,600'],['ปร','ปริม อินทร์แก้ว','062-778-9901','Gold',1920,'฿19,200'],['วท','วิทย์ ชัยมงคล','095-110-4432','Member',140,'฿1,400'],['อร','อรุณี สายทอง','086-902-3316','Silver',610,'฿6,100'],['กฤ','กฤษณ์ ทองคำ','091-447-2280','Member',75,'฿750']];
+const T={Gold:['#fbf1dc','#8a5a00'],Silver:['#efede7','#3c4043'],Member:['#e5f3ec','#145c41']};
+const mi=s.mi||0,m=MB[mi];
+const PR=[['k1','เครื่องครัว','Xprinter XP-N160II · 80mm','LAN · 192.168.1.51',true],['b1','บาร์เครื่องดื่ม','EPSON TM-T82X · 80mm','LAN · 192.168.1.52',true],['u1','ครัวสำรอง','Xprinter XP-58IIH · 58mm','USB · ไม่พบเครื่อง',false]];
+const pc=s.pc||{k1:true},po=s.po||{auto:true,copy:false,staff:true};
+const con=PR.filter(p=>pc[p[0]]&&p[4]).map(p=>p[1]);
+const sw=on=>({swBg:on?'#1d7a57':'#cfccc2',swJust:on?'flex-end':'flex-start'});
+const ok=con.length>0;
+const ORD=[['14:30','#K-214','โต๊ะ A2','นภัส','มัทฉะลาเต้ ×1 (ใหญ่ · หวานน้อย), ครัวซองต์เนยสด ×2','A2'],['14:21','#K-213','โต๊ะ A3','นภัส','ลาเต้ร้อน ×2 (นมโอ๊ต), ชีสเค้กบลูเบอร์รี่ ×1','A3'],['14:15','#K-212','โต๊ะ B1','ต้น','ชาไทยเย็น ×3 (หวานน้อย)','B1'],['14:08','#K-211','กลับบ้าน · คิว 33','มายด์','อเมริกาโน่เย็น ×1 (ช็อตพิเศษ), โซดาเลมอน ×1','Q33'],['13:50','#K-210','โต๊ะ A3','นภัส','อเมริกาโน่เย็น ×2, ครัวซองต์เนยสด ×2','A3']];
+const toast=m=>{this.set('toast',m);clearTimeout(this.t);this.t=setTimeout(()=>this.set('toast',''),4000)};
+return{
+printers:PR.map(([k,n,m,ad,av])=>{const c=!!pc[k]&&av;return{name:n,model:m,addr:ad,off:!av,op:av?1:.45,tag:!av?'ออฟไลน์':c?'เชื่อมต่ออยู่':'ไม่ได้เชื่อมต่อ',tagBg:!av?'#fbe9e7':c?'#e5f3ec':'#efede7',tagFg:!av?'#b3261e':c?'#145c41':'#5f6368',bd:c?'2px solid #1d7a57':'1px solid #e3e1da',btn:c?'ยกเลิกเชื่อมต่อ':'เชื่อมต่อ',btnBg:c?'#fff':'#1d7a57',btnFg:c?'#b3261e':'#fff',btnBd:c?'1px solid #f0c7c2':'0',toggle:()=>this.set('pc',{...pc,[k]:!pc[k]}),test:()=>toast('ส่งหน้าทดสอบไปที่ '+n+' แล้ว')}}),
+prBannerBg:ok?'#e5f3ec':'#fbe9e7',prBannerFg:ok?'#145c41':'#b3261e',prBannerDot:ok?'#2f9e74':'#b3261e',
+prBannerTitle:ok?'ออเดอร์จากแอปจะพิมพ์อัตโนมัติที่: '+con.join(', '):'ยังไม่ได้เชื่อมต่อเครื่องพิมพ์ออเดอร์',
+prBannerSub:ok?'พนักงานกด “ส่งเข้าครัว” ในแอปแล้วพิมพ์ทันที ไม่ต้องตั้งค่าในมือถือ':'ออเดอร์จากแอปจะยังไม่ถูกพิมพ์ จนกว่าจะเชื่อมต่ออย่างน้อย 1 เครื่อง',
+prShort:ok?'พิมพ์อัตโนมัติที่ '+con.join(', '):'ไม่มีเครื่องพิมพ์ออเดอร์',
+goPrinters:()=>this.setState({screen:'set',stab:'dev'}),
+prOpts:[['auto','พิมพ์อัตโนมัติเมื่อแอปส่งออเดอร์','ปิดไว้ถ้าต้องการกดพิมพ์จากหน้าออเดอร์เอง'],['copy','พิมพ์ 2 ใบ','ใบที่สองไว้แนบกับถาดเสิร์ฟ'],['staff','แสดงชื่อพนักงานบนใบออเดอร์','ช่วยให้ครัวรู้ว่าใครรับออเดอร์']].map(([k,l,hn])=>({label:l,hint:hn,...sw(po[k]),toggle:()=>this.set('po',{...po,[k]:!po[k]})})),
+ordCount:ORD.length,
+orderRows:ORD.map(([t,id,tb,by,it,key])=>({time:t,id,table:tb,by,items:it,printer:con[0]||'ไม่ได้พิมพ์',reprint:()=>toast(ok?'พิมพ์ซ้ำ '+id+' ที่ '+con.join(', '):'ยังไม่ได้เชื่อมต่อเครื่องพิมพ์'),bill:()=>this.setState({screen:'pos',tsel:key})}))
+}}
+extra(s){
+const ST={1:42,2:38,3:0,4:12,5:6,6:24,7:31,8:4,9:18,10:9,11:0,12:3},off=s.off||{},sf=s.sf||'all',tg={print:true,drawer:true,offline:true,round:false,vat:false,...(s.tg||{})};
+const lvl=p=>ST[p.id]===0?'out':ST[p.id]<=10?'low':'ok';
+const rows=P.filter(p=>sf==='all'||lvl(p)===sf);
+const sw=on=>({swBg:on?'#1d7a57':'#cfccc2',swJust:on?'flex-end':'flex-start'});
+const wz=s.wz||0,biz=s.biz||'cafe',vat=s.vat||'incl';
+const sel=on=>({bd:on?'2px solid #1d7a57':'1px solid #dcdad2',bg:on?'#f1f8f4':'#fff'});
+const titles=['ประเภทธุรกิจ','ข้อมูลร้าน','ภาษีมูลค่าเพิ่ม','รับชำระเงิน'];
+return{
+prodCountText:P.length+' รายการ · '+P.filter(p=>lvl(p)!=='ok').length+' ต้องเติมสต็อก',
+stockFilters:[['all','ทั้งหมด'],['low','ใกล้หมด'],['out','หมด']].map(([k,l])=>({label:l,bg:sf===k?'#17191c':'#fff',fg:sf===k?'#fff':'#17191c',bd:sf===k?'#17191c':'#dcdad2',pick:()=>this.set('sf',k)})),
+prodRows:rows.map(p=>{const L=lvl(p);return{...p,catName:CATS.find(c=>c[0]===p.cat)[1],priceText:fmt(p.price),stock:ST[p.id],badge:L==='out'?'หมด':L==='low'?'ใกล้หมด':'ปกติ',badgeBg:L==='out'?'#fbe9e7':L==='low'?'#fbf1dc':'#e5f3ec',badgeFg:L==='out'?'#b3261e':L==='low'?'#8a5a00':'#145c41',...sw(!off[p.id]),toggle:()=>this.set('off',{...off,[p.id]:!off[p.id]})}}),
+setSections:[['store','ร้านและใบเสร็จ'],['dev','เครื่องพิมพ์ออเดอร์'],['staff','พนักงานและสิทธิ์']].map(([k,l])=>{const on=(s.stab||'store')===k;return{label:l,bg:on?'#fff':'transparent',fg:on?'#17191c':'#5f6368',fw:on?600:400,pick:()=>this.set('stab',k)}}),
+setStore:(s.stab||'store')==='store',setDev:s.stab==='dev',setStaff:s.stab==='staff',
+
+staff:[['นภ','นภัส ใจดี','เจ้าของ','ทุกสิทธิ์'],['ตน','ต้น สมชาย','หัวหน้ากะ','ยกเลิกบิล · ส่วนลด · ปิดกะ'],['มย','มายด์ ศรีสุข','พนักงานขาย','ขาย · รับออเดอร์'],['บส','บอส วงศ์ดี','พนักงานเสิร์ฟ','รับออเดอร์ผ่านแอปเท่านั้น']].map(([i,n,r,p])=>({ini:i,name:n,role:r,perms:p})),
+...this.more(s),
+toggles:[['vat','คิด VAT 7%','บวกภาษีมูลค่าเพิ่มจากยอดหลังหักส่วนลด แสดงในตะกร้าและใบเสร็จ'],['print','พิมพ์ใบเสร็จอัตโนมัติ','หลังยืนยันการชำระทุกครั้ง'],['drawer','เปิดลิ้นชักเงินสด','เมื่อชำระด้วยเงินสด'],['offline','ขายต่อเมื่อออฟไลน์','ซิงก์อัตโนมัติเมื่อกลับมาออนไลน์'],['round','ปัดเศษสตางค์','ปัดยอดเงินสดเป็น 0.25 บาท']].map(([k,l,h])=>({label:l,hint:h,...sw(tg[k]),toggle:()=>this.set('tg',{...tg,[k]:!tg[k]})})),
+openWizard:()=>this.setState({wizOpen:true,wz:0}),closeWizard:()=>this.set('wizOpen',false),wizOpen:!!s.wizOpen,
+wizSteps:titles.map((l,i)=>({label:l,bar:i<=wz?'#1d7a57':'#dcdad2',fg:i===wz?'#17191c':'#6b6e72',fw:i===wz?600:400})),
+wizStepText:'ขั้นตอน '+(wz+1)+' จาก 4',wizTitle:['ร้านของคุณเป็นแบบไหน','ชื่อร้านและการติดต่อ','ร้านจด VAT หรือไม่','รับเงินช่องทางใดบ้าง'][wz],
+wiz0:wz===0,wiz1:wz===1,wiz2:wz===2,wiz3:wz===3,
+bizTypes:[['cafe','คาเฟ่','เมนู + ตัวเลือกเพิ่ม'],['restaurant','ร้านอาหาร','โต๊ะ + ส่งครัว'],['retail','ร้านค้าปลีก','บาร์โค้ด + สต็อก'],['salon','ร้านบริการ','นัดหมาย + พนักงาน'],['market','ตลาด / บูธ','ขายเร็ว ออฟไลน์'],['other','อื่น ๆ','ตั้งค่าเอง']].map(([k,l,h])=>({label:l,hint:h,...sel(biz===k),pick:()=>this.set('biz',k)})),
+vatOpts:[['none','ไม่จด VAT','ไม่แสดงภาษีบนใบเสร็จ'],['incl','จด VAT · ราคารวมภาษีแล้ว','แยก VAT 7% จากราคาขาย'],['excl','จด VAT · ราคายังไม่รวมภาษี','บวก VAT 7% ตอนชำระเงิน']].map(([k,l,h])=>({label:l,hint:h,...sel(vat===k),pick:()=>this.set('vat',k)})),
+backVis:wz?'visible':'hidden',wizBack:()=>this.set('wz',Math.max(0,wz-1)),
+nextLabel:wz===3?'เริ่มขาย':'ถัดไป',wizNext:()=>wz===3?this.setState({wizOpen:false,screen:'pos'}):this.set('wz',wz+1)
+}}
+dash(s,f0){
+const rg=s.rg||'d',F={d:1,w:6.1,m:25.1}[rg];
+const K={d:[['ยอดขายสุทธิ','฿19,394','+12%','เทียบเสาร์ที่แล้ว',1],['จำนวนบิล','214','+8%','ในร้าน 162 · กลับบ้าน 52',1],['เฉลี่ยต่อบิล','฿90.63','+3%','1.9 รายการต่อบิล',1],['กำไรขั้นต้น','฿12,410','−1 pt','64.0% ของยอดขาย',0]],
+w:[['ยอดขายสุทธิ','฿118,520','+6%','เทียบ 7 วันก่อน',1],['จำนวนบิล','1,342','+4%','ในร้าน 1,010 · กลับบ้าน 332',1],['เฉลี่ยต่อบิล','฿88.32','+2%','1.8 รายการต่อบิล',1],['กำไรขั้นต้น','฿75,850','±0 pt','64.0% ของยอดขาย',2]],
+m:[['ยอดขายสุทธิ','฿486,300','+9%','เทียบ 30 วันก่อน',1],['จำนวนบิล','5,480','+7%','ในร้าน 4,105 · กลับบ้าน 1,375',1],['เฉลี่ยต่อบิล','฿88.74','+2%','1.8 รายการต่อบิล',1],['กำไรขั้นต้น','฿309,280','−0.4 pt','63.6% ของยอดขาย',0]]}[rg];
+let B,max,title,peak,cur,prev;
+if(rg==='d'){B=[['08',1850,1600],['09',3420,2900],['10',4120,3700],['11',2980,3100],['12',3650,3300],['13',2210,2400],['14',1640,1900],['15',980,1500],['16',0,1300],['17',0,1600],['18',0,1100],['19',0,600]];max=5000;title='ยอดขายรายชั่วโมง';peak='ช่วงขายดี 10:00–11:00 · ฿4,120 · ตอนนี้ 15:12';cur='วันนี้';prev='เสาร์ที่แล้ว';}
+else if(rg==='w'){B=[['อา',15200,14100],['จ',13800,13900],['อ',14900,13600],['พ',15600,14800],['พฤ',16100,15300],['ศ',19200,17100],['ส',19394,17300]].map(x=>x);B=B.map(x=>x);max=20000;title='ยอดขายรายวัน';peak='วันที่ขายดี เสาร์ · ฿19,394';cur='7 วันนี้';prev='7 วันก่อน';}
+else{B=Array.from({length:30},(_,i)=>{const d=i+1,wk=(i+3)%7>=5;const v=Math.round((13500+(wk?5200:0)+((i*37)%9)*260));return[d%5===0||d===1?String(d):'',v,Math.round(v*0.91)]});max=22000;title='ยอดขายรายวัน · 30 วัน';peak='เฉลี่ยวันละ ฿16,210 · สูงสุด ฿19,394';cur='30 วันนี้';prev='30 วันก่อน';}
+const tbs=s.tb||{};const pr=id=>P.find(x=>x.id==id);
+const tName=k=>k[0]==='Q'?'กลับบ้าน · คิว '+k.slice(1):'โต๊ะ '+k;
+const tSum=r=>r.reduce((a,x)=>a+Object.entries(x.items).reduce((b,[id,q])=>b+pr(id).price*q,0),0);
+const open=Object.entries(tbs);
+const TOP=[['มัทฉะลาเต้',62,85],['ชาไทยเย็น',55,55],['อเมริกาโน่เย็น',48,65],['ครัวซองต์เนยสด',31,75],['ลาเต้ร้อน',27,70],['ชีสเค้กบลูเบอร์รี่',14,110]].map(([n,q,p])=>[n,q,q*p]).sort((x,y)=>y[2]-x[2]);
+const tmax=TOP[0][2];
+const CM=[['กาแฟ',38,'#1d7a57'],['ชา',31,'#7cc4a4'],['เบเกอรี่',21,'#c9b98f'],['โซดา',10,'#d8d5cc']];
+const total={d:19394,w:118520,m:486300}[rg];
+return{
+dRangeText:{d:'วันเสาร์ 24 ต.ค. 2569',w:'18–24 ต.ค. 2569',m:'25 ก.ย. – 24 ต.ค. 2569'}[rg],
+dRanges:[['d','วันนี้'],['w','7 วัน'],['m','30 วัน']].map(([k,l])=>({label:l,bg:rg===k?'#17191c':'transparent',fg:rg===k?'#fff':'#5f6368',pick:()=>this.set('rg',k)})),
+kpis:K.map(([l,v,d,sub,up])=>({label:l,value:v,delta:d,sub,deltaColor:up===1?'#145c41':up===0?'#b3261e':'#5f6368',deltaBg:up===1?'#e5f3ec':up===0?'#fbe9e7':'#efede7'})),
+chartTitle:title,chartPeak:peak,chartCur:cur,chartPrev:prev,chartGap:rg==='m'?'3px':'10px',
+gridLines:[0,.25,.5,.75,1].map(p=>({pos:(p*100)+'%',label:p?(max*p/1000).toFixed(max*p%1000?1:0)+'k':'0'})),
+bars:(()=>{const pk=Math.max(...B.map(b=>b[1]));return B.map(([l,c,p])=>({label:l,cur:(c/max*100)+'%',prev:(p/max*100)+'%',color:c===pk?'#1d7a57':'#5fae8c'}))})(),
+openCount:open.length,openTotal:f0(open.reduce((a,[k,r])=>a+tSum(r),0)/100),noOpen:!open.length,
+openList:open.map(([k,r])=>({name:tName(k),meta:r.length+' รอบ · เปิด '+r[0].time,total:f0(tSum(r)/100),go:()=>this.setState({screen:'pos',tsel:k})})),
+top:TOP.map(([n,q,rev],i)=>({rank:i+1,name:n,qty:Math.round(q*F).toLocaleString(),rev:f0(rev*F),share:(rev/tmax*100)+'%'})),
+catMix:CM.map(([n,p,c])=>({name:n,pct:p+'%',color:c,rev:f0(total*p/100)})),
+staffPerf:[['นภ','นภัส',82,7420,'เคาน์เตอร์ + แอป'],['ตน','ต้น',64,5980,'เคาน์เตอร์'],['มย','มายด์',51,4310,'แอป'],['บส','บอส',17,1684,'แอป']].map(([i,n,b,r,ch])=>({ini:i,name:n,meta:Math.round(b*F).toLocaleString()+' บิล · '+ch,rev:f0(r*F)})),
+lowStock:[['คาปูชิโน่',0,'ขาย 9/วัน'],['บราวนี่',0,'ขาย 6/วัน'],['ชีสเค้กบลูเบอร์รี่',3,'พอ ~0.5 วัน'],['โซดาเลมอน',4,'พอ ~1 วัน'],['ชาไทยเย็น',6,'พอ ~0.3 วัน']].map(([n,st,r])=>({name:n,rate:r,badge:st?'เหลือ '+st:'หมด',bg:st?'#fbf1dc':'#fbe9e7',fg:st?'#8a5a00':'#b3261e'})),
+goProducts:()=>this.setState({screen:'prod',sf:'all'}),
+adjust:[['ส่วนลดสมาชิก',Math.round(38*F)+' บิล',f0(972*F),'#3c4043'],['ส่วนลดท้ายบิล',Math.round(4*F)+' บิล · อนุมัติโดย ต้น',f0(240*F),'#3c4043'],['ยกเลิกรายการ',Math.round(3*F)+' รายการ · ดู audit log',f0(245*F),'#b3261e'],['คืนเงิน','ไม่มี','฿0','#5f6368']].map(([l,m,v,c])=>({label:l,meta:m,value:v,fg:c}))
+}}
+renderVals(){
+const s=this.state,q=s.q.trim().toLowerCase();
+const nav=[['pos','ขาย','◧'],['orders','ออเดอร์','☰'],['dash','ภาพรวม','▤'],['prod','สินค้า','▦'],['cust','สมาชิก','◎'],['set','ตั้งค่า','⚙']];
+const list=P.filter(p=>(s.cat==='all'||p.cat===s.cat)&&(!q||p.name.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q)));
+const lines=Object.entries(s.cart).map(([id,qty])=>{const p=P.find(x=>x.id==id);return{name:p.name,qty,unitText:fmt(p.price)+' / แก้ว',totalText:fmt(p.price*qty),inc:()=>this.add(p.id,1),dec:()=>this.add(p.id,-1)}});
+const pr=id=>P.find(x=>x.id==id);
+const tName=k=>k?(k[0]==='Q'?'กลับบ้าน · คิว '+k.slice(1):'โต๊ะ '+k):'หน้าร้าน';
+const sumItems=it=>Object.entries(it).reduce((a,[id,q])=>a+pr(id).price*q,0);
+const tbs=s.tb[s.tsel]||[];
+const savedSum=tbs.reduce((a,r)=>a+sumItems(r.items),0);
+const savedCount=tbs.reduce((a,r)=>a+Object.values(r.items).reduce((x,y)=>x+y,0),0);
+const sub=Object.entries(s.cart).reduce((a,[id,q])=>a+pr(id).price*q,0)+savedSum;
+const TL=['A1','A2','A3','A4','A5','A6','B1','B2','B3'];const allT=[...TL,...Object.keys(s.tb).filter(k=>!TL.includes(k))];
+const nowT='14:4'+Object.keys(s.tb).length;
+const vatOn=!!(s.tg&&s.tg.vat);const disc=Math.round(sub*0.05),vat=vatOn?Math.round((sub-disc)*0.07):0,total=sub-disc+vat;
+const count=Object.values(s.cart).reduce((a,b)=>a+b,0)+savedCount;const empty=!lines.length&&!tbs.length;
+const change=s.tendered-total;
+const M=[['cash','เงินสด'],['qr','PromptPay QR'],['transfer','โอนเงิน'],['card','บัตร'],['credit','ค้างชำระ']];
+const noteVals=[2000,5000,10000,50000,100000];
+const fmt0=v=>'฿'+Math.round(v).toLocaleString('en-US');
+return{
+navItems:nav.map(([k,l,g])=>({label:l,glyph:g,bg:s.screen===k?'#2f3237':'transparent',fg:s.screen===k?'#fff':'#a5a8ad',go:()=>this.set('screen',k)})),
+isPos:s.screen==='pos',isDash:s.screen==='dash',isProd:s.screen==='prod',isSet:s.screen==='set',isCust:s.screen==='cust',isOrders:s.screen==='orders',
+...this.extra(s),
+q:s.q,onSearch:e=>this.set('q',e.target.value),
+cats:CATS.map(([k,n])=>({name:n,count:k==='all'?P.length:P.filter(p=>p.cat===k).length,bg:s.cat===k?'#17191c':'#fff',fg:s.cat===k?'#fff':'#17191c',bd:s.cat===k?'#17191c':'#dcdad2',pick:()=>this.set('cat',k)})),
+products:list.map(p=>({...p,priceText:fmt(p.price),inCart:!!s.cart[p.id],qty:s.cart[p.id]||0,add:()=>this.add(p.id,1)})),
+noResults:list.length===0,
+lines,cartEmpty:empty,itemCountText:count+' รายการ'+(tbs.length?' · '+tbs.length+' รอบ':''),
+billTitle:tName(s.tsel),isTable:!!s.tsel,noPending:!lines.length,sendOp:lines.length?1:.4,
+payLabel:s.tsel?'เก็บเงิน · '+tName(s.tsel):'ชำระเงิน',
+showNewHeader:tbs.length>0&&lines.length>0,
+rounds:tbs.map((r,i)=>({label:'รอบ '+(i+1)+' · '+r.by+' · '+r.time,items:Object.entries(r.items).map(([id,q])=>({q,n:pr(id).name,t:fmt(pr(id).price*q)}))})),
+pickOpen:s.pickOpen,openPick:()=>this.set('pickOpen',true),closePick:()=>this.set('pickOpen',false),stop:e=>e.stopPropagation(),
+pickTables:[null,...allT].map(k=>{const r=k?s.tb[k]:null;const on=s.tsel===k;return{name:tName(k),meta:k?(r?fmt(r.reduce((a,x)=>a+sumItems(x.items),0))+' · '+r.length+' รอบ':'ว่าง'):'ขายทันที ไม่ผูกโต๊ะ',fg:r?'#1d7a57':'#5f6368',bg:on?'#e5f3ec':r?'#f6faf8':'#fff',bd:on?'2px solid #1d7a57':'1px solid #e3e1da',pick:()=>this.setState({tsel:k,pickOpen:false})}}),
+sendToTable:()=>{if(!lines.length)return;const k=s.tsel;this.setState(x=>({tb:{...x.tb,[k]:[...(x.tb[k]||[]),{by:'เคาน์เตอร์ · นภัส',time:nowT,items:x.cart}]},cart:{},toast:'เพิ่มเข้าบิล'+tName(k)+' และพิมพ์ใบออเดอร์แล้ว'}));clearTimeout(this.t);this.t=setTimeout(()=>this.set('toast',''),4000)},
+showVat:vatOn,rcptTotal:vatOn?'230.05':'215.00',subText:fmt(sub),discText:'−'+fmt(disc),vatText:fmt(vat),totalText:fmt(total),
+payOpacity:empty?.4:1,
+clear:()=>this.set('cart',{}),
+openPay:()=>!empty&&this.setState({payOpen:true,method:'cash',tendered:0}),
+closePay:()=>this.set('payOpen',false),payOpen:!!s.payOpen,
+methods:M.map(([k,l])=>({label:l,bg:s.method===k?'#fff':'transparent',bd:s.method===k?'#1d7a57':'transparent',pick:()=>this.set('method',k)})),
+isCash:s.method==='cash',isQr:s.method==='qr',isOtherMethod:!['cash','qr'].includes(s.method),methodLabel:(M.find(m=>m[0]===s.method)||[])[1],
+notes:[{label:'พอดี',tap:()=>this.set('tendered',total)},...noteVals.map(v=>({label:'฿'+(v/100).toLocaleString(),tap:()=>this.setState(x=>({tendered:x.tendered+v}))}))],
+tenderedText:fmt(s.tendered),changeText:s.tendered?(change>=0?fmt(change):'ขาด '+fmt(-change)):'—',
+changeBg:s.tendered&&change<0?'#fbe9e7':'#e5f3ec',changeFg:s.tendered&&change<0?'#b3261e':'#145c41',
+cantConfirm:s.method==='cash'&&change<0,confirmOpacity:s.method==='cash'&&change<0?.4:1,
+confirm:()=>{const tb={...s.tb};delete tb[s.tsel];this.setState({payOpen:false,cart:{},tb,tsel:null,toast:(s.tsel?'เก็บเงิน'+tName(s.tsel)+' แล้ว':'บันทึกบิลแล้ว')+(s.method==='cash'&&change>0?' · ทอน '+fmt(change):'')});clearTimeout(this.t);this.t=setTimeout(()=>this.set('toast',''),5000)},
+toast:s.toast,dismissToast:()=>this.set('toast',''),
+...this.dash(s,fmt0)
+}}}
+</script>
+</body>
+</html>

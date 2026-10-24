@@ -1,0 +1,34 @@
+{
+  "name": "flexpos",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @flexpos/server --filter @flexpos/web dev",
+    "build": "pnpm --filter @flexpos/web build && pnpm --filter @flexpos/server build",
+    "start": "pnpm --filter @flexpos/server start",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "pnpm -r test",
+    "e2e": "playwright test",
+    "desktop:dist": "pnpm build && pnpm --filter @flexpos/desktop dist"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.29",
+    "eslint": "^9.28.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.2.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.1",
+    "vitest": "^3.2.1"
+  },
+  "type": "module"
+}

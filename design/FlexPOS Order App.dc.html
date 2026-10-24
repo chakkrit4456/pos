@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#ecebe6;font-family:'IBM Plex Sans Thai',system-ui,sans-serif;color:#17191c}*{box-sizing:border-box}a{color:#1d7a57}a:hover{color:#145c41}button,input{font-family:inherit}</style>
+</helmet>
+<section style="padding:48px 48px 0;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:6px;max-width:760px">
+    <span style="font:600 13px 'IBM Plex Mono',monospace;color:#1d7a57">รอบที่ 2 · หน้าที่เหลือ</span>
+    <h2 style="margin:0;font-size:26px;font-weight:600">รายละเอียดโต๊ะ เช็คบิล แจ้งเตือน โปรไฟล์ และเมื่อเครื่องพิมพ์ไม่พร้อม</h2>
+  </div>
+  <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start">
+
+    <div id="2b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">2b</span><span style="font-weight:600">รายละเอียดโต๊ะ</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#f6f5f1;position:relative">
+          <div style="padding:14px 16px;background:#fff;border-bottom:1px solid #e3e1da;display:flex;align-items:center;gap:10px">
+            <span style="width:40px;height:40px;border-radius:12px;background:#f6f5f1;display:grid;place-items:center;font-size:18px">‹</span>
+            <div style="flex:1;display:flex;flex-direction:column"><span style="font-weight:600;font-size:17px">โต๊ะ A3</span><span style="font-size:12px;color:#5f6368">4 คน · เปิด 13:48 · 43 นาที</span></div>
+            <button onClick="{{ toggleMenu }}" style="width:44px;height:44px;border-radius:12px;border:1px solid #dcdad2;background:#fff;font-size:18px;cursor:pointer">⋯</button>
+          </div>
+          <div style="flex:1;overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ rounds }}" as="r" hint-placeholder-count="2">
+              <div style="background:#fff;border:1px solid #e3e1da;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:#5f6368">{{ r.label }}</span><span style="font-size:12px;color:#5f6368">พิมพ์แล้ว · เครื่องครัว</span></div>
+                <sc-for list="{{ r.items }}" as="i" hint-placeholder-count="2">
+                  <div style="display:flex;gap:10px;font-size:15px;align-items:baseline"><span style="font-weight:600;min-width:26px">{{ i.q }}×</span><span style="flex:1;display:flex;flex-direction:column"><span>{{ i.n }}</span><span style="font-size:12px;color:#5f6368">{{ i.o }}</span></span><span style="font-variant-numeric:tabular-nums">{{ i.t }}</span></div>
+                </sc-for>
+              </div>
+            </sc-for>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 4px 0"><span style="color:#5f6368;font-size:14px">ยอดสะสมของโต๊ะ</span><span style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">฿675</span></div>
+            <span style="font-size:12px;color:#5f6368;padding:0 4px;text-wrap:pretty">รวมรายการที่สั่งจากแอปและเคาน์เตอร์ไว้ในบิลเดียว เก็บเงินครั้งเดียวที่ POS</span>
+          </div>
+          <div style="padding:12px 16px 16px;background:#fff;border-top:1px solid #e3e1da;display:flex;gap:8px">
+            <button style="flex:1;height:56px;border:1px solid #dcdad2;background:#fff;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap">ขอเช็คบิล</button>
+            <button style="flex:1.4;height:56px;border:0;background:#1d7a57;color:#fff;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap">+ สั่งเพิ่ม</button>
+          </div>
+          <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ toggleMenu }}" style="position:absolute;inset:0;background:rgba(23,25,28,.35)">
+              <div style="position:absolute;top:62px;right:16px;width:220px;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.2);padding:6px;display:flex;flex-direction:column">
+                <span style="height:48px;display:flex;align-items:center;padding:0 12px;font-size:15px">ย้ายโต๊ะ</span>
+                <span style="height:48px;display:flex;align-items:center;padding:0 12px;font-size:15px">รวมโต๊ะ</span>
+                <span style="height:48px;display:flex;align-items:center;padding:0 12px;font-size:15px">แก้จำนวนลูกค้า</span>
+                <span style="height:48px;display:flex;align-items:center;padding:0 12px;font-size:15px;color:#b3261e;border-top:1px solid #f1efe9">ขอยกเลิกรายการ (ต้องมีหัวหน้ากะ)</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="2c" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">2c</span><span style="font-weight:600">เช็คบิลที่โต๊ะ</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#fff">
+          <div style="padding:14px 16px;border-bottom:1px solid #efede7;display:flex;align-items:center;gap:10px">
+            <span style="width:40px;height:40px;border-radius:12px;background:#f6f5f1;display:grid;place-items:center;font-size:18px">‹</span>
+            <span style="flex:1;font-weight:600;font-size:17px">เช็คบิล · โต๊ะ A3</span>
+          </div>
+          <div style="display:flex;margin:14px 16px 0;background:#f6f5f1;border-radius:12px;padding:4px">
+            <sc-for list="{{ billModes }}" as="b" hint-placeholder-count="2">
+              <button onClick="{{ b.pick }}" style="flex:1;height:44px;border:0;border-radius:9px;background:{{ b.bg }};font-size:14px;font-weight:{{ b.fw }};cursor:pointer;color:#17191c">{{ b.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ billQr }}" hint-placeholder-val="{{ true }}">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:20px 24px;gap:14px">
+              <span style="font-size:14px;color:#5f6368">ให้ลูกค้าสแกนจ่าย</span>
+              <span style="font-size:36px;font-weight:700;font-variant-numeric:tabular-nums">฿641.25</span>
+              <div style="width:232px;height:232px;border:2px dashed #cfccc2;border-radius:16px;display:grid;place-items:center;text-align:center;font-size:13px;color:#8a8d91">PromptPay QR<br>(EMVCo)</div>
+              <span style="display:flex;align-items:center;gap:8px;font-size:14px;color:#8a5a00"><span style="width:8px;height:8px;border-radius:50%;background:#d49a1f"></span>รอยืนยันยอดเข้า…</span>
+              <span style="font-size:12px;color:#5f6368;text-align:center">POS จะปิดบิลและพิมพ์ใบเสร็จให้อัตโนมัติเมื่อยอดเข้า</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ billSum }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px;font-variant-numeric:tabular-nums">
+              <sc-for list="{{ billLines }}" as="l" hint-placeholder-count="4">
+                <div style="display:flex;justify-content:space-between;font-size:15px;padding:6px 0"><span>{{ l.n }}</span><span>{{ l.t }}</span></div>
+              </sc-for>
+              <div style="border-top:1px solid #efede7;margin-top:6px;padding-top:10px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:#5f6368">
+                <div style="display:flex;justify-content:space-between"><span>ยอดรวม</span><span>฿675.00</span></div>
+                <div style="display:flex;justify-content:space-between"><span>สมาชิก สมหญิง (Gold) −5%</span><span style="color:#1d7a57">−฿33.75</span></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"><span style="font-weight:600">ยอดชำระ</span><span style="font-size:26px;font-weight:700">฿641.25</span></div>
+            </div>
+          </sc-if>
+          <div style="padding:14px 16px 16px;border-top:1px solid #efede7;display:flex;flex-direction:column;gap:8px">
+            <button style="height:56px;border:0;background:#1d7a57;color:#fff;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer">ส่งไปชำระที่เคาน์เตอร์</button>
+            <button style="height:48px;border:1px solid #dcdad2;background:#fff;border-radius:14px;font-size:15px;cursor:pointer">แยกบิล</button>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="2d" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">2d</span><span style="font-weight:600">แจ้งเตือน</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#f6f5f1">
+          <div style="padding:16px 20px 12px;background:#fff;border-bottom:1px solid #e3e1da;display:flex;justify-content:space-between;align-items:center"><span style="font-size:20px;font-weight:600">แจ้งเตือน</span><button onClick="{{ readAll }}" style="border:0;background:transparent;color:#1d7a57;font-size:14px;font-weight:600;cursor:pointer;height:44px">อ่านทั้งหมด</button></div>
+          <div style="flex:1;overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ notis }}" as="n" hint-placeholder-count="5">
+              <button onClick="{{ n.read }}" style="display:flex;gap:12px;align-items:flex-start;background:{{ n.bg }};border:1px solid {{ n.bd }};border-radius:14px;padding:14px;text-align:left;cursor:pointer;width:100%">
+                <span style="width:10px;height:10px;border-radius:50%;background:{{ n.dot }};margin-top:6px;flex:none"></span>
+                <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:{{ n.fw }};color:#17191c">{{ n.title }}</span><span style="font-size:13px;color:#5f6368">{{ n.body }}</span></span>
+                <span style="font-size:12px;color:#5f6368;white-space:nowrap">{{ n.time }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:flex;background:#fff;border-top:1px solid #e3e1da">
+            <sc-for list="{{ tabsNoti }}" as="t" hint-placeholder-count="4">
+              <span style="flex:1;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;color:{{ t.fg }};font-weight:{{ t.fw }};position:relative"><span style="font-size:17px;font-family:'IBM Plex Mono',monospace">{{ t.glyph }}</span>{{ t.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="2e" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">2e</span><span style="font-weight:600">ฉัน · กะและการตั้งค่า</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#f6f5f1">
+          <div style="flex:1;overflow:auto;padding:20px 16px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px;padding:0 4px"><span style="width:52px;height:52px;border-radius:50%;background:#e5f3ec;color:#145c41;display:grid;place-items:center;font-weight:600;font-size:17px">นภ</span><div style="display:flex;flex-direction:column"><span style="font-size:18px;font-weight:600">นภัส ใจดี</span><span style="font-size:13px;color:#5f6368">เจ้าของ · คาเฟ่ใบชา อารีย์</span></div></div>
+            <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-variant-numeric:tabular-nums">
+              <div style="display:flex;flex-direction:column"><span style="font-size:12px;color:#5f6368">เข้ากะ</span><span style="font-size:18px;font-weight:600">07:58</span></div>
+              <div style="display:flex;flex-direction:column"><span style="font-size:12px;color:#5f6368">ออเดอร์</span><span style="font-size:18px;font-weight:600">38</span></div>
+              <div style="display:flex;flex-direction:column"><span style="font-size:12px;color:#5f6368">ยอดที่รับ</span><span style="font-size:18px;font-weight:600">฿4,870</span></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:4px 16px">
+              <sc-for list="{{ prefs }}" as="g" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1efe9">
+                  <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:500">{{ g.label }}</span><span style="font-size:12px;color:#5f6368">{{ g.hint }}</span></span>
+                  <button onClick="{{ g.toggle }}" style="width:48px;height:28px;border-radius:14px;border:0;background:{{ g.swBg }};padding:3px;cursor:pointer;display:flex;justify-content:{{ g.swJust }};flex:none"><span style="width:22px;height:22px;border-radius:50%;background:#fff"></span></button>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:4px 16px;font-size:15px">
+              <div style="display:flex;justify-content:space-between;align-items:center;height:52px;border-bottom:1px solid #f1efe9"><span>ภาษา</span><span style="color:#5f6368">ไทย ›</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;height:52px;border-bottom:1px solid #f1efe9"><span>เครื่องพิมพ์ออเดอร์</span><span style="color:#5f6368;font-size:13px">เครื่องครัว · แอดมินตั้งค่า</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;height:52px"><span>เวอร์ชันแอป</span><span style="color:#5f6368;font-size:13px">1.2.0 · ล่าสุด</span></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button style="flex:1;height:52px;border:1px solid #dcdad2;background:#fff;border-radius:14px;font-size:15px;cursor:pointer">เปลี่ยนผู้ใช้</button>
+              <button style="flex:1;height:52px;border:1px solid #f0c7c2;background:#fff;color:#b3261e;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">ออกจากกะ</button>
+            </div>
+          </div>
+          <div style="display:flex;background:#fff;border-top:1px solid #e3e1da">
+            <sc-for list="{{ tabsMe }}" as="t" hint-placeholder-count="4">
+              <span style="flex:1;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;color:{{ t.fg }};font-weight:{{ t.fw }}"><span style="font-size:17px;font-family:'IBM Plex Mono',monospace">{{ t.glyph }}</span>{{ t.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="2f" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">2f</span><span style="font-weight:600">เครื่องพิมพ์ไม่พร้อม · คิวรอพิมพ์</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#f6f5f1">
+          <div style="padding:12px 16px;background:{{ offBg }};color:{{ offFg }};display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500">
+            <span style="width:9px;height:9px;border-radius:50%;background:{{ offDot }};flex:none"></span><span style="flex:1">{{ offText }}</span>
+            <button onClick="{{ retry }}" style="height:36px;padding:0 12px;border:0;border-radius:10px;background:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;color:#17191c;white-space:nowrap">{{ retryLabel }}</button>
+          </div>
+          <div style="padding:16px 20px 8px"><span style="font-size:20px;font-weight:600">ออเดอร์ของฉัน</span></div>
+          <div style="flex:1;overflow:auto;padding:4px 16px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ queue }}" as="o" hint-placeholder-count="3">
+              <div style="background:#fff;border:1px solid {{ o.bd }};border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:16px">{{ o.table }}</span><span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};white-space:nowrap">{{ o.status }}</span></div>
+                <span style="font-size:14px;color:#3c4043">{{ o.items }}</span>
+                <span style="font-size:12px;color:#5f6368">{{ o.meta }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:12px 16px 16px;font-size:12px;color:#5f6368;text-align:center">รับออเดอร์ต่อได้ตามปกติ · ใบที่ค้างจะพิมพ์อัตโนมัติเมื่อเครื่องพิมพ์กลับมา</div>
+        </div>
+      </x-import>
+    </div>
+  </div>
+</section>
+<section style="padding:48px;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:6px;max-width:760px">
+    <span style="font:600 13px 'IBM Plex Mono',monospace;color:#1d7a57">FlexPOS Order · Android (ติดตั้งเอง ไม่ผ่านสโตร์)</span>
+    <h1 style="margin:0;font-size:32px;font-weight:600">แอปรับออเดอร์สำหรับพนักงาน</h1>
+    <p style="margin:0;font-size:15px;color:#3c4043;text-wrap:pretty">เมื่อพนักงานกด “ส่งเข้าครัว” ใบออเดอร์จะพิมพ์ออกที่เครื่องพิมพ์ออเดอร์ที่แอดมินเชื่อมต่อไว้ในหน้าเว็บ (ตั้งค่า → เครื่องพิมพ์ออเดอร์) โดยอัตโนมัติ แอปไม่ต้องตั้งค่าเครื่องพิมพ์เอง ทุกหน้ากดได้ และใช้ข้อมูลชุดเดียวกัน: เพิ่มเมนูในหน้า 3 แล้วจะเห็นในหน้า 5</p>
+  </div>
+  <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">1a</span><span style="font-weight:600">จับคู่และเข้าสู่ระบบ</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#17191c;color:#fff;padding:28px 24px 20px;gap:20px">
+          <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:10px;background:#2f9e74;display:grid;place-items:center;font-weight:700">F</div><span style="font-weight:600">FlexPOS Order</span></div>
+          <div style="display:flex;align-items:center;gap:10px;background:#24272b;border-radius:14px;padding:12px 14px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#2f9e74;flex:none"></span>
+            <div style="display:flex;flex-direction:column;font-size:13px"><span style="font-weight:600;font-size:14px">คาเฟ่ใบชา · อารีย์</span><span style="color:#a5a8ad">พิมพ์ออเดอร์ที่: เครื่องครัว</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:8px">
+            <span style="font-size:20px;font-weight:600">ใส่ PIN พนักงาน</span>
+            <div style="display:flex;gap:14px">
+              <sc-for list="{{ pinDots }}" as="d" hint-placeholder-count="4"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #7cc4a4;background:{{ d.bg }}"></span></sc-for>
+            </div>
+            <span style="font-size:13px;color:#a5a8ad;height:18px">{{ pinHint }}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:auto">
+            <sc-for list="{{ keys }}" as="k" hint-placeholder-count="12">
+              <button onClick="{{ k.tap }}" style="height:64px;border:0;border-radius:16px;background:{{ k.bg }};color:#fff;font-size:24px;font-weight:500;cursor:pointer" style-active="background:#3a3d42">{{ k.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">1b</span><span style="font-weight:600">เลือกโต๊ะ</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#f6f5f1">
+          <div style="padding:16px 20px 12px;background:#fff;border-bottom:1px solid #e3e1da;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;flex-direction:column"><span style="font-size:20px;font-weight:600">โต๊ะ</span><span style="font-size:13px;color:#5f6368">นภัส · กะ #128</span></div>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1d7a57;background:#e5f3ec;padding:6px 10px;border-radius:999px;font-weight:500"><span style="width:7px;height:7px;border-radius:50%;background:#2f9e74"></span>ซิงก์แล้ว</span>
+          </div>
+          <div style="display:flex;gap:6px;padding:12px 20px">
+            <sc-for list="{{ zones }}" as="z" hint-placeholder-count="3">
+              <button onClick="{{ z.pick }}" style="height:40px;padding:0 14px;border-radius:999px;border:1px solid {{ z.bd }};background:{{ z.bg }};color:{{ z.fg }};font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap">{{ z.label }}</button>
+            </sc-for>
+          </div>
+          <div style="flex:1;overflow:auto;padding:4px 20px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-content:start">
+            <sc-for list="{{ tables }}" as="t" hint-placeholder-count="9">
+              <button onClick="{{ t.pick }}" style="height:96px;border:{{ t.bd }};background:{{ t.bg }};border-radius:14px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:10px 12px;text-align:left">
+                <span style="font-size:20px;font-weight:600;color:#17191c">{{ t.name }}</span>
+                <span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:12px;font-weight:600;color:{{ t.fg }}">{{ t.status }}</span><span style="font-size:12px;color:#5f6368;font-variant-numeric:tabular-nums">{{ t.meta }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="padding:12px 20px 16px;background:#fff;border-top:1px solid #e3e1da;display:flex;gap:8px">
+            <button onClick="{{ pickTakeaway }}" style="flex:1;height:52px;border:1px solid #dcdad2;background:#fff;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer">กลับบ้าน</button>
+            <button style="flex:1;height:52px;border:0;background:#1d7a57;color:#fff;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">เปิดโต๊ะ {{ tableName }}</button>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="1c" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">1c</span><span style="font-weight:600">เมนู</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#f6f5f1;position:relative">
+          <div style="padding:12px 16px;background:#fff;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid #e3e1da">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:40px;height:40px;border-radius:12px;background:#f6f5f1;display:grid;place-items:center;font-size:18px">‹</span>
+              <div style="flex:1;display:flex;flex-direction:column"><span style="font-weight:600;font-size:17px">{{ tableTitle }}</span><span style="font-size:12px;color:#5f6368">{{ guestText }}</span></div>
+            </div>
+            <div style="height:44px;border:1px solid #dcdad2;border-radius:12px;background:#faf9f6;display:flex;align-items:center;gap:8px;padding:0 12px"><span style="color:#8a8d91">⌕</span><input value="{{ q }}" onChange="{{ onSearch }}" placeholder="ค้นหาเมนู" style="flex:1;border:0;outline:0;background:transparent;font-size:15px;min-width:0"></div>
+            <div style="display:flex;gap:6px;overflow:auto">
+              <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+                <button onClick="{{ c.pick }}" style="height:36px;padding:0 14px;border-radius:999px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;flex:none">{{ c.name }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:8px 16px 96px;display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ menu }}" as="m" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e3e1da;border-radius:14px;padding:10px;opacity:{{ m.op }}">
+                <span style="width:56px;height:56px;border-radius:12px;background:{{ m.tint }};flex:none"></span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:500">{{ m.name }}</span><span style="font-size:14px;font-weight:600;color:{{ m.priceColor }};font-variant-numeric:tabular-nums">{{ m.priceText }}</span></div>
+                <sc-if value="{{ m.qty }}" hint-placeholder-val="{{ false }}"><span style="min-width:28px;height:28px;border-radius:14px;background:#17191c;color:#fff;font-size:13px;font-weight:600;display:grid;place-items:center;padding:0 8px">{{ m.qty }}</span></sc-if>
+                <button onClick="{{ m.open }}" disabled="{{ m.out }}" style="width:48px;height:48px;border-radius:14px;border:0;background:{{ m.btnBg }};color:{{ m.btnFg }};font-size:22px;cursor:pointer;flex:none">+</button>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasCart }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ goReview }}" style="position:absolute;left:16px;right:16px;bottom:16px;height:60px;border:0;border-radius:16px;background:#1d7a57;color:#fff;display:flex;align-items:center;gap:12px;padding:0 18px;cursor:pointer;box-shadow:0 8px 20px rgba(29,122,87,.3)">
+              <span style="min-width:30px;height:30px;border-radius:15px;background:#fff;color:#1d7a57;font-weight:700;display:grid;place-items:center;font-size:14px">{{ cartCount }}</span>
+              <span style="flex:1;text-align:left;font-size:16px;font-weight:600">ดูออเดอร์</span>
+              <span style="font-size:17px;font-weight:700;font-variant-numeric:tabular-nums">{{ cartTotalText }}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;background:rgba(23,25,28,.45);display:flex;flex-direction:column;justify-content:flex-end">
+              <div style="background:#fff;border-radius:22px 22px 0 0;padding:10px 20px 18px;display:flex;flex-direction:column;gap:14px;max-height:92%;overflow:auto">
+                <span style="width:40px;height:4px;border-radius:2px;background:#dcdad2;align-self:center"></span>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="display:flex;flex-direction:column"><span style="font-size:20px;font-weight:600">{{ sheetName }}</span><span style="font-size:14px;color:#5f6368;font-variant-numeric:tabular-nums">{{ sheetBase }}</span></div><button onClick="{{ closeSheet }}" style="width:40px;height:40px;border-radius:12px;border:1px solid #dcdad2;background:#fff;cursor:pointer">✕</button></div>
+                <sc-for list="{{ optGroups }}" as="g" hint-placeholder-count="2">
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <span style="font-size:14px;font-weight:600">{{ g.title }}</span>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                      <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="3">
+                        <button onClick="{{ o.pick }}" style="height:44px;padding:0 14px;border-radius:12px;border:{{ o.bd }};background:{{ o.bg }};font-size:14px;cursor:pointer;white-space:nowrap;color:#17191c">{{ o.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+                <input placeholder="หมายเหตุถึงครัว เช่น ไม่ใส่น้ำแข็ง" style="height:46px;border:1px solid #dcdad2;border-radius:12px;padding:0 12px;font-size:14px;width:100%">
+                <div style="display:flex;gap:10px;align-items:center">
+                  <div style="display:flex;align-items:center;border:1px solid #dcdad2;border-radius:14px;overflow:hidden"><button onClick="{{ sheetDec }}" style="width:48px;height:52px;border:0;background:#faf9f6;font-size:20px;cursor:pointer">−</button><span style="width:36px;text-align:center;font-weight:600">{{ sheetQty }}</span><button onClick="{{ sheetInc }}" style="width:48px;height:52px;border:0;background:#faf9f6;font-size:20px;cursor:pointer">+</button></div>
+                  <button onClick="{{ addToCart }}" style="flex:1;height:52px;border:0;border-radius:14px;background:#1d7a57;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums">เพิ่ม · {{ sheetTotal }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="1d" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">1d</span><span style="font-weight:600">ตรวจและส่งออเดอร์</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#fff">
+          <div style="padding:14px 20px;border-bottom:1px solid #efede7;display:flex;align-items:center;gap:10px">
+            <span style="width:40px;height:40px;border-radius:12px;background:#f6f5f1;display:grid;place-items:center;font-size:18px">‹</span>
+            <div style="flex:1;display:flex;flex-direction:column"><span style="font-weight:600;font-size:17px">ออเดอร์ · {{ tableTitle }}</span><span style="font-size:12px;color:#5f6368">ยังไม่ส่ง · {{ cartCount }} รายการ</span></div>
+          </div>
+          <sc-if value="{{ hasExisting }}" hint-placeholder-val="{{ true }}">
+            <div style="margin:12px 20px 0;background:#f6f5f1;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <span style="display:flex;flex-direction:column"><span style="font-size:14px;font-weight:600">บิลเดิมของโต๊ะ · {{ exCount }}</span><span style="font-size:12px;color:#5f6368">รายการใหม่จะรวมเข้าบิลเดียวกัน</span></span>
+              <span style="font-weight:600;font-variant-numeric:tabular-nums">{{ exTotal }}</span>
+            </div>
+          </sc-if>
+          <div style="flex:1;overflow:auto;padding:4px 20px">
+            <sc-for list="{{ lines }}" as="l" hint-placeholder-count="3">
+              <div style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #f1efe9;align-items:flex-start">
+                <span style="min-width:32px;height:32px;border-radius:10px;background:#f6f5f1;display:grid;place-items:center;font-weight:600;font-size:14px">{{ l.qty }}×</span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:500">{{ l.name }}</span><span style="font-size:13px;color:#5f6368">{{ l.opts }}</span></div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span style="font-weight:600;font-variant-numeric:tabular-nums">{{ l.totalText }}</span><button onClick="{{ l.remove }}" style="border:0;background:transparent;color:#b3261e;font-size:13px;cursor:pointer;padding:0">ลบ</button></div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:64px 12px;text-align:center;color:#5f6368;font-size:14px">ยังไม่มีรายการ · กลับไปเลือกเมนูในหน้า <a href="#1c">1c</a></div>
+            </sc-if>
+          </div>
+          <div style="padding:14px 20px 18px;border-top:1px solid #efede7;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;color:#5f6368">{{ newTotalLabel }}</span><span style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums">{{ cartTotalText }}</span></div>
+            <button onClick="{{ send }}" disabled="{{ cartEmpty }}" style="height:60px;border:0;border-radius:16px;background:#1d7a57;color:#fff;font-size:17px;font-weight:600;cursor:pointer;opacity:{{ sendOp }}">ส่งเข้าครัว · พิมพ์ใบออเดอร์</button>
+            <span style="font-size:12px;color:#5f6368;text-align:center">พิมพ์ที่ เครื่องครัว (ตั้งค่าโดยแอดมินบนเว็บ) · ชำระเงินที่เครื่อง POS</span>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div id="1e" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font:600 12px 'IBM Plex Mono',monospace;background:#17191c;color:#fff;padding:3px 8px;border-radius:6px">1e</span><span style="font-weight:600">ออเดอร์ที่ส่งแล้ว</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 380 }}" height="{{ 800 }}" hint-size="380px,800px">
+        <div style="height:100%;display:flex;flex-direction:column;background:#f6f5f1">
+          <div style="padding:16px 20px 12px;background:#fff;border-bottom:1px solid #e3e1da"><span style="font-size:20px;font-weight:600">ออเดอร์ที่ส่งแล้ว</span></div>
+          <sc-if value="{{ justSent }}" hint-placeholder-val="{{ false }}">
+            <div style="margin:12px 16px 0;background:#e5f3ec;color:#145c41;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500">ส่งออเดอร์ {{ justSent }} แล้ว · กำลังพิมพ์ที่ เครื่องครัว</div>
+          </sc-if>
+          <div style="flex:1;overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ orders }}" as="o" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid #e3e1da;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span style="font-weight:600;font-size:16px">{{ o.table }}</span>
+                  <button style="height:36px;padding:0 12px;border:1px solid #dcdad2;background:#fff;border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap">พิมพ์ซ้ำ</button>
+                </div>
+                <span style="font-size:14px;color:#3c4043">{{ o.items }}</span>
+                <div style="display:flex;justify-content:space-between;font-size:13px;color:#5f6368;font-variant-numeric:tabular-nums"><span>{{ o.id }} · {{ o.time }} · พิมพ์ที่ เครื่องครัว</span><span style="font-weight:600;color:#17191c">{{ o.total }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;background:#fff;border-top:1px solid #e3e1da">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+              <span style="flex:1;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;color:{{ t.fg }};font-weight:{{ t.fw }}"><span style="font-size:17px;font-family:'IBM Plex Mono',monospace">{{ t.glyph }}</span>{{ t.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </x-import>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const P=[
+{id:1,name:'อเมริกาโน่เย็น',price:6500,cat:'coffee',tint:'#e9dfd2'},{id:2,name:'ลาเต้ร้อน',price:7000,cat:'coffee',tint:'#efe3d3'},
+{id:3,name:'คาปูชิโน่',price:7000,cat:'coffee',tint:'#ebe0d0',out:true},{id:4,name:'มอคค่าเย็น',price:8000,cat:'coffee',tint:'#e3d5c6'},
+{id:5,name:'ชาไทยเย็น',price:5500,cat:'tea',tint:'#f5dcc4'},{id:6,name:'มัทฉะลาเต้',price:8500,cat:'tea',tint:'#dbe8cf'},
+{id:7,name:'ชาเขียวมะลิ',price:5000,cat:'tea',tint:'#e4ecd6'},{id:8,name:'โซดาเลมอน',price:6000,cat:'soda',tint:'#f3efc8'},
+{id:10,name:'ครัวซองต์เนยสด',price:7500,cat:'bakery',tint:'#f2e6cc'},{id:11,name:'บราวนี่',price:6500,cat:'bakery',tint:'#e2d6cc',out:true},
+{id:12,name:'ชีสเค้กบลูเบอร์รี่',price:11000,cat:'bakery',tint:'#e4dcec'}];
+const CATS=[['all','ทั้งหมด'],['coffee','กาแฟ'],['tea','ชา'],['soda','โซดา'],['bakery','เบเกอรี่']];
+const OPT={size:{title:'ขนาด',opts:[['ปกติ',0],['ใหญ่ +15',1500]]},sweet:{title:'ความหวาน',opts:[['ปกติ',0],['หวานน้อย',0],['ไม่หวาน',0]]},extra:{title:'เพิ่ม',opts:[['ไม่เพิ่ม',0],['ช็อตพิเศษ +20',2000],['นมโอ๊ต +15',1500]]}};
+const TB=[['A1','free'],['A2','busy',2,'฿235'],['A3','busy',4,'฿675'],['A4','free'],['A5','bill',2,'฿190'],['A6','free'],['B1','busy',3,'฿420'],['B2','free'],['B3','free']];
+const fmt=s=>'฿'+(s/100).toLocaleString('en-US',{minimumFractionDigits:s%100?2:0,maximumFractionDigits:2});
+class Component extends DCLogic{
+state={pin:'12',table:'A2',zone:'in',cat:'all',q:'',cart:[{id:6,qty:1,o:{size:1,sweet:1,extra:0}},{id:10,qty:2,o:{}}],sheet:null,sent:[],justSent:''};
+set(k,v){this.setState({[k]:v})}
+tabs(a){return[['▦','โต๊ะ'],['☰','ออเดอร์'],['◔','แจ้งเตือน'+(a===2?'':' ·2')],['◎','ฉัน']].map(([g,l],i)=>({glyph:g,label:l,fg:i===a?'#1d7a57':'#5f6368',fw:i===a?600:400}))}
+r2(s){
+const sw=on=>({swBg:on?'#1d7a57':'#cfccc2',swJust:on?'flex-end':'flex-start'});
+const pf=s.pf||{sound:true,vib:true,big:false},rd=s.rd||{},bm=s.bm||'sum',on=!!s.online;
+const N=[['call','โต๊ะ A5 ขอเช็คบิล','กดเรียกจากปุ่มบนโต๊ะ','14:22'],['warn','พิมพ์ใบออเดอร์ไม่สำเร็จ','#K-215 · เครื่องครัวกระดาษหมด จะพิมพ์ให้อัตโนมัติเมื่อพร้อม','14:18'],['warn','คาปูชิโน่ หมดแล้ว','ปิดการขายจากหน้าเว็บโดย ต้น','14:10'],['info','เปลี่ยนเครื่องพิมพ์ออเดอร์','แอดมินเชื่อมต่อ เครื่องครัว','09:12'],['info','เข้ากะเรียบร้อย','กะ #128 · เครื่อง Galaxy A15','07:58']];
+const D={call:'#d49a1f',warn:'#b3261e',info:'#a5a8ad'};
+return{
+
+menuOpen:!!s.menu,toggleMenu:()=>this.set('menu',!s.menu),
+rounds:[{label:'รอบ 1 · 13:50 · นภัส',items:[{q:2,n:'อเมริกาโน่เย็น',o:'ปกติ',t:'฿130'},{q:2,n:'ครัวซองต์เนยสด',o:'',t:'฿150'}]},{label:'รอบ 2 · 14:21 · นภัส',items:[{q:2,n:'ลาเต้ร้อน',o:'นมโอ๊ต',t:'฿170'},{q:1,n:'ชีสเค้กบลูเบอร์รี่',o:'',t:'฿110'},{q:1,n:'โซดาเลมอน',o:'',t:'฿50'}]},{label:'รอบ 3 · เคาน์เตอร์ · ต้น · 14:35',items:[{q:1,n:'บราวนี่',o:'ลูกค้าหยิบเพิ่มที่เคาน์เตอร์',t:'฿65'}]}],
+billModes:[['sum','สรุปบิล'],['qr','QR ให้ลูกค้าจ่าย']].map(([k,l])=>({label:l,bg:bm===k?'#fff':'transparent',fw:bm===k?600:400,pick:()=>this.set('bm',k)})),
+billSum:bm==='sum',billQr:bm==='qr',
+billLines:[['2× อเมริกาโน่เย็น','฿130.00'],['2× ครัวซองต์เนยสด','฿150.00'],['2× ลาเต้ร้อน (นมโอ๊ต)','฿170.00'],['1× ชีสเค้กบลูเบอร์รี่','฿110.00'],['1× โซดาเลมอน','฿50.00'],['1× บราวนี่ (เคาน์เตอร์)','฿65.00']].map(([n,t])=>({n,t})),
+notis:N.map(([k,t,b,tm],i)=>{const u=i<2&&!rd[i];return{title:t,body:b,time:tm,dot:u?D[k]:'#dcdad2',bg:u?'#fff':'#faf9f6',bd:u?'#e3e1da':'#efede7',fw:u?600:400,read:()=>this.set('rd',{...rd,[i]:true})}}),
+readAll:()=>this.set('rd',{0:true,1:true}),
+prefs:[['sound','เสียงเมื่ออาหารพร้อม','เล่นเสียงแม้ล็อกหน้าจอ'],['vib','สั่นเมื่อลูกค้าเรียก','จากปุ่มเรียกบนโต๊ะ'],['big','ตัวอักษรใหญ่','เพิ่มขนาดเมนูและปุ่ม']].map(([k,l,h])=>({label:l,hint:h,...sw(pf[k]),toggle:()=>this.set('pf',{...pf,[k]:!pf[k]})})),
+offBg:on?'#e5f3ec':'#fbf1dc',offFg:on?'#145c41':'#8a5a00',offDot:on?'#2f9e74':'#d49a1f',
+offText:on?'เครื่องครัวกลับมาแล้ว · พิมพ์ครบ 2 ใบ':'เครื่องครัวไม่ตอบสนอง · กระดาษหมดหรือปิดเครื่อง',retryLabel:on?'จำลองปัญหา':'ลองใหม่',retry:()=>this.set('online',!on),
+queue:[{table:'โต๊ะ B2',items:'มอคค่าเย็น ×2, บราวนี่ ×1',meta:'สร้าง 14:41'},{table:'กลับบ้าน · คิว 35',items:'ชาไทยเย็น ×1',meta:'สร้าง 14:43'},{table:'โต๊ะ A2',items:'มัทฉะลาเต้ ×1, ครัวซองต์ ×2',meta:'#K-214 · 14:30',sent:true}].map(o=>{const ok=o.sent||on;return{...o,status:ok?'พิมพ์แล้ว':'รอพิมพ์',bg:ok?'#e5f3ec':'#fbf1dc',fg:ok?'#145c41':'#8a5a00',bd:ok?'#e3e1da':'#f0d9a8'}})
+}}
+renderVals(){
+const s=this.state;
+const unit=(p,o)=>p.price+(p.cat==='bakery'?0:(OPT.size.opts[o.size||0][1]+OPT.extra.opts[o.extra||0][1]));
+const cartTotal=s.cart.reduce((a,l)=>a+unit(P.find(p=>p.id===l.id),l.o)*l.qty,0);
+const cartCount=s.cart.reduce((a,l)=>a+l.qty,0);
+const qty=id=>s.cart.filter(l=>l.id===id).reduce((a,l)=>a+l.qty,0);
+const q=s.q.trim();
+const sp=s.sheet&&P.find(p=>p.id===s.sheet.id);
+const groups=sp&&sp.cat!=='bakery'?['size','sweet','extra']:[];
+const st={free:['ว่าง','#5f6368','#fff'],busy:['มีลูกค้า','#1d7a57','#f1f8f4'],serve:['รอเสิร์ฟ','#8a5a00','#fbf1dc'],bill:['ขอเช็คบิล','#b3261e','#fbe9e7']};
+const keys=['1','2','3','4','5','6','7','8','9','ล้าง','0','⌫'];
+const S={new:['ใหม่ · รอรับ','#1d4f91','#e4edf9'],cook:['กำลังทำ','#8a5a00','#fbf1dc'],ready:['พร้อมเสิร์ฟ','#145c41','#e5f3ec'],done:['เสิร์ฟแล้ว','#5f6368','#efede7']};
+const base=[{id:'#K-213',table:'โต๊ะ A3',items:'ลาเต้ร้อน ×2, ชีสเค้กบลูเบอร์รี่ ×1',time:'14:21',total:'฿250',st:'ready'},{id:'#K-212',table:'โต๊ะ B1',items:'ชาไทยเย็น ×3',time:'14:15',total:'฿165',st:'cook'},{id:'#K-209',table:'กลับบ้าน',items:'อเมริกาโน่เย็น ×1, บราวนี่ ×1',time:'13:58',total:'฿130',st:'done'}];
+return{
+pinDots:[0,1,2,3].map(i=>({bg:i<s.pin.length?'#7cc4a4':'transparent'})),
+pinHint:s.pin.length===4?'ยินดีต้อนรับ นภัส':'ทดลองกดตัวเลข',
+keys:keys.map(k=>({label:k,bg:isNaN(k)?'transparent':'#24272b',tap:()=>this.setState(x=>({pin:k==='ล้าง'?'':k==='⌫'?x.pin.slice(0,-1):x.pin.length<4?x.pin+k:x.pin}))})),
+zones:[['in','ในร้าน'],['out','ระเบียง'],['ta','กลับบ้าน']].map(([k,l])=>({label:l,bg:s.zone===k?'#17191c':'#fff',fg:s.zone===k?'#fff':'#17191c',bd:s.zone===k?'#17191c':'#dcdad2',pick:()=>this.set('zone',k)})),
+tables:TB.map(([n,k,g,t])=>({name:n,status:st[k][0],fg:st[k][1],bg:s.table===n?'#e5f3ec':st[k][2],bd:s.table===n?'2px solid #1d7a57':'1px solid #e3e1da',meta:g?g+' คน · '+t:'',pick:()=>this.set('table',n)})),
+tableName:s.table==='TA'?'กลับบ้าน':s.table,
+...(()=>{const EX={A2:[3,'฿235'],A3:[6,'฿675'],A5:[3,'฿190'],B1:[3,'฿420']}[s.table];return{hasExisting:!!EX,exCount:EX?EX[0]+' รายการ':'',exTotal:EX?EX[1]:'',newTotalLabel:EX?'รายการที่สั่งเพิ่ม':'รวม (ยังไม่หักส่วนลด)'}})(),pickTakeaway:()=>this.set('table','TA'),
+tableTitle:s.table==='TA'?'กลับบ้าน':'โต๊ะ '+s.table,guestText:s.table==='TA'?'คิว #34':'2 คน · เปิด 14:02',
+q:s.q,onSearch:e=>this.set('q',e.target.value),
+cats:CATS.map(([k,n])=>({name:n,bg:s.cat===k?'#17191c':'#fff',fg:s.cat===k?'#fff':'#17191c',bd:s.cat===k?'#17191c':'#dcdad2',pick:()=>this.set('cat',k)})),
+menu:P.filter(p=>(s.cat==='all'||p.cat===s.cat)&&(!q||p.name.includes(q))).map(p=>({...p,priceText:p.out?'หมด':fmt(p.price),priceColor:p.out?'#b3261e':'#1d7a57',op:p.out?.55:1,qty:qty(p.id),btnBg:p.out?'#efede7':'#e5f3ec',btnFg:p.out?'#a5a8ad':'#1d7a57',open:()=>!p.out&&this.set('sheet',{id:p.id,qty:1,o:{size:0,sweet:0,extra:0}})})),
+hasCart:s.cart.length>0,cartCount,cartTotalText:fmt(cartTotal),goReview:()=>{},
+sheetOpen:!!sp,sheetName:sp&&sp.name,sheetBase:sp&&fmt(sp.price),sheetQty:s.sheet&&s.sheet.qty,
+sheetTotal:sp?fmt(unit(sp,s.sheet.o)*s.sheet.qty):'',
+optGroups:groups.map(g=>({title:OPT[g].title,opts:OPT[g].opts.map(([l],i)=>({label:l,bd:s.sheet.o[g]===i?'2px solid #1d7a57':'1px solid #dcdad2',bg:s.sheet.o[g]===i?'#f1f8f4':'#fff',pick:()=>this.setState(x=>({sheet:{...x.sheet,o:{...x.sheet.o,[g]:i}}}))}))})),
+closeSheet:()=>this.set('sheet',null),
+sheetInc:()=>this.setState(x=>({sheet:{...x.sheet,qty:x.sheet.qty+1}})),sheetDec:()=>this.setState(x=>({sheet:{...x.sheet,qty:Math.max(1,x.sheet.qty-1)}})),
+addToCart:()=>this.setState(x=>({cart:[...x.cart,x.sheet],sheet:null})),
+lines:s.cart.map((l,i)=>{const p=P.find(x=>x.id===l.id);const o=p.cat==='bakery'?'—':[OPT.size.opts[l.o.size||0][0],OPT.sweet.opts[l.o.sweet||0][0],l.o.extra?OPT.extra.opts[l.o.extra][0]:null].filter(Boolean).join(' · ');return{name:p.name,qty:l.qty,opts:o,totalText:fmt(unit(p,l.o)*l.qty),remove:()=>this.setState(x=>({cart:x.cart.filter((_,j)=>j!==i)}))}}),
+cartEmpty:s.cart.length===0,sendOp:s.cart.length?1:.4,
+send:()=>{if(!s.cart.length)return;const id='#K-'+(214+s.sent.length);const items=s.cart.map(l=>P.find(p=>p.id===l.id).name+' ×'+l.qty).join(', ');this.setState(x=>({sent:[{id,table:x.table==='TA'?'กลับบ้าน':'โต๊ะ '+x.table,items,time:'14:3'+x.sent.length,total:fmt(cartTotal),st:'new'},...x.sent],cart:[],justSent:id}))},
+justSent:s.justSent,
+orders:[...s.sent,...base].map(o=>({...o,status:S[o.st][0],fg:S[o.st][1],bg:S[o.st][2]})),
+tabs:this.tabs(1),tabsNoti:this.tabs(2),tabsMe:this.tabs(3),
+...this.r2(s)
+}}}
+</script>
+</body>
+</html>
