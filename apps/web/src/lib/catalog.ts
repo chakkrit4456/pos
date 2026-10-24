@@ -54,12 +54,14 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
       const out: CatalogProduct[] = [];
       // An exact barcode/SKU hit goes first, then name/SKU substring matches.
       const exact = term ? (byCode.get(q.trim()) ?? byCode.get(term)) : undefined;
+      // Every word must appear somewhere (any order): "ลาเต้ เย็น" finds "ลาเต้เย็น".
+      const words = term.split(/\s+/).filter(Boolean);
       if (exact) out.push(exact.product);
       for (let i = 0; i < products.length && out.length < limit; i++) {
         const p = products[i]!;
         if (exact && p.id === exact.product.id) continue;
         if (cats && (!p.categoryId || !cats.has(p.categoryId))) continue;
-        if (term ? !hay[i]!.includes(term) : !p.showInPos) continue;
+        if (term ? !words.every((w) => hay[i]!.includes(w)) : !p.showInPos) continue;
         out.push(p);
       }
       return out;

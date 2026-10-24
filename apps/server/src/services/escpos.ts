@@ -6,7 +6,10 @@ import { createCanvas, GlobalFonts, loadImage, type Canvas, type SKRSContext2D }
 import QRCode from 'qrcode';
 import type { DocBlock, PrintDoc } from '@flexpos/shared';
 
-const FONT = 'FlexPOS Thai';
+const FONT_THAI = 'FlexPOS Thai';
+const FONT_LATIN = 'FlexPOS Latin';
+/** Thai glyphs first, Latin subset (digits, A-Z) as fallback. */
+const FONT = `"${FONT_THAI}", "${FONT_LATIN}"`;
 let fontsReady = false;
 
 /** Register IBM Plex Sans Thai (thai + latin subsets) for bitmap rendering. */
@@ -25,7 +28,7 @@ export function ensureFonts(extraDir?: string): void {
     if (!existsSync(d)) continue;
     for (const f of readdirSync(d)) {
       if (/(thai|latin)-(400|700)-normal\.woff2$/.test(f) && !f.includes('latin-ext')) {
-        GlobalFonts.registerFromPath(join(d, f), FONT);
+        GlobalFonts.registerFromPath(join(d, f), f.includes('-thai-') && !f.includes('thai-latin') ? FONT_THAI : FONT_LATIN);
       }
     }
   }
@@ -102,7 +105,7 @@ export async function renderDoc(doc: PrintDoc, fontsDir?: string): Promise<Canva
   const pad = 4;
   const inner = width - pad * 2;
   let y = 8;
-  const font = (size: number, bold?: boolean) => (g.font = `${bold ? '700' : '400'} ${size}px "${FONT}"`);
+  const font = (size: number, bold?: boolean) => (g.font = `${bold ? '700' : '400'} ${size}px ${FONT}`);
 
   const drawBlock = async (b: DocBlock) => {
     switch (b.t) {

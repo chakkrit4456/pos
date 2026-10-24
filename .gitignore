@@ -12,3 +12,4 @@ playwright-report
 test-results
 *.tsbuildinfo
 .license-keys/
+apps/desktop/release-build.log

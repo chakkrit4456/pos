@@ -115,6 +115,10 @@ function SaleDialog({ id, onClose, onOpen }: { id: string; onClose: () => void; 
     qc.invalidateQueries({ queryKey: ['sale', id] });
     qc.invalidateQueries({ queryKey: ['sale-doc', id] });
     qc.invalidateQueries({ queryKey: ['sales'] });
+    // Refunds and voids change the drawer's expected cash and today's totals.
+    qc.invalidateQueries({ queryKey: ['shift'] });
+    qc.invalidateQueries({ queryKey: ['dashboard'] });
+    qc.invalidateQueries({ queryKey: ['catalog'] });
   };
 
   const doVoid = async () => {

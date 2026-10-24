@@ -1,0 +1,30 @@
+# FlexPOS + PostgreSQL. Change the passwords before going live.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flexpos
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: flexpos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U flexpos']
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      FLEXPOS_DB_URL: postgres://flexpos:change-me@db:5432/flexpos
+    ports:
+      - '4100:4100'
+    volumes:
+      - appdata:/data
+volumes:
+  pgdata:
+  appdata:

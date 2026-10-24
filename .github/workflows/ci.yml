@@ -1,0 +1,43 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: flexpos, POSTGRES_PASSWORD: flexpos, POSTGRES_DB: flexpos }
+        ports: ['54329:5432']
+        options: --health-cmd "pg_isready -U flexpos" --health-interval 5s --health-retries 10
+      mysql:
+        image: mysql:8.4
+        env: { MYSQL_ROOT_PASSWORD: flexpos, MYSQL_DATABASE: flexpos, MYSQL_USER: flexpos, MYSQL_PASSWORD: flexpos }
+        ports: ['33069:3306']
+        options: --health-cmd "mysqladmin ping -h localhost" --health-interval 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+        env: { TEST_PG: '1', TEST_MYSQL: '1' }
+      - run: pnpm build
+      - run: npx playwright install --with-deps chromium && pnpm e2e
+
+  windows-installer:
+    runs-on: windows-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm desktop:dist
+      - uses: actions/upload-artifact@v4
+        with: { name: FlexPOS-Setup, path: apps/desktop/release/FlexPOS-Setup.exe }

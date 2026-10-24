@@ -1,0 +1,16 @@
+{
+  "name": "@flexpos/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FlexPOS for Windows",
+  "main": "src/main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "stage": "node stage.mjs",
+    "dist": "node stage.mjs && cd stage && npm install --omit=dev --no-audit --no-fund && npx electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "^36.4.0"
+  }
+}

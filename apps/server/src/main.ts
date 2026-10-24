@@ -9,7 +9,7 @@ export async function startServer(opts: { port?: number; host?: string; dataDir?
   const host = opts.host ?? process.env.HOST ?? '0.0.0.0';
   const dataDir = opts.dataDir ?? process.env.FLEXPOS_DATA_DIR ?? resolve(process.cwd(), 'data');
   const webDir = opts.webDir !== undefined ? opts.webDir : (process.env.FLEXPOS_WEB_DIR ?? join(here, '..', '..', 'web', 'dist'));
-  const server = await buildServer({ dataDir, webDir, fontsDir: opts.fontsDir ?? process.env.FLEXPOS_FONTS_DIR, logger: opts.logger ?? process.env.NODE_ENV !== 'test' });
+  const server = await buildServer({ dataDir: resolve(dataDir), webDir: webDir ? resolve(webDir) : null, fontsDir: opts.fontsDir ?? process.env.FLEXPOS_FONTS_DIR, logger: opts.logger ?? process.env.NODE_ENV !== 'test' });
   await server.app.listen({ port, host });
   const stopAdvertise = await advertise(port, server.ctx.settings.store.name || hostname());
   return {
