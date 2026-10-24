@@ -261,6 +261,14 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
     return loadOrder(newId);
   });
 
+  app.post('/api/orders/:id/guests', auth('tables.manage'), async (req) => {
+    const { id } = req.params as { id: string };
+    const { guests } = z.object({ guests: z.number().int().min(0).max(200) }).parse(req.body);
+    await ctx.db.updateTable('orders').set({ guests }).where('id', '=', id).where('status', '=', 'open').execute();
+    ctx.emit({ type: 'orders.changed', tableId: null, orderId: id });
+    return loadOrder(id);
+  });
+
   app.post('/api/orders/:id/request-bill', auth('tables.manage'), async (req) => {
     const { id } = req.params as { id: string };
     const { value } = z.object({ value: z.boolean().default(true) }).parse(req.body ?? {});

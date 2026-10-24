@@ -70,7 +70,7 @@ export function initials(name: string): string {
 
 /** RFC4180 CSV parser (quotes, escaped quotes, CRLF, BOM). */
 export function parseCsv(text: string): string[][] {
-  const src = text.replace(/^﻿/, '');
+  const src = text.replace(/^\uFEFF/, '');
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -108,5 +108,5 @@ export function toCsv(rows: (string | number | null | undefined)[][]): string {
     const s = v == null ? '' : String(v);
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return '﻿' + rows.map((r) => r.map(esc).join(',')).join('\r\n');
+  return '\uFEFF' + rows.map((r) => r.map(esc).join(',')).join('\r\n');
 }

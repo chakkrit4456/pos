@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { sql } from 'kysely';
 import ExcelJS from 'exceljs';
-import { formatAmount, localDate, toCsv } from '@flexpos/shared';
+import { localDate, toCsv } from '@flexpos/shared';
 import type { AppContext } from '../context.js';
 import { branchOf, currentUser, hasPerm, requireAuth } from '../auth.js';
 import { num, parseJson } from '../util.js';

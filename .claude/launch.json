@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flexpos-server",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["pnpm", "--filter", "@flexpos/server", "dev"],
+      "port": 4100
+    },
+    {
+      "name": "flexpos-web",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["pnpm", "--filter", "@flexpos/web", "dev"],
+      "port": 5173
+    }
+  ]
+}
