@@ -16,6 +16,5 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },
-,
   { files: ['**/*.cjs'], rules: { '@typescript-eslint/no-require-imports': 'off' } },
 );
