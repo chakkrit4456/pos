@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { stockDocSchema } from '@flexpos/shared';
+import { stockDocSchema, t } from '@flexpos/shared';
 import { ilike } from '@flexpos/db';
 import type { AppContext } from '../context.js';
 import { audit, branchOf, currentUser, nextSeq, requireAuth } from '../auth.js';
@@ -104,7 +104,7 @@ export function stockRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/api/stock/docs/:id', auth('stock.view'), async (req) => {
     const { id } = req.params as { id: string };
     const d = await ctx.db.selectFrom('stock_docs').selectAll().where('id', '=', id).executeTakeFirst();
-    if (!d) throw notFound('เอกสาร');
+    if (!d) throw notFound(t('เอกสาร'));
     const lines = await ctx.db.selectFrom('stock_doc_lines').innerJoin('products', 'products.id', 'stock_doc_lines.product_id').leftJoin('product_variants', 'product_variants.id', 'stock_doc_lines.variant_id').select(['stock_doc_lines.id', 'stock_doc_lines.qty', 'stock_doc_lines.system_qty', 'stock_doc_lines.unit_cost', 'stock_doc_lines.lot_no', 'stock_doc_lines.expiry_date', 'products.name', 'products.sku', 'product_variants.name as variant_name']).where('doc_id', '=', id).execute();
     return { ...d, lines };
   });
@@ -118,10 +118,10 @@ export function stockRoutes(app: FastifyInstance, ctx: AppContext) {
     const user = currentUser(req);
     const branchId = b.branchId ?? branchOf(ctx, req);
     if (b.type === 'transfer') {
-      if (!b.toBranchId) throw badRequest('กรุณาเลือกสาขาปลายทาง');
-      if (b.toBranchId === branchId) throw badRequest('สาขาปลายทางต้องไม่ใช่สาขาเดียวกัน');
+      if (!b.toBranchId) throw badRequest(t('กรุณาเลือกสาขาปลายทาง'));
+      if (b.toBranchId === branchId) throw badRequest(t('สาขาปลายทางต้องไม่ใช่สาขาเดียวกัน'));
     }
-    if (b.type !== 'count' && b.type !== 'adjust' && b.lines.some((l) => l.qty <= 0)) throw badRequest('จำนวนต้องมากกว่า 0');
+    if (b.type !== 'count' && b.type !== 'adjust' && b.lines.some((l) => l.qty <= 0)) throw badRequest(t('จำนวนต้องมากกว่า 0'));
     const id = uuid();
     const docNo = await ctx.db.transaction().execute(async (tx) => {
       const seq = await nextSeq(tx, `stockdoc:${b.type}`);
@@ -130,8 +130,8 @@ export function stockRoutes(app: FastifyInstance, ctx: AppContext) {
       for (const l of b.lines) {
         const variant = l.variantId ?? '';
         const p = await tx.selectFrom('products').select(['name', 'track_stock']).where('id', '=', l.productId).executeTakeFirst();
-        if (!p) throw badRequest('ไม่พบสินค้าในเอกสาร');
-        if (p.track_stock !== 1) throw badRequest(`“${p.name}” ไม่ได้เปิดการติดตามสต็อก`);
+        if (!p) throw badRequest(t('ไม่พบสินค้าในเอกสาร'));
+        if (p.track_stock !== 1) throw badRequest(t('“{0}” ไม่ได้เปิดการติดตามสต็อก', p.name));
         const level = await tx.selectFrom('stock_levels').select(['qty', 'avg_cost']).where('product_id', '=', l.productId).where('variant_id', '=', variant).where('branch_id', '=', branchId).executeTakeFirst();
         const sysQty = level?.qty ?? 0;
         const common = { productId: l.productId, variantId: l.variantId, refType: 'stock_doc', refId: id, note: b.note || docNo, userId: user.id, lotNo: l.lotNo, expiryDate: l.expiryDate, productName: p.name };

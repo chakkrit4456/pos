@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Catalog, SaleInput } from '@flexpos/shared';
 import { api, ApiError } from './api';
+import { t } from '@flexpos/shared';
 
 interface OutboxSale {
   id: string;
@@ -54,7 +55,7 @@ export async function cachedCatalog(): Promise<Catalog | null> {
 
 export async function queueSale(payload: SaleInput) {
   const d = getDb();
-  if (!d) throw new Error('เครื่องนี้บันทึกข้อมูลออฟไลน์ไม่ได้');
+  if (!d) throw new Error(t('เครื่องนี้บันทึกข้อมูลออฟไลน์ไม่ได้'));
   await d.outbox.put({ id: payload.id, payload, createdAt: payload.createdAt ?? new Date().toISOString(), attempts: 0, lastError: '' });
   notify();
 }

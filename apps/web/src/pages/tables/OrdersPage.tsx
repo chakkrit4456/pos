@@ -9,6 +9,8 @@ import { Badge, EmptyState, ErrorState, PageHeader, Segmented, SkeletonRows } fr
 import { Dialog } from '@/components/ui/dialog';
 import { ApprovalHost } from '../pos/dialogs';
 import { OrderBillPanel } from './OrderBillPanel';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 interface OrderRow {
   id: string;
@@ -44,16 +46,16 @@ export default function OrdersPage() {
   const offline = kitchen.filter((p) => !p.online);
   const queued = kitchen.reduce((a, p) => a + p.queued.length, 0);
   const banner = !kitchen.length
-    ? { tone: 'neutral' as const, text: 'ยังไม่ได้เชื่อมเครื่องพิมพ์ออเดอร์' }
+    ? { tone: 'neutral' as const, text: t('ยังไม่ได้เชื่อมเครื่องพิมพ์ออเดอร์') }
     : offline.length
-      ? { tone: 'danger' as const, text: `${offline.map((p) => p.name).join(', ')} ไม่พร้อม · รอพิมพ์ ${queued} ใบ` }
-      : { tone: 'success' as const, text: `เครื่องพิมพ์ออเดอร์พร้อม (${kitchen.length})` };
+      ? { tone: 'danger' as const, text: t('{0} ไม่พร้อม · รอพิมพ์ {1} ใบ', offline.map((p) => p.name).join(', '), queued) }
+      : { tone: 'success' as const, text: t('เครื่องพิมพ์ออเดอร์พร้อม ({0})', kitchen.length) };
 
   return (
     <Page>
       <PageHeader
-        title="ออเดอร์"
-        sub={`ส่งจากแอปพนักงานและหน้าร้าน · ${orders.data?.length ?? 0} ออเดอร์`}
+        title={t('ออเดอร์')}
+        sub={t('ส่งจากแอปพนักงานและหน้าร้าน · {0} ออเดอร์', orders.data?.length ?? 0)}
         actions={
           <button onClick={() => nav('/settings/printers')} className={cn('flex h-10 items-center gap-2 whitespace-nowrap rounded-full px-3.5 text-[13px] font-medium', banner.tone === 'danger' ? 'bg-danger-soft text-danger' : banner.tone === 'success' ? 'bg-soft text-soft-fg' : 'bg-canvas text-muted')}>
             <span className={cn('h-2 w-2 rounded-full', banner.tone === 'danger' ? 'bg-danger' : banner.tone === 'success' ? 'bg-accent' : 'bg-faint')} />
@@ -61,11 +63,11 @@ export default function OrdersPage() {
           </button>
         }
       />
-      <Segmented className="self-start" value={status} onChange={setStatus} options={[{ value: 'open', label: 'ยังไม่เก็บเงิน' }, { value: 'all', label: 'ทั้งหมดวันนี้' }]} />
+      <Segmented className="self-start" value={status} onChange={setStatus} options={[{ value: 'open', label: t('ยังไม่เก็บเงิน') }, { value: 'all', label: t('ทั้งหมดวันนี้') }]} />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="card overflow-hidden">
           {orders.isLoading ? <SkeletonRows /> : orders.isError ? <ErrorState error={orders.error} onRetry={() => void orders.refetch()} /> : !orders.data?.length ? (
-            <EmptyState title="ไม่มีออเดอร์" body="ออเดอร์จากแอปรับออเดอร์ (เปิด /order บนมือถือพนักงาน) และจากหน้าขายจะแสดงที่นี่" />
+            <EmptyState title={t('ไม่มีออเดอร์')} body={t('ออเดอร์จากแอปรับออเดอร์ (เปิด /order บนมือถือพนักงาน) และจากหน้าขายจะแสดงที่นี่')} />
           ) : orders.data.map((o) => (
             <button
               key={o.id}
@@ -75,13 +77,12 @@ export default function OrdersPage() {
             >
               <span className="num flex flex-col"><span className="text-[15px] font-semibold">{new Date(o.opened_at).toTimeString().slice(0, 5)}</span><span className="font-mono text-[11px] text-muted">{o.id.slice(0, 8).toUpperCase()}</span></span>
               <span className="flex min-w-0 flex-col gap-1">
-                <span className="text-[15px] font-semibold">{o.table_name ? `โต๊ะ ${o.table_name}` : o.name} <span className="text-[12px] font-normal text-muted">· {o.opened_by}</span></span>
+                <span className="text-[15px] font-semibold">{o.table_name ? t('โต๊ะ {0}', o.table_name) : o.name} <span className="text-[12px] font-normal text-muted">· {o.opened_by}</span></span>
                 <span className="flex flex-wrap items-center gap-1.5 text-[13px] text-ink-2">
-                  {qtyText(o.itemCount)} รายการ · {o.rounds} รอบ
-                  {o.fromApp && <Badge tone="info">แอป</Badge>}
-                  {o.pending > 0 && <Badge tone="warn">กำลังทำ {o.pending}</Badge>}
-                  {o.ready > 0 && <Badge tone="success">พร้อมเสิร์ฟ {o.ready}</Badge>}
-                  {o.status !== 'open' && <Badge>{o.status === 'paid' ? 'เก็บเงินแล้ว' : 'ยกเลิก'}</Badge>}
+                  {qtyText(o.itemCount)}{' '}{t('รายการ ·')}{' '}{o.rounds}{' '}{t('รอบ')}{o.fromApp && <Badge tone="info">{t('แอป')}</Badge>}
+                  {o.pending > 0 && <Badge tone="warn">{tn('กำลังทำ {0}', o.pending)}</Badge>}
+                  {o.ready > 0 && <Badge tone="success">{tn('พร้อมเสิร์ฟ {0}', o.ready)}</Badge>}
+                  {o.status !== 'open' && <Badge>{o.status === 'paid' ? t('เก็บเงินแล้ว') : t('ยกเลิก')}</Badge>}
                 </span>
               </span>
               <span className="num text-right text-[16px] font-semibold">{money(o.total)}</span>
@@ -89,11 +90,11 @@ export default function OrdersPage() {
           ))}
         </div>
         <aside className="card sticky top-0 hidden max-h-[calc(100vh-150px)] min-h-[420px] overflow-hidden lg:flex lg:flex-col">
-          {selected ? <OrderBillPanel key={selected} orderId={selected} /> : <EmptyState className="my-auto" title="เลือกออเดอร์" body="แตะโต๊ะทางซ้ายเพื่อดูรายละเอียดบิล ลบรายการ หรือเก็บเงิน" />}
+          {selected ? <OrderBillPanel key={selected} orderId={selected} /> : <EmptyState className="my-auto" title={t('เลือกออเดอร์')} body={t('แตะโต๊ะทางซ้ายเพื่อดูรายละเอียดบิล ลบรายการ หรือเก็บเงิน')} />}
         </aside>
       </div>
       {selected && !wide && (
-        <Dialog open onOpenChange={(v) => !v && setSelected(null)} title="รายละเอียดบิล" size="md" hideClose className="[&>div:nth-child(2)]:p-0">
+        <Dialog open onOpenChange={(v) => !v && setSelected(null)} title={t('รายละเอียดบิล')} size="md" hideClose className="[&>div:nth-child(2)]:p-0">
           <div className="h-[78vh] min-w-0"><OrderBillPanel orderId={selected} onClose={() => setSelected(null)} /></div>
         </Dialog>
       )}

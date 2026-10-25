@@ -5,6 +5,8 @@ import type { Settings } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { useSettings } from '@/lib/settings';
 import { Button } from '@/components/ui/core';
+import { t } from '@flexpos/shared';
+import { switchLanguage } from '@/lib/i18n';
 
 /** Local draft of a settings slice with a save bar. */
 export function useDraft<K extends keyof Settings>(key: K) {
@@ -19,7 +21,8 @@ export function useDraft<K extends keyof Settings>(key: K) {
     try {
       const next = await api.put<Settings>('/api/settings', { [key]: draft, ...extra });
       qc.setQueryData(['settings'], next);
-      toast.success('บันทึกการตั้งค่าแล้ว');
+      toast.success(t('บันทึกการตั้งค่าแล้ว'));
+      switchLanguage(next.locale.language);
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -34,13 +37,9 @@ export function SaveBar({ dirty, saving, onSave, onReset }: { dirty: boolean; sa
   if (!dirty) return null;
   return (
     <div className="sticky bottom-3 z-10 flex items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-surface shadow-pop">
-      <span className="flex-1 text-[14px]">มีการเปลี่ยนแปลงที่ยังไม่บันทึก</span>
-      <Button size="sm" variant="ghost" className="text-surface hover:bg-rail-2" onClick={onReset}>
-        ยกเลิก
-      </Button>
-      <Button size="sm" variant="primary" loading={saving} onClick={onSave}>
-        บันทึก
-      </Button>
+      <span className="flex-1 text-[14px]">{t('มีการเปลี่ยนแปลงที่ยังไม่บันทึก')}</span>
+      <Button size="sm" variant="ghost" className="text-surface hover:bg-rail-2" onClick={onReset}>{t('ยกเลิก')}</Button>
+      <Button size="sm" variant="primary" loading={saving} onClick={onSave}>{t('บันทึก')}</Button>
     </div>
   );
 }

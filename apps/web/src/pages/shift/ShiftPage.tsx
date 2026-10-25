@@ -11,6 +11,8 @@ import { Page } from '@/components/layout/AppShell';
 import { Button, Card, EmptyState, Field, Input, PageHeader, SkeletonRows } from '@/components/ui/core';
 import { Dialog, useConfirm } from '@/components/ui/dialog';
 import { MoneyInput } from '@/components/ui/inputs';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 interface Summary {
   id: string;
@@ -66,42 +68,42 @@ export default function ShiftPage() {
   const s = cur.data;
   return (
     <Page className="max-w-[1100px]">
-      <PageHeader title="กะการทำงาน" sub={`เครื่อง ${registerName()}`} actions={s && (
+      <PageHeader title={t('กะการทำงาน')} sub={t('เครื่อง {0}', registerName())} actions={s && (
         <>
-          <Button icon={<ArrowDownCircle className="h-4 w-4" />} onClick={() => setMove('in')}>นำเงินเข้า</Button>
-          <Button icon={<ArrowUpCircle className="h-4 w-4" />} onClick={() => setMove('out')}>นำเงินออก</Button>
-          <Button icon={<Printer className="h-4 w-4" />} onClick={() => void printReport(s.id)}>พิมพ์ X Report</Button>
-          <Button variant="primary" onClick={() => setCloseOpen(true)}>ปิดกะ</Button>
+          <Button icon={<ArrowDownCircle className="h-4 w-4" />} onClick={() => setMove('in')}>{t('นำเงินเข้า')}</Button>
+          <Button icon={<ArrowUpCircle className="h-4 w-4" />} onClick={() => setMove('out')}>{t('นำเงินออก')}</Button>
+          <Button icon={<Printer className="h-4 w-4" />} onClick={() => void printReport(s.id)}>{t('พิมพ์ X Report')}</Button>
+          <Button variant="primary" onClick={() => setCloseOpen(true)}>{t('ปิดกะ')}</Button>
         </>
       )} />
       {cur.isLoading ? <SkeletonRows /> : !s ? (
         <Card>
-          <form className="flex flex-col items-start gap-4 md:flex-row md:items-end" onSubmit={async (e) => { e.preventDefault(); try { await api.post('/api/shifts/open', { openingCash: opening, register: registerName() }); toast.success('เปิดกะแล้ว'); refresh(); } catch (err) { toast.error(errorMessage(err)); } }}>
+          <form className="flex flex-col items-start gap-4 md:flex-row md:items-end" onSubmit={async (e) => { e.preventDefault(); try { await api.post('/api/shifts/open', { openingCash: opening, register: registerName() }); toast.success(t('เปิดกะแล้ว')); refresh(); } catch (err) { toast.error(errorMessage(err)); } }}>
             <div className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-soft text-primary"><Timer className="h-6 w-6" /></div>
-            <Field label="เงินทอนเริ่มต้นในลิ้นชัก" className="w-full md:w-64"><MoneyInput value={opening} onValue={setOpening} /></Field>
-            <Button type="submit" variant="primary" size="lg">เปิดกะ</Button>
+            <Field label={t('เงินทอนเริ่มต้นในลิ้นชัก')} className="w-full md:w-64"><MoneyInput value={opening} onValue={setOpening} /></Field>
+            <Button type="submit" variant="primary" size="lg">{t('เปิดกะ')}</Button>
           </form>
         </Card>
       ) : (
         <ShiftSummary s={s} f={f} />
       )}
-      <Card title="ประวัติกะ" pad>
-        {!history.data?.length ? <EmptyState title="ยังไม่มีประวัติกะ" /> : history.data.map((h) => {
+      <Card title={t('ประวัติกะ')} pad>
+        {!history.data?.length ? <EmptyState title={t('ยังไม่มีประวัติกะ')} /> : history.data.map((h) => {
           const diff = h.counted_cash !== null && h.expected_cash !== null ? h.counted_cash - h.expected_cash : null;
           return (
             <button key={h.id} onClick={() => setView(h.id)} className="flex items-center gap-3 border-b border-line-soft py-2.5 text-left last:border-0 hover:bg-sunken">
               <span className="w-16 font-mono text-[13px]">#{h.number}</span>
               <span className="flex flex-1 flex-col">
                 <span className="text-[14px] font-medium">{h.register} · {h.opened_by}</span>
-                <span className="text-[12px] text-muted">{f.dateTime(h.opened_at)}{h.closed_at ? ` – ${f.dateTime(h.closed_at)}` : ' · เปิดอยู่'}</span>
+                <span className="text-[12px] text-muted">{f.dateTime(h.opened_at)}{h.closed_at ? ` – ${f.dateTime(h.closed_at)}` : t(' · เปิดอยู่')}</span>
               </span>
-              {diff !== null && <span className={cn('num text-[14px] font-semibold', diff === 0 ? 'text-primary' : 'text-danger')}>{diff === 0 ? 'ตรง' : `${diff > 0 ? '+' : ''}${money(diff)}`}</span>}
+              {diff !== null && <span className={cn('num text-[14px] font-semibold', diff === 0 ? 'text-primary' : 'text-danger')}>{diff === 0 ? t('ตรง') : `${diff > 0 ? '+' : ''}${money(diff)}`}</span>}
             </button>
           );
         })}
       </Card>
       {move && s && <CashMoveDialog type={move} shiftId={s.id} onClose={(ok) => { setMove(null); if (ok) refresh(); }} />}
-      {closeOpen && s && <CloseDialog s={s} onClose={async (closed) => { setCloseOpen(false); if (closed) { refresh(); const r = await confirm({ title: 'ปิดกะแล้ว', body: 'พิมพ์ Z Report สรุปปิดกะหรือไม่?', confirmText: 'พิมพ์' }); if (r.ok) void printReport(s.id); } }} />}
+      {closeOpen && s && <CloseDialog s={s} onClose={async (closed) => { setCloseOpen(false); if (closed) { refresh(); const r = await confirm({ title: t('ปิดกะแล้ว'), body: t('พิมพ์ Z Report สรุปปิดกะหรือไม่?'), confirmText: t('พิมพ์') }); if (r.ok) void printReport(s.id); } }} />}
       {view && <HistoryDialog id={view} onClose={() => setView(null)} onPrint={() => void printReport(view)} />}
     </Page>
   );
@@ -110,24 +112,24 @@ export default function ShiftPage() {
 function ShiftSummary({ s, f }: { s: Summary; f: ReturnType<typeof useFormatters> }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <Card title={`กะ #${s.number} · ${s.status === 'open' ? 'เปิดอยู่' : 'ปิดแล้ว'}`}>
-        <p className="-mt-2 text-[13px] text-muted">เปิดโดย {s.openedBy} · {f.dateTime(s.openedAt)}{s.closedAt ? ` · ปิดโดย ${s.closedBy} ${f.dateTime(s.closedAt)}` : ''}</p>
+      <Card title={t('กะ #{0} · {1}', s.number, s.status === 'open' ? t('เปิดอยู่') : t('ปิดแล้ว'))}>
+        <p className="-mt-2 text-[13px] text-muted">{tn('เปิดโดย {0} · {1}{2}', s.openedBy, f.dateTime(s.openedAt), s.closedAt ? t(' · ปิดโดย {0} {1}', s.closedBy, f.dateTime(s.closedAt)) : '')}</p>
         <div className="grid grid-cols-2 gap-2">
-          <Big label={`ยอดขาย (${s.salesCount} บิล)`} value={money(s.salesTotal)} />
-          <Big label="เงินสดที่ควรมีในลิ้นชัก" value={money(s.expectedCash ?? 0)} accent />
+          <Big label={t('ยอดขาย ({0} บิล)', s.salesCount)} value={money(s.salesTotal)} />
+          <Big label={t('เงินสดที่ควรมีในลิ้นชัก')} value={money(s.expectedCash ?? 0)} accent />
         </div>
-        <Rows rows={[['ส่วนลด', s.discountTotal], ['ภาษีขาย', s.vatTotal], ['คืนสินค้า', s.refundTotal], [`ยกเลิก (${s.voidCount} บิล)`, s.voidTotal]]} />
+        <Rows rows={[[t('ส่วนลด'), s.discountTotal], [t('ภาษีขาย'), s.vatTotal], [t('คืนสินค้า'), s.refundTotal], [t('ยกเลิก ({0} บิล)', s.voidCount), s.voidTotal]]} />
       </Card>
-      <Card title="เงินสด">
-        <Rows rows={[['เงินทอนตั้งต้น', s.openingCash], ['รับเงินสด', s.cashSales], ['คืนเงินสด', -s.cashRefunds], ['นำเงินเข้า', s.cashIn], ['นำเงินออก', -s.cashOut]]} />
-        {s.countedCash !== null && <Rows rows={[['นับได้จริง', s.countedCash], ['ส่วนต่าง', s.difference ?? 0]]} />}
-        <div className="mt-1 text-[13px] font-semibold text-muted">แยกตามวิธีชำระ</div>
+      <Card title={t('เงินสด')}>
+        <Rows rows={[[t('เงินทอนตั้งต้น'), s.openingCash], [t('รับเงินสด'), s.cashSales], [t('คืนเงินสด'), -s.cashRefunds], [t('นำเงินเข้า'), s.cashIn], [t('นำเงินออก'), -s.cashOut]]} />
+        {s.countedCash !== null && <Rows rows={[[t('นับได้จริง'), s.countedCash], [t('ส่วนต่าง'), s.difference ?? 0]]} />}
+        <div className="mt-1 text-[13px] font-semibold text-muted">{t('แยกตามวิธีชำระ')}</div>
         <Rows rows={s.methods.map((m) => [`${m.name} (${m.count})`, m.sales - m.refunds])} />
         {s.moves.length > 0 && (
           <>
-            <div className="mt-1 text-[13px] font-semibold text-muted">รายการนำเงินเข้า/ออก</div>
+            <div className="mt-1 text-[13px] font-semibold text-muted">{t('รายการนำเงินเข้า/ออก')}</div>
             {s.moves.map((m) => (
-              <div key={m.id} className="flex justify-between text-[14px]"><span>{m.type === 'in' ? 'นำเข้า' : 'นำออก'} · {m.reason} <span className="text-muted">({m.by})</span></span><span className="num">{m.type === 'out' ? '-' : ''}{money(m.amount)}</span></div>
+              <div key={m.id} className="flex justify-between text-[14px]"><span>{m.type === 'in' ? t('นำเข้า') : t('นำออก')} · {m.reason} <span className="text-muted">({m.by})</span></span><span className="num">{m.type === 'out' ? '-' : ''}{money(m.amount)}</span></div>
             ))}
           </>
         )}
@@ -160,10 +162,10 @@ function CashMoveDialog({ type, shiftId, onClose }: { type: 'in' | 'out'; shiftI
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   return (
-    <Dialog open onOpenChange={(v) => !v && onClose(false)} title={type === 'in' ? 'นำเงินเข้าลิ้นชัก' : 'นำเงินออกจากลิ้นชัก'} size="sm" footer={<><Button onClick={() => onClose(false)}>ยกเลิก</Button><Button variant="primary" loading={busy} disabled={amount <= 0 || !reason.trim()} onClick={async () => { setBusy(true); try { await api.post(`/api/shifts/${shiftId}/cash`, { type, amount, reason }); toast.success('บันทึกแล้ว'); onClose(true); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } }}>บันทึก</Button></>}>
+    <Dialog open onOpenChange={(v) => !v && onClose(false)} title={type === 'in' ? t('นำเงินเข้าลิ้นชัก') : t('นำเงินออกจากลิ้นชัก')} size="sm" footer={<><Button onClick={() => onClose(false)}>{t('ยกเลิก')}</Button><Button variant="primary" loading={busy} disabled={amount <= 0 || !reason.trim()} onClick={async () => { setBusy(true); try { await api.post(`/api/shifts/${shiftId}/cash`, { type, amount, reason }); toast.success(t('บันทึกแล้ว')); onClose(true); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } }}>{t('บันทึก')}</Button></>}>
       <div className="flex flex-col gap-4 pb-2">
-        <Field label="จำนวนเงิน"><MoneyInput autoFocus value={amount} onValue={setAmount} className="h-12 text-[18px]" /></Field>
-        <Field label="เหตุผล" required><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={type === 'in' ? 'เช่น เพิ่มเงินทอน' : 'เช่น จ่ายค่าน้ำแข็ง / ฝากธนาคาร'} /></Field>
+        <Field label={t('จำนวนเงิน')}><MoneyInput autoFocus value={amount} onValue={setAmount} className="h-12 text-[18px]" /></Field>
+        <Field label={t('เหตุผล')} required><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={type === 'in' ? t('เช่น เพิ่มเงินทอน') : t('เช่น จ่ายค่าน้ำแข็ง / ฝากธนาคาร')} /></Field>
       </div>
     </Dialog>
   );
@@ -180,14 +182,14 @@ function CloseDialog({ s, onClose }: { s: Summary; onClose: (closed: boolean) =>
     <Dialog
       open
       onOpenChange={(v) => !v && onClose(false)}
-      title="ปิดกะ · นับเงินในลิ้นชัก"
-      description="นับธนบัตร/เหรียญแต่ละชนิด หรือกรอกยอดรวมเอง"
+      title={t('ปิดกะ · นับเงินในลิ้นชัก')}
+      description={t('นับธนบัตร/เหรียญแต่ละชนิด หรือกรอกยอดรวมเอง')}
       size="lg"
       footer={
         <>
-          <span className={cn('num mr-auto text-[15px] font-semibold', diff === 0 ? 'text-primary' : 'text-danger')}>ส่วนต่าง {diff > 0 ? '+' : ''}{money(diff)}</span>
-          <Button onClick={() => onClose(false)}>ยกเลิก</Button>
-          <Button variant="primary" loading={busy} disabled={diff !== 0 && !note.trim()} onClick={async () => { setBusy(true); try { await api.post(`/api/shifts/${s.id}/close`, { countedCash: counted, note }); toast.success('ปิดกะเรียบร้อย'); onClose(true); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } }}>ยืนยันปิดกะ</Button>
+          <span className={cn('num mr-auto text-[15px] font-semibold', diff === 0 ? 'text-primary' : 'text-danger')}>{tn('ส่วนต่าง {0}{1}', diff > 0 ? '+' : '', money(diff))}</span>
+          <Button onClick={() => onClose(false)}>{t('ยกเลิก')}</Button>
+          <Button variant="primary" loading={busy} disabled={diff !== 0 && !note.trim()} onClick={async () => { setBusy(true); try { await api.post(`/api/shifts/${s.id}/close`, { countedCash: counted, note }); toast.success(t('ปิดกะเรียบร้อย')); onClose(true); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } }}>{t('ยืนยันปิดกะ')}</Button>
         </>
       }
     >
@@ -196,16 +198,16 @@ function CloseDialog({ s, onClose }: { s: Summary; onClose: (closed: boolean) =>
           {NOTES.map((n) => (
             <label key={n} className="flex flex-col gap-1 rounded-xl border border-line p-2">
               <span className="num text-[13px] font-semibold">{money(n).replace('.00', '')}</span>
-              <input inputMode="numeric" className="num h-10 rounded-lg border border-line-strong px-2 text-right text-[16px]" value={counts[n] ?? ''} onChange={(e) => { setManual(null); setCounts({ ...counts, [n]: Number(e.target.value.replace(/\D/g, '')) || 0 }); }} aria-label={`จำนวน ${n / 100} บาท`} />
+              <input inputMode="numeric" className="num h-10 rounded-lg border border-line-strong px-2 text-right text-[16px]" value={counts[n] ?? ''} onChange={(e) => { setManual(null); setCounts({ ...counts, [n]: Number(e.target.value.replace(/\D/g, '')) || 0 }); }} aria-label={t('จำนวน {0} บาท', n / 100)} />
             </label>
           ))}
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-sunken px-4 py-3"><div className="text-[13px] text-muted">ควรมี</div><div className="num text-[22px] font-semibold">{money(s.expectedCash ?? 0)}</div></div>
-          <Field label="นับได้รวม"><MoneyInput value={counted} onValue={setManual} className="h-[52px] text-[20px] font-semibold" /></Field>
-          <div className={cn('rounded-xl px-4 py-3', diff === 0 ? 'bg-soft' : 'bg-danger-soft')}><div className="text-[13px] text-muted">ส่วนต่าง</div><div className={cn('num text-[22px] font-semibold', diff === 0 ? 'text-soft-fg' : 'text-danger')}>{diff > 0 ? '+' : ''}{money(diff)}</div></div>
+          <div className="rounded-xl bg-sunken px-4 py-3"><div className="text-[13px] text-muted">{t('ควรมี')}</div><div className="num text-[22px] font-semibold">{money(s.expectedCash ?? 0)}</div></div>
+          <Field label={t('นับได้รวม')}><MoneyInput value={counted} onValue={setManual} className="h-[52px] text-[20px] font-semibold" /></Field>
+          <div className={cn('rounded-xl px-4 py-3', diff === 0 ? 'bg-soft' : 'bg-danger-soft')}><div className="text-[13px] text-muted">{t('ส่วนต่าง')}</div><div className={cn('num text-[22px] font-semibold', diff === 0 ? 'text-soft-fg' : 'text-danger')}>{diff > 0 ? '+' : ''}{money(diff)}</div></div>
         </div>
-        <Field label={diff !== 0 ? 'หมายเหตุ (จำเป็นเมื่อเงินไม่ตรง)' : 'หมายเหตุ'} required={diff !== 0}><Input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+        <Field label={diff !== 0 ? t('หมายเหตุ (จำเป็นเมื่อเงินไม่ตรง)') : t('หมายเหตุ')} required={diff !== 0}><Input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
     </Dialog>
   );
@@ -215,7 +217,7 @@ function HistoryDialog({ id, onClose, onPrint }: { id: string; onClose: () => vo
   const f = useFormatters();
   const q = useQuery({ queryKey: ['shift', id], queryFn: () => api.get<Summary>(`/api/shifts/${id}`) });
   return (
-    <Dialog open onOpenChange={(v) => !v && onClose()} title={q.data ? `กะ #${q.data.number} · ${q.data.register}` : 'กะ'} size="xl" footer={<Button icon={<Printer className="h-4 w-4" />} onClick={onPrint}>พิมพ์รายงาน</Button>}>
+    <Dialog open onOpenChange={(v) => !v && onClose()} title={q.data ? t('กะ #{0} · {1}', q.data.number, q.data.register) : t('กะ')} size="xl" footer={<Button icon={<Printer className="h-4 w-4" />} onClick={onPrint}>{t('พิมพ์รายงาน')}</Button>}>
       <div className="pb-3">{q.data ? <ShiftSummary s={q.data} f={f} /> : <SkeletonRows />}</div>
     </Dialog>
   );

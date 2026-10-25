@@ -9,6 +9,7 @@ import { useLiveInvalidation } from './lib/live';
 import { AppShell } from './components/layout/AppShell';
 import { Spinner, ErrorState } from './components/ui/core';
 import { LoginPage } from './pages/LoginPage';
+import { switchLanguage } from '@/lib/i18n';
 
 const SetupWizard = lazy(() => import('./pages/setup/SetupWizard'));
 const PosPage = lazy(() => import('./pages/pos/PosPage'));
@@ -89,6 +90,11 @@ export function App() {
     const b = status.data?.brand;
     if (b && !user) applyBrand({ primary: b.primary, accent: b.accent, sidebar: b.sidebar, appName: b.appName, appLogo: b.appLogo });
   }, [status.data, user]);
+
+  // Follow the store language once the store is set up (the wizard picks it before that).
+  useEffect(() => {
+    if (status.data?.hasOwner) switchLanguage(status.data.language);
+  }, [status.data]);
 
   if (loc.pathname === '/order' || loc.pathname.startsWith('/order/')) {
     return (

@@ -25,7 +25,7 @@ import {
   ChevronsUpDown,
   X,
 } from 'lucide-react';
-import { initials, type Permission } from '@flexpos/shared';
+import { initials, type Permission, t } from '@flexpos/shared';
 import { useSession } from '@/lib/session';
 import { useBrand, useSettings } from '@/lib/settings';
 import { cn } from '@/lib/utils';
@@ -43,27 +43,27 @@ export interface NavItem {
 }
 
 type NavGroup = 'sell' | 'manage' | 'insight' | 'system';
-const GROUP_LABEL: Record<NavGroup, string> = { sell: 'การขาย', manage: 'จัดการร้าน', insight: 'วิเคราะห์', system: 'ระบบ' };
+const GROUP_LABEL: Record<NavGroup, string> = { sell: t('การขาย'), manage: t('จัดการร้าน'), insight: t('วิเคราะห์'), system: t('ระบบ') };
 
 export function useNavItems(): NavItem[] {
   const s = useSettings();
   const { can } = useSession();
   const m = s.modules;
   const items: NavItem[] = [
-    { to: '/pos', label: 'หน้าขาย', icon: <ShoppingCart />, group: 'sell', perm: 'pos.sell' },
-    { to: '/tables', label: 'โต๊ะ', icon: <UtensilsCrossed />, group: 'sell', perm: 'tables.manage', show: m.restaurant },
-    { to: '/orders', label: 'ออเดอร์', icon: <ClipboardList />, group: 'sell', perm: 'tables.manage', show: m.restaurant },
-    { to: '/kitchen', label: 'จอครัว', icon: <ChefHat />, group: 'sell', perm: 'kitchen.view', show: m.restaurant && m.kitchenDisplay },
-    { to: '/sales', label: 'บิลขาย', icon: <Receipt />, group: 'sell' },
-    { to: '/shift', label: 'กะการทำงาน', icon: <Timer />, group: 'sell', perm: 'shift.manage' },
-    { to: '/products', label: 'สินค้า', icon: <Package />, group: 'manage', perm: 'products.view' },
-    { to: '/stock', label: 'สต็อก', icon: <Boxes />, group: 'manage', perm: 'stock.view', show: m.stock },
-    { to: '/customers', label: 'สมาชิก', icon: <Users />, group: 'manage', perm: 'customers.view', show: m.members },
-    { to: '/promotions', label: 'โปรโมชั่น', icon: <Percent />, group: 'manage', perm: 'promotions.manage', show: m.promotions },
-    { to: '/dashboard', label: 'ภาพรวม', icon: <BarChart3 />, group: 'insight', perm: 'reports.view' },
-    { to: '/reports', label: 'รายงาน', icon: <FileBarChart />, group: 'insight', perm: 'reports.view' },
-    { to: '/settings', label: 'ตั้งค่า', icon: <SettingsIcon />, group: 'system', perm: 'settings.manage' },
-    { to: '/help', label: 'ช่วยเหลือ', icon: <HelpCircle />, group: 'system' },
+    { to: '/pos', label: t('หน้าขาย'), icon: <ShoppingCart />, group: 'sell', perm: 'pos.sell' },
+    { to: '/tables', label: t('โต๊ะ'), icon: <UtensilsCrossed />, group: 'sell', perm: 'tables.manage', show: m.restaurant },
+    { to: '/orders', label: t('ออเดอร์'), icon: <ClipboardList />, group: 'sell', perm: 'tables.manage', show: m.restaurant },
+    { to: '/kitchen', label: t('จอครัว'), icon: <ChefHat />, group: 'sell', perm: 'kitchen.view', show: m.restaurant && m.kitchenDisplay },
+    { to: '/sales', label: t('บิลขาย'), icon: <Receipt />, group: 'sell' },
+    { to: '/shift', label: t('กะการทำงาน'), icon: <Timer />, group: 'sell', perm: 'shift.manage' },
+    { to: '/products', label: t('สินค้า'), icon: <Package />, group: 'manage', perm: 'products.view' },
+    { to: '/stock', label: t('สต็อก'), icon: <Boxes />, group: 'manage', perm: 'stock.view', show: m.stock },
+    { to: '/customers', label: t('สมาชิก'), icon: <Users />, group: 'manage', perm: 'customers.view', show: m.members },
+    { to: '/promotions', label: t('โปรโมชั่น'), icon: <Percent />, group: 'manage', perm: 'promotions.manage', show: m.promotions },
+    { to: '/dashboard', label: t('ภาพรวม'), icon: <BarChart3 />, group: 'insight', perm: 'reports.view' },
+    { to: '/reports', label: t('รายงาน'), icon: <FileBarChart />, group: 'insight', perm: 'reports.view' },
+    { to: '/settings', label: t('ตั้งค่า'), icon: <SettingsIcon />, group: 'system', perm: 'settings.manage' },
+    { to: '/help', label: t('ช่วยเหลือ'), icon: <HelpCircle />, group: 'system' },
   ];
   return items.filter((i) => i.show !== false && (!i.perm || can(i.perm)));
 }
@@ -144,11 +144,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-full min-h-0 bg-canvas">
       {/* Desktop sidebar */}
-      <aside className={cn('hidden flex-none flex-col bg-rail text-rail-fg transition-[width] duration-200 md:flex', collapsed ? 'w-[76px]' : 'w-[248px]')} aria-label="เมนูหลัก">
+      <aside className={cn('hidden flex-none flex-col bg-rail text-rail-fg transition-[width] duration-200 md:flex', collapsed ? 'w-[76px]' : 'w-[248px]')} aria-label={t('เมนูหลัก')}>
         <SidebarBody items={items} collapsed={collapsed} storeName={settings.store.name} appName={brand.appName} logo={brand.logo} onSearch={() => setPalette(true)} />
         {!focus && (
-          <button onClick={toggle} className="flex h-11 flex-none items-center justify-center gap-2 border-t border-rail-hover/10 text-[13px] text-rail-muted hover:bg-rail-hover/5 hover:text-rail-fg" aria-label={collapsed ? 'ขยายเมนู' : 'ย่อเมนู'}>
-            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" />ย่อเมนู</>}
+          <button onClick={toggle} className="flex h-11 flex-none items-center justify-center gap-2 border-t border-rail-hover/10 text-[13px] text-rail-muted hover:bg-rail-hover/5 hover:text-rail-fg" aria-label={collapsed ? t('ขยายเมนู') : t('ย่อเมนู')}>
+            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" />{t('ย่อเมนู')}</>}
           </button>
         )}
       </aside>
@@ -157,8 +157,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 animate-fade-in bg-[rgb(23_25_28/0.5)]" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-[272px] animate-pop-in flex-col bg-rail text-rail-fg shadow-pop" aria-label="เมนูหลัก">
-            <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-4 grid h-9 w-9 place-items-center rounded-lg text-rail-muted hover:bg-rail-hover/10" aria-label="ปิดเมนู">
+          <aside className="absolute inset-y-0 left-0 flex w-[272px] animate-pop-in flex-col bg-rail text-rail-fg shadow-pop" aria-label={t('เมนูหลัก')}>
+            <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-4 grid h-9 w-9 place-items-center rounded-lg text-rail-muted hover:bg-rail-hover/10" aria-label={t('ปิดเมนู')}>
               <X className="h-5 w-5" />
             </button>
             <SidebarBody items={items} collapsed={false} storeName={settings.store.name} appName={brand.appName} logo={brand.logo} onSearch={() => setPalette(true)} />
@@ -169,11 +169,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
         <header className="flex h-14 flex-none items-center gap-3 border-b border-line bg-surface px-3 md:hidden">
-          <button onClick={() => setMobileOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl hover:bg-sunken" aria-label="เปิดเมนู">
+          <button onClick={() => setMobileOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl hover:bg-sunken" aria-label={t('เปิดเมนู')}>
             <Menu className="h-5 w-5" />
           </button>
           <span className="flex-1 truncate text-[16px] font-semibold">{current?.label ?? settings.store.name}</span>
-          <button onClick={() => setPalette(true)} className="grid h-10 w-10 place-items-center rounded-xl hover:bg-sunken" aria-label="ค้นหา">
+          <button onClick={() => setPalette(true)} className="grid h-10 w-10 place-items-center rounded-xl hover:bg-sunken" aria-label={t('ค้นหา')}>
             <Search className="h-5 w-5" />
           </button>
           <span className="grid h-9 w-9 place-items-center rounded-full bg-soft text-[13px] font-semibold text-soft-fg">{initials(user?.name ?? '') || '?'}</span>
@@ -192,7 +192,7 @@ function SidebarBody({ items, collapsed, storeName, appName, logo, onSearch }: {
   const groups = (Object.keys(GROUP_LABEL) as NavGroup[]).map((g) => ({ g, list: items.filter((i) => i.group === g) })).filter((x) => x.list.length);
   return (
     <>
-      <button onClick={() => nav('/')} className={cn('flex flex-none items-center gap-3 px-4 pb-4 pt-5 text-left', collapsed && 'justify-center px-0')} aria-label="หน้าแรก">
+      <button onClick={() => nav('/')} className={cn('flex flex-none items-center gap-3 px-4 pb-4 pt-5 text-left', collapsed && 'justify-center px-0')} aria-label={t('หน้าแรก')}>
         {logo ? (
           <img src={logo} alt="" className="h-10 w-10 flex-none rounded-xl bg-white object-contain p-0.5" />
         ) : (
@@ -207,11 +207,11 @@ function SidebarBody({ items, collapsed, storeName, appName, logo, onSearch }: {
       </button>
 
       <div className={cn('flex-none px-3 pb-2', collapsed && 'px-2')}>
-        <button onClick={onSearch} title="ค้นหา (Ctrl K)" className={cn('flex h-10 w-full items-center gap-2.5 rounded-xl bg-rail-hover/[0.06] px-3 text-[14px] text-rail-muted ring-1 ring-rail-hover/10 hover:bg-rail-hover/10 hover:text-rail-fg', collapsed && 'justify-center px-0')}>
+        <button onClick={onSearch} title={t('ค้นหา (Ctrl K)')} className={cn('flex h-10 w-full items-center gap-2.5 rounded-xl bg-rail-hover/[0.06] px-3 text-[14px] text-rail-muted ring-1 ring-rail-hover/10 hover:bg-rail-hover/10 hover:text-rail-fg', collapsed && 'justify-center px-0')}>
           <Search className="h-4 w-4 flex-none" />
           {!collapsed && (
             <>
-              <span className="flex-1 text-left">ค้นหา</span>
+              <span className="flex-1 text-left">{t('ค้นหา')}</span>
               <span className="font-mono text-[11px] text-rail-faint">Ctrl K</span>
             </>
           )}
@@ -260,7 +260,7 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <button className={cn('m-3 flex flex-none items-center gap-3 rounded-xl p-2 text-left hover:bg-rail-hover/[0.06]', collapsed && 'mx-auto justify-center')} aria-label={`ผู้ใช้ ${user?.name ?? ''}`}>
+        <button className={cn('m-3 flex flex-none items-center gap-3 rounded-xl p-2 text-left hover:bg-rail-hover/[0.06]', collapsed && 'mx-auto justify-center')} aria-label={t('ผู้ใช้ {0}', user?.name ?? '')}>
           <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-gradient-to-br from-accent to-primary text-[13px] font-semibold text-white">{avatar}</span>
           {!collapsed && (
             <>
@@ -279,9 +279,9 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
             <div className="font-semibold">{user?.name}</div>
             <div className="text-[13px] text-muted">{user?.roleName} · {user?.username}</div>
           </div>
-          <MenuButton icon={<Lock className="h-4 w-4" />} onClick={lock}>สลับพนักงาน / ล็อกหน้าจอ</MenuButton>
-          <MenuButton icon={<HelpCircle className="h-4 w-4" />} onClick={() => nav('/help')}>ช่วยเหลือ</MenuButton>
-          <MenuButton icon={<LogOut className="h-4 w-4" />} onClick={() => void logout()} danger>ออกจากระบบ</MenuButton>
+          <MenuButton icon={<Lock className="h-4 w-4" />} onClick={lock}>{t('สลับพนักงาน / ล็อกหน้าจอ')}</MenuButton>
+          <MenuButton icon={<HelpCircle className="h-4 w-4" />} onClick={() => nav('/help')}>{t('ช่วยเหลือ')}</MenuButton>
+          <MenuButton icon={<LogOut className="h-4 w-4" />} onClick={() => void logout()} danger>{t('ออกจากระบบ')}</MenuButton>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

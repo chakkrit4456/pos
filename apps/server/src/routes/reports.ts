@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { sql } from 'kysely';
 import ExcelJS from 'exceljs';
-import { localDate, toCsv } from '@flexpos/shared';
+import { localDate, toCsv, t } from '@flexpos/shared';
 import type { AppContext } from '../context.js';
 import { branchOf, currentUser, hasPerm, requireAuth } from '../auth.js';
 import { num, parseJson } from '../util.js';
@@ -112,7 +112,7 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
       .where('sales.status', '!=', 'voided');
     if (branchId) lq = lq.where('sales.branch_id', '=', branchId);
     const top = await lq.select(['sale_lines.product_id', sql<string>`max(sale_lines.name)`.as('name'), signed('sale_lines.qty').as('qty'), signed('sale_lines.net').as('rev')]).groupBy('sale_lines.product_id').orderBy('rev', 'desc').limit(8).execute();
-    const cats = await lq.select([sql<string>`coalesce(categories.name, 'ไม่มีหมวด')`.as('name'), signed('sale_lines.net').as('rev')]).groupBy(sql`coalesce(categories.name, 'ไม่มีหมวด')`).orderBy('rev', 'desc').execute();
+    const cats = await lq.select([sql<string>`coalesce(categories.name, ${sql.lit(t('ไม่มีหมวด'))})`.as('name'), signed('sale_lines.net').as('rev')]).groupBy(sql`coalesce(categories.name, ${sql.lit(t('ไม่มีหมวด'))})`).orderBy('rev', 'desc').execute();
 
     let sq = ctx.db.selectFrom('sales').innerJoin('users', 'users.id', 'sales.user_id').where('sales.biz_date', '>=', from).where('sales.biz_date', '<=', today).where('sales.status', '!=', 'voided');
     if (branchId) sq = sq.where('sales.branch_id', '=', branchId);
@@ -159,7 +159,7 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
       const orders = await oq.orderBy('orders.opened_at').execute();
       const sums = orders.length ? await ctx.db.selectFrom('order_items').select(['order_id', (eb) => eb.fn.sum<number>(eb('qty', '*', eb.ref('unit_price'))).as('t')]).where('order_id', 'in', orders.map((o) => o.id)).where('status', '!=', 'cancelled').groupBy('order_id').execute() : [];
       const labels = await tableLabels(ctx.db, branchId ?? undefined);
-      const list = orders.map((o) => ({ id: o.id, name: o.table_id ? `โต๊ะ ${labels.get(o.table_id) ?? o.table_name}` : o.name, meta: `${o.guests ? o.guests + ' คน · ' : ''}เปิด ${new Date(o.opened_at).toTimeString().slice(0, 5)}`, total: Math.round(num(sums.find((s) => s.order_id === o.id)?.t)) }));
+      const list = orders.map((o) => ({ id: o.id, name: o.table_id ? t('โต๊ะ {0}', labels.get(o.table_id) ?? o.table_name) : o.name, meta: t('{0}เปิด {1}', o.guests ? o.guests + t(' คน · ') : '', new Date(o.opened_at).toTimeString().slice(0, 5)), total: Math.round(num(sums.find((s) => s.order_id === o.id)?.t)) }));
       open = { count: list.length, total: list.reduce((a, b) => a + b.total, 0), list: list.slice(0, 6) };
     }
 
@@ -198,7 +198,7 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
       let lq = ctx.db.selectFrom('sale_lines').innerJoin('sales', 'sales.id', 'sale_lines.sale_id').leftJoin('categories', 'categories.id', 'sale_lines.category_id').where('sales.biz_date', '>=', q.from).where('sales.biz_date', '<=', q.to).where('sales.status', '!=', 'voided');
       if (branchId) lq = lq.where('sales.branch_id', '=', branchId);
       const keyExpr = q.groupBy === 'product' ? sql<string>`sale_lines.product_id` : sql<string>`coalesce(sale_lines.category_id, '')`;
-      const labelExpr = q.groupBy === 'product' ? sql<string>`max(sale_lines.name)` : sql<string>`coalesce(max(categories.name), 'ไม่มีหมวด')`;
+      const labelExpr = q.groupBy === 'product' ? sql<string>`max(sale_lines.name)` : sql<string>`coalesce(max(categories.name), ${sql.lit(t('ไม่มีหมวด'))})`;
       const r = await lq
         .select([keyExpr.as('key'), labelExpr.as('label'), signed('sale_lines.qty').as('qty'), (eb) => eb.fn.count<number>('sales.id').distinct().as('bills'), signed('sale_lines.gross').as('gross'), sql<number>`sum(case when sales.type = 'refund' then 0 else sale_lines.line_discount + sale_lines.promo_discount + sale_lines.bill_discount end)`.as('discount'), signed('sale_lines.net').as('net'), signed('sale_lines.vat').as('vat'), sql<number>`sum(case when sales.type = 'refund' then -(sale_lines.unit_cost * sale_lines.qty) else sale_lines.unit_cost * sale_lines.qty end)`.as('cost')])
         .groupBy(keyExpr)
@@ -220,7 +220,7 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
     const out = rows.map((r) => ({ ...r, cost: canProfit ? r.cost : null, profit: canProfit ? r.net - r.vat - r.cost : null }));
     const sum = out.reduce((a, r) => ({ qty: a.qty + r.qty, bills: a.bills + r.bills, gross: a.gross + r.gross, discount: a.discount + r.discount, net: a.net + r.net, vat: a.vat + r.vat, cost: a.cost + (r.cost ?? 0), profit: a.profit + (r.profit ?? 0) }), { qty: 0, bills: 0, gross: 0, discount: 0, net: 0, vat: 0, cost: 0, profit: 0 });
     if (q.format !== 'json') {
-      const header = ['รายการ', 'จำนวน', 'บิล', 'ยอดก่อนส่วนลด', 'ส่วนลด', 'ยอดขายสุทธิ', 'VAT', ...(canProfit ? ['ต้นทุน', 'กำไรขั้นต้น'] : [])];
+      const header = [t('รายการ'), t('จำนวน'), t('บิล'), t('ยอดก่อนส่วนลด'), t('ส่วนลด'), t('ยอดขายสุทธิ'), 'VAT', ...(canProfit ? [t('ต้นทุน'), t('กำไรขั้นต้น')] : [])];
       return sendTable(reply, q.format, `sales-${q.groupBy}-${q.from}_${q.to}`, header, out.map((r) => [r.label, r.qty, r.bills, baht(r.gross), baht(r.discount), baht(r.net), baht(r.vat), ...(canProfit ? [baht(r.cost ?? 0), baht(r.profit ?? 0)] : [])]));
     }
     return { rows: out, total: { ...sum, cost: canProfit ? sum.cost : null, profit: canProfit ? sum.profit : null } };
@@ -240,22 +240,22 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
       return {
         date: r.biz_date,
         docNo: r.tax_invoice_no ?? r.doc_no,
-        kind: r.type === 'refund' ? 'ใบลดหนี้' : r.tax_invoice_no ? 'ใบกำกับภาษีเต็มรูป' : 'ใบกำกับภาษีอย่างย่อ',
-        customer: ti?.name ?? r.customer_name ?? 'ลูกค้าทั่วไป',
+        kind: r.type === 'refund' ? t('ใบลดหนี้') : r.tax_invoice_no ? t('ใบกำกับภาษีเต็มรูป') : t('ใบกำกับภาษีอย่างย่อ'),
+        customer: ti?.name ?? r.customer_name ?? t('ลูกค้าทั่วไป'),
         taxId: ti?.taxId ?? '',
         branch: ti?.branch ?? '',
         base: voided ? 0 : sign * r.vatable,
         vat: voided ? 0 : sign * r.vat,
         exempt: voided ? 0 : sign * r.exempt,
         total: voided ? 0 : sign * r.total,
-        status: voided ? 'ยกเลิก' : '',
+        status: voided ? t('ยกเลิก') : '',
       };
     });
     const sum = items.reduce((a, i) => ({ base: a.base + i.base, vat: a.vat + i.vat, exempt: a.exempt + i.exempt, total: a.total + i.total }), { base: 0, vat: 0, exempt: 0, total: 0 });
     if (q.format !== 'json') {
-      return sendTable(reply, q.format, `vat-report-${q.from}_${q.to}`, ['วันที่', 'เลขที่เอกสาร', 'ประเภท', 'ชื่อผู้ซื้อ', 'เลขประจำตัวผู้เสียภาษี', 'สาขา', 'มูลค่าสินค้า/บริการ', 'ภาษีมูลค่าเพิ่ม', 'ยกเว้นภาษี', 'รวม', 'หมายเหตุ'], [
+      return sendTable(reply, q.format, `vat-report-${q.from}_${q.to}`, [t('วันที่'), t('เลขที่เอกสาร'), t('ประเภท'), t('ชื่อผู้ซื้อ'), t('เลขประจำตัวผู้เสียภาษี'), t('สาขา'), t('มูลค่าสินค้า/บริการ'), t('ภาษีมูลค่าเพิ่ม'), t('ยกเว้นภาษี'), t('รวม'), t('หมายเหตุ')], [
         ...items.map((i) => [i.date, i.docNo, i.kind, i.customer, i.taxId, i.branch, baht(i.base), baht(i.vat), baht(i.exempt), baht(i.total), i.status]),
-        ['', '', '', 'รวม', '', '', baht(sum.base), baht(sum.vat), baht(sum.exempt), baht(sum.total), ''],
+        ['', '', '', t('รวม'), '', '', baht(sum.base), baht(sum.vat), baht(sum.exempt), baht(sum.total), ''],
       ]);
     }
     return { items, total: sum, store: { name: ctx.settings.store.name, taxId: ctx.settings.store.taxId } };
@@ -268,8 +268,8 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
     let sq = ctx.db.selectFrom('sales').leftJoin('users', 'users.id', 'sales.user_id').leftJoin('users as v', 'v.id', 'sales.voided_by').select(['sales.id', 'sales.doc_no', 'sales.type', 'sales.status', 'sales.total', 'sales.created_at', 'sales.voided_at', 'sales.void_reason', 'sales.note', 'users.name as user_name', 'v.name as voided_by']).where('sales.biz_date', '>=', q.from).where('sales.biz_date', '<=', q.to).where((eb) => eb.or([eb('sales.status', '=', 'voided'), eb('sales.type', '=', 'refund')]));
     if (branchId) sq = sq.where('sales.branch_id', '=', branchId);
     const rows = await sq.orderBy('sales.created_at', 'desc').execute();
-    const items = rows.map((r) => ({ id: r.id, docNo: r.doc_no, kind: r.status === 'voided' ? 'ยกเลิกบิล' : 'คืนสินค้า', total: r.total, at: r.voided_at ?? r.created_at, by: r.voided_by ?? r.user_name, reason: r.void_reason ?? r.note }));
-    if (q.format !== 'json') return sendTable(reply, q.format, `voids-refunds-${q.from}_${q.to}`, ['เวลา', 'เลขที่', 'ประเภท', 'ยอด', 'ผู้อนุมัติ/ผู้ทำ', 'เหตุผล'], items.map((i) => [i.at, i.docNo, i.kind, baht(i.total), i.by ?? '', i.reason ?? '']));
+    const items = rows.map((r) => ({ id: r.id, docNo: r.doc_no, kind: r.status === 'voided' ? t('ยกเลิกบิล') : t('คืนสินค้า'), total: r.total, at: r.voided_at ?? r.created_at, by: r.voided_by ?? r.user_name, reason: r.void_reason ?? r.note }));
+    if (q.format !== 'json') return sendTable(reply, q.format, `voids-refunds-${q.from}_${q.to}`, [t('เวลา'), t('เลขที่'), t('ประเภท'), t('ยอด'), t('ผู้อนุมัติ/ผู้ทำ'), t('เหตุผล')], items.map((i) => [i.at, i.docNo, i.kind, baht(i.total), i.by ?? '', i.reason ?? '']));
     return { items };
   });
 
@@ -278,7 +278,7 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
     const branchId = branchOf(ctx, req);
     const canProfit = hasPerm(currentUser(req), 'reports.profit');
     const rows = await ctx.db.selectFrom('stock_levels').innerJoin('products', 'products.id', 'stock_levels.product_id').leftJoin('product_variants', 'product_variants.id', 'stock_levels.variant_id').leftJoin('categories', 'categories.id', 'products.category_id').select(['products.sku', 'products.name', 'product_variants.name as variant_name', 'categories.name as cat', 'products.unit', 'stock_levels.qty', 'stock_levels.avg_cost']).where('stock_levels.branch_id', '=', branchId).where('products.deleted_at', 'is', null).orderBy('products.name').execute();
-    return sendTable(reply, format, `stock-${localDate()}`, ['SKU', 'สินค้า', 'หมวด', 'หน่วย', 'คงเหลือ', ...(canProfit ? ['ต้นทุนเฉลี่ย', 'มูลค่า'] : [])], rows.map((r) => [r.sku, r.variant_name ? `${r.name} (${r.variant_name})` : r.name, r.cat ?? '', r.unit, r.qty, ...(canProfit ? [baht(r.avg_cost), baht(Math.round(r.qty * r.avg_cost))] : [])]));
+    return sendTable(reply, format, `stock-${localDate()}`, ['SKU', t('สินค้า'), t('หมวด'), t('หน่วย'), t('คงเหลือ'), ...(canProfit ? [t('ต้นทุนเฉลี่ย'), t('มูลค่า')] : [])], rows.map((r) => [r.sku, r.variant_name ? `${r.name} (${r.variant_name})` : r.name, r.cat ?? '', r.unit, r.qty, ...(canProfit ? [baht(r.avg_cost), baht(Math.round(r.qty * r.avg_cost))] : [])]));
   });
 
 }

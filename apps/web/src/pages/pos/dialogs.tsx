@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Minus, Plus, Search, Trash2, UserPlus } from 'lucide-react';
-import { resolveBasePrice, type Catalog, type CatalogProduct, type Discount, type Permission } from '@flexpos/shared';
+import { resolveBasePrice, type Catalog, type CatalogProduct, type Discount, type Permission, t } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { money } from '@/lib/settings';
 import { useSession } from '@/lib/session';
@@ -11,6 +11,7 @@ import { Button, Field, Input, Segmented, Badge, EmptyState, Spinner } from '@/c
 import { Dialog } from '@/components/ui/dialog';
 import { MoneyInput, NumberInput, PinPad } from '@/components/ui/inputs';
 import { cart, type CartCustomer, type CartLineState, type CartModifier } from './cart';
+import { tn } from '@/lib/i18n';
 
 /* ---------- Product options: variants, units, modifiers, qty, note ---------- */
 
@@ -49,7 +50,7 @@ export function OptionsDialog({ product, catalog, tierId, onClose }: { product: 
     if (has) setMods(mods.filter((x) => x.id !== m.id));
     else if (g.maxSelect === 1) setMods([...mods.filter((x) => !inGroup.includes(x)), m]);
     else if (g.maxSelect === 0 || inGroup.length < g.maxSelect) setMods([...mods, m]);
-    else toast.info(`“${g.name}” เลือกได้สูงสุด ${g.maxSelect}`);
+    else toast.info(t('“{0}” เลือกได้สูงสุด {1}', g.name, g.maxSelect));
   };
 
   const add = () => {
@@ -88,7 +89,7 @@ export function OptionsDialog({ product, catalog, tierId, onClose }: { product: 
             {weighted && <span className="text-[14px] text-muted">{product.unit}</span>}
           </div>
           <Button variant="primary" size="lg" disabled={needVariant || !!missing || qty <= 0} onClick={add} className="min-w-[180px] justify-between">
-            <span>เพิ่มลงบิล</span>
+            <span>{t('เพิ่มลงบิล')}</span>
             <span className="num">{money(Math.round(unitPrice * qty))}</span>
           </Button>
         </>
@@ -96,22 +97,22 @@ export function OptionsDialog({ product, catalog, tierId, onClose }: { product: 
     >
       <div className="flex flex-col gap-5 pb-2">
         {product.kind === 'open_price' && (
-          <Field label="ราคา (ราคาเปิด)">
+          <Field label={t('ราคา (ราคาเปิด)')}>
             <MoneyInput autoFocus value={openPrice} onValue={setOpenPrice} className="h-12 text-[18px]" />
           </Field>
         )}
         {product.variants.length > 0 && (
-          <OptionGroup label="ตัวเลือกสินค้า" required>
+          <OptionGroup label={t('ตัวเลือกสินค้า')} required>
             {product.variants.map((v) => (
               <OptionButton key={v.id} active={variantId === v.id} onClick={() => setVariantId(v.id)}>
                 <span>{v.name}</span>
-                <span className="num text-[13px] opacity-75">{money(v.price)}{v.stock !== null ? ` · เหลือ ${qtyText(v.stock)}` : ''}</span>
+                <span className="num text-[13px] opacity-75">{money(v.price)}{v.stock !== null ? t(' · เหลือ {0}', qtyText(v.stock)) : ''}</span>
               </OptionButton>
             ))}
           </OptionGroup>
         )}
         {product.units.length > 0 && (
-          <OptionGroup label="หน่วยขาย">
+          <OptionGroup label={t('หน่วยขาย')}>
             <OptionButton active={!unitId} onClick={() => setUnitId(null)}>
               <span>{product.unit}</span>
               <span className="num text-[13px] opacity-75">{money(product.price)}</span>
@@ -125,7 +126,7 @@ export function OptionsDialog({ product, catalog, tierId, onClose }: { product: 
           </OptionGroup>
         )}
         {groups.map((g) => (
-          <OptionGroup key={g.id} label={g.name} required={g.minSelect > 0} hint={g.maxSelect > 1 ? `เลือกได้สูงสุด ${g.maxSelect}` : g.maxSelect === 0 ? 'เลือกได้หลายอย่าง' : undefined}>
+          <OptionGroup key={g.id} label={g.name} required={g.minSelect > 0} hint={g.maxSelect > 1 ? t('เลือกได้สูงสุด {0}', g.maxSelect) : g.maxSelect === 0 ? t('เลือกได้หลายอย่าง') : undefined}>
             {g.modifiers.map((m) => (
               <OptionButton key={m.id} active={mods.some((x) => x.id === m.id)} onClick={() => toggle(g.id, m)}>
                 <span>{m.name}</span>
@@ -134,8 +135,8 @@ export function OptionsDialog({ product, catalog, tierId, onClose }: { product: 
             ))}
           </OptionGroup>
         ))}
-        <Field label="หมายเหตุ (ส่งถึงครัว/พิมพ์บนใบเสร็จ)">
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น ไม่ใส่น้ำแข็ง" maxLength={300} />
+        <Field label={t('หมายเหตุ (ส่งถึงครัว/พิมพ์บนใบเสร็จ)')}>
+          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('เช่น ไม่ใส่น้ำแข็ง')} maxLength={300} />
         </Field>
       </div>
     </Dialog>
@@ -147,7 +148,7 @@ function OptionGroup({ label, required, hint, children }: { label: string; requi
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-[14px] font-semibold">
         {label}
-        {required && <Badge tone="warn">ต้องเลือก</Badge>}
+        {required && <Badge tone="warn">{t('ต้องเลือก')}</Badge>}
         {hint && <span className="text-[12px] font-normal text-muted">{hint}</span>}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{children}</div>
@@ -167,11 +168,11 @@ export function QtyStepper({ value, onChange, decimals = 0, min = decimals ? 0.0
   const step = decimals ? 0.1 : 1;
   return (
     <div className="flex items-center overflow-hidden rounded-xl border border-line-strong">
-      <button type="button" aria-label="ลดจำนวน" onClick={() => onChange(Math.max(min, Math.round((value - step) * 1000) / 1000))} className="grid h-11 w-11 place-items-center bg-sunken hover:bg-line-soft">
+      <button type="button" aria-label={t('ลดจำนวน')} onClick={() => onChange(Math.max(min, Math.round((value - step) * 1000) / 1000))} className="grid h-11 w-11 place-items-center bg-sunken hover:bg-line-soft">
         <Minus className="h-4 w-4" />
       </button>
-      <NumberInput value={value} onValue={(v) => onChange(Math.max(0, v))} decimals={decimals} className="h-11 w-16 rounded-none border-0 text-center font-semibold focus:ring-0" aria-label="จำนวน" />
-      <button type="button" aria-label="เพิ่มจำนวน" onClick={() => onChange(Math.round((value + step) * 1000) / 1000)} className="grid h-11 w-11 place-items-center bg-sunken hover:bg-line-soft">
+      <NumberInput value={value} onValue={(v) => onChange(Math.max(0, v))} decimals={decimals} className="h-11 w-16 rounded-none border-0 text-center font-semibold focus:ring-0" aria-label={t('จำนวน')} />
+      <button type="button" aria-label={t('เพิ่มจำนวน')} onClick={() => onChange(Math.round((value + step) * 1000) / 1000)} className="grid h-11 w-11 place-items-center bg-sunken hover:bg-line-soft">
         <Plus className="h-4 w-4" />
       </button>
     </div>
@@ -209,7 +210,7 @@ export function ApprovalHost() {
     setError(undefined);
   };
   return (
-    <Dialog open onOpenChange={(v) => !v && close(null)} title="ต้องให้ผู้จัดการอนุมัติ" description={req.reason} size="sm">
+    <Dialog open onOpenChange={(v) => !v && close(null)} title={t('ต้องให้ผู้จัดการอนุมัติ')} description={req.reason} size="sm">
       <div className="py-2">
         <PinPad
           busy={busy}
@@ -218,9 +219,9 @@ export function ApprovalHost() {
             setBusy(true);
             try {
               const r = await api.post<{ name: string; permissions: string[] }>('/api/auth/verify-pin', { pin });
-              if (!r.permissions.includes(req.perm)) setError(`${r.name} ไม่มีสิทธิ์อนุมัติรายการนี้`);
+              if (!r.permissions.includes(req.perm)) setError(t('{0} ไม่มีสิทธิ์อนุมัติรายการนี้', r.name));
               else {
-                toast.success(`อนุมัติโดย ${r.name}`);
+                toast.success(t('อนุมัติโดย {0}', r.name));
                 close(pin);
               }
             } catch (e) {
@@ -255,12 +256,12 @@ export function LineDialog({ line, onClose, onApprove }: { line: CartLineState |
     const priceChanged = price !== line.unitPrice && line.kind !== 'open_price';
     const discChanged = disc.value > 0 && JSON.stringify(disc) !== JSON.stringify(line.discount);
     if (priceChanged) {
-      const pin = await approve('pos.price_override', `แก้ราคา ${line.name} เป็น ${money(price)}`);
+      const pin = await approve('pos.price_override', t('แก้ราคา {0} เป็น {1}', line.name, money(price)));
       if (pin === null) return;
       if (pin) onApprove(pin);
     }
     if (discChanged) {
-      const pin = await approve('pos.discount', `ให้ส่วนลด ${line.name}`);
+      const pin = await approve('pos.discount', t('ให้ส่วนลด {0}', line.name));
       if (pin === null) return;
       if (pin) onApprove(pin);
     }
@@ -281,26 +282,22 @@ export function LineDialog({ line, onClose, onApprove }: { line: CartLineState |
       size="sm"
       footer={
         <>
-          <Button variant="ghost" className="mr-auto text-danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => (cart.remove(line.id), onClose())}>
-            ลบรายการ
-          </Button>
-          <Button onClick={onClose}>ยกเลิก</Button>
-          <Button variant="primary" onClick={save}>
-            บันทึก
-          </Button>
+          <Button variant="ghost" className="mr-auto text-danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => (cart.remove(line.id), onClose())}>{t('ลบรายการ')}</Button>
+          <Button onClick={onClose}>{t('ยกเลิก')}</Button>
+          <Button variant="primary" onClick={save}>{t('บันทึก')}</Button>
         </>
       }
     >
       <div className="flex flex-col gap-4 pb-2">
-        <Field label="จำนวน">
+        <Field label={t('จำนวน')}>
           <QtyStepper value={qty} onChange={setQty} decimals={line.kind === 'weighted' ? 3 : 0} />
         </Field>
-        <Field label="ราคาต่อหน่วย" hint={line.kind === 'open_price' ? 'สินค้าราคาเปิด' : 'การแก้ราคาจะถูกบันทึกในประวัติการใช้งาน'}>
+        <Field label={t('ราคาต่อหน่วย')} hint={line.kind === 'open_price' ? t('สินค้าราคาเปิด') : t('การแก้ราคาจะถูกบันทึกในประวัติการใช้งาน')}>
           <MoneyInput value={price} onValue={setPrice} />
         </Field>
-        <Field label="ส่วนลดรายการ">
+        <Field label={t('ส่วนลดรายการ')}>
           <div className="flex gap-2">
-            <Segmented value={disc.kind} onChange={(kind) => setDisc({ ...disc, kind })} options={[{ value: 'percent', label: '%' }, { value: 'amount', label: '฿' }]} />
+            <Segmented value={disc.kind} onChange={(kind) => setDisc({ ...disc, kind })} options={[{ value: 'percent', label: '%' }, { value: 'amount', label: t('฿') }]} />
             {disc.kind === 'percent' ? (
               <NumberInput className="flex-1 text-right" decimals={2} value={disc.value} onValue={(value) => setDisc({ ...disc, value: Math.min(100, value) })} />
             ) : (
@@ -310,7 +307,7 @@ export function LineDialog({ line, onClose, onApprove }: { line: CartLineState |
             )}
           </div>
         </Field>
-        <Field label="หมายเหตุ">
+        <Field label={t('หมายเหตุ')}>
           <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
         </Field>
       </div>
@@ -336,35 +333,31 @@ export function BillDiscountDialog({ open, onClose, onApprove }: { open: boolean
     <Dialog
       open={open}
       onOpenChange={(v) => !v && onClose()}
-      title="ส่วนลดท้ายบิล"
+      title={t('ส่วนลดท้ายบิล')}
       size="sm"
       footer={
         <>
           {cart.get().billDiscount && (
-            <Button variant="ghost" className="mr-auto text-danger" onClick={() => (cart.patch({ billDiscount: null }), onClose())}>
-              ล้างส่วนลด
-            </Button>
+            <Button variant="ghost" className="mr-auto text-danger" onClick={() => (cart.patch({ billDiscount: null }), onClose())}>{t('ล้างส่วนลด')}</Button>
           )}
-          <Button onClick={onClose}>ยกเลิก</Button>
+          <Button onClick={onClose}>{t('ยกเลิก')}</Button>
           <Button
             variant="primary"
             onClick={async () => {
               if (d.value > 0) {
-                const pin = await approve('pos.discount', 'ให้ส่วนลดท้ายบิล');
+                const pin = await approve('pos.discount', t('ให้ส่วนลดท้ายบิล'));
                 if (pin === null) return;
                 if (pin) onApprove(pin);
               }
               cart.patch({ billDiscount: d.value > 0 ? d : null });
               onClose();
             }}
-          >
-            ใช้ส่วนลด
-          </Button>
+          >{t('ใช้ส่วนลด')}</Button>
         </>
       }
     >
       <div className="flex flex-col gap-4 pb-2">
-        <Segmented value={d.kind} onChange={(kind) => setD({ kind, value: 0 })} options={[{ value: 'percent', label: 'เปอร์เซ็นต์' }, { value: 'amount', label: 'จำนวนเงิน' }]} />
+        <Segmented value={d.kind} onChange={(kind) => setD({ kind, value: 0 })} options={[{ value: 'percent', label: t('เปอร์เซ็นต์') }, { value: 'amount', label: t('จำนวนเงิน') }]} />
         {d.kind === 'percent' ? (
           <>
             <div className="grid grid-cols-4 gap-2">
@@ -374,29 +367,27 @@ export function BillDiscountDialog({ open, onClose, onApprove }: { open: boolean
                 </Button>
               ))}
             </div>
-            <NumberInput className="h-12 text-right text-[18px]" decimals={2} value={d.value} onValue={(value) => setD({ ...d, value: Math.min(100, value) })} aria-label="ส่วนลด %" />
+            <NumberInput className="h-12 text-right text-[18px]" decimals={2} value={d.value} onValue={(value) => setD({ ...d, value: Math.min(100, value) })} aria-label={t('ส่วนลด %')} />
           </>
         ) : (
-          <MoneyInput className="h-12 text-[18px]" value={d.value} onValue={(value) => setD({ ...d, value })} aria-label="ส่วนลด บาท" />
+          <MoneyInput className="h-12 text-[18px]" value={d.value} onValue={(value) => setD({ ...d, value })} aria-label={t('ส่วนลด บาท')} />
         )}
-        <Field label="คูปองโปรโมชั่น">
+        <Field label={t('คูปองโปรโมชั่น')}>
           <div className="flex gap-2">
-            <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="กรอกรหัสคูปอง" />
+            <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t('กรอกรหัสคูปอง')} />
             <Button
               disabled={!code.trim()}
               onClick={() => {
                 if (!coupons.includes(code.trim())) cart.patch({ couponCodes: [...coupons, code.trim()] });
                 setCode('');
-                toast.success('เพิ่มคูปองแล้ว ระบบจะใช้ส่วนลดเมื่อเงื่อนไขครบ');
+                toast.success(t('เพิ่มคูปองแล้ว ระบบจะใช้ส่วนลดเมื่อเงื่อนไขครบ'));
               }}
-            >
-              เพิ่ม
-            </Button>
+            >{t('เพิ่ม')}</Button>
           </div>
           {coupons.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {coupons.map((c) => (
-                <button key={c} onClick={() => cart.patch({ couponCodes: coupons.filter((x) => x !== c) })} className="rounded-full bg-soft px-3 py-1 font-mono text-[13px] text-soft-fg" title="แตะเพื่อลบ">
+                <button key={c} onClick={() => cart.patch({ couponCodes: coupons.filter((x) => x !== c) })} className="rounded-full bg-soft px-3 py-1 font-mono text-[13px] text-soft-fg" title={t('แตะเพื่อลบ')}>
                   {c} ✕
                 </button>
               ))}
@@ -466,7 +457,7 @@ export function CustomerDialog({ open, onClose }: { open: boolean; onClose: () =
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()} title="เลือกสมาชิก" description="ค้นหาด้วยชื่อ เบอร์โทร หรือรหัสสมาชิก" size="md">
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()} title={t('เลือกสมาชิก')} description={t('ค้นหาด้วยชื่อ เบอร์โทร หรือรหัสสมาชิก')} size="md">
       {creating ? (
         <form
           className="flex flex-col gap-4 pb-3"
@@ -476,23 +467,21 @@ export function CustomerDialog({ open, onClose }: { open: boolean; onClose: () =
               const r = await api.post<{ id: string }>('/api/customers', { name: form.name, phone: form.phone });
               await list.refetch();
               await pick(r.id);
-              toast.success('สมัครสมาชิกแล้ว');
+              toast.success(t('สมัครสมาชิกแล้ว'));
             } catch (err) {
               toast.error(errorMessage(err));
             }
           }}
         >
-          <Field label="ชื่อ" required>
+          <Field label={t('ชื่อ')} required>
             <Input autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
-          <Field label="เบอร์โทร">
+          <Field label={t('เบอร์โทร')}>
             <Input inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
           <div className="flex justify-end gap-2">
-            <Button onClick={() => setCreating(false)}>ย้อนกลับ</Button>
-            <Button type="submit" variant="primary" disabled={!form.name.trim()}>
-              สมัครและเลือก
-            </Button>
+            <Button onClick={() => setCreating(false)}>{t('ย้อนกลับ')}</Button>
+            <Button type="submit" variant="primary" disabled={!form.name.trim()}>{t('สมัครและเลือก')}</Button>
           </div>
         </form>
       ) : (
@@ -500,12 +489,10 @@ export function CustomerDialog({ open, onClose }: { open: boolean; onClose: () =
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
-              <Input autoFocus className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ชื่อ / เบอร์โทร / รหัส" />
+              <Input autoFocus className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ชื่อ / เบอร์โทร / รหัส')} />
             </div>
             {can('customers.manage') && (
-              <Button icon={<UserPlus className="h-4 w-4" />} onClick={() => (setCreating(true), setForm({ name: /^\d+$/.test(q) ? '' : q, phone: /^\d+$/.test(q) ? q : '' }))}>
-                สมัครใหม่
-              </Button>
+              <Button icon={<UserPlus className="h-4 w-4" />} onClick={() => (setCreating(true), setForm({ name: /^\d+$/.test(q) ? '' : q, phone: /^\d+$/.test(q) ? q : '' }))}>{t('สมัครใหม่')}</Button>
             )}
           </div>
           <div className="flex min-h-[240px] flex-col">
@@ -523,12 +510,12 @@ export function CustomerDialog({ open, onClose }: { open: boolean; onClose: () =
                       {c.group_name ? ` · ${c.group_name}` : ''}
                     </span>
                   </div>
-                  {c.credit_balance > 0 && <Badge tone="warn">ค้าง {money(c.credit_balance)}</Badge>}
-                  <span className="num text-[14px] font-semibold text-primary">{c.points.toLocaleString()} แต้ม</span>
+                  {c.credit_balance > 0 && <Badge tone="warn">{tn('ค้าง {0}', money(c.credit_balance))}</Badge>}
+                  <span className="num text-[14px] font-semibold text-primary">{tn('{0} แต้ม', c.points.toLocaleString())}</span>
                 </button>
               ))
             ) : (
-              <EmptyState title="ไม่พบสมาชิก" body={q ? `ไม่พบ “${q}” ลองค้นด้วยเบอร์โทร หรือกด “สมัครใหม่”` : 'ยังไม่มีสมาชิก'} />
+              <EmptyState title={t('ไม่พบสมาชิก')} body={q ? t('ไม่พบ “{0}” ลองค้นด้วยเบอร์โทร หรือกด “สมัครใหม่”', q) : t('ยังไม่มีสมาชิก')} />
             )}
           </div>
         </div>

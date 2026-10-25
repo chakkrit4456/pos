@@ -12,6 +12,10 @@ import {
   templateSettings,
   type AuthResponse,
   type SetupStatus,
+  t,
+  translate,
+  translateDeep,
+  setLanguage,
 } from '@flexpos/shared';
 import { testConnection } from '@flexpos/db';
 import type { AppContext } from '../context.js';
@@ -41,12 +45,12 @@ async function hasOwner(ctx: AppContext): Promise<boolean> {
 
 function dbErrorMessage(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
-  if (/ECONNREFUSED/.test(msg)) return 'เชื่อมต่อไม่ได้: เซิร์ฟเวอร์ฐานข้อมูลไม่ตอบรับ ตรวจสอบ host/port และว่าฐานข้อมูลเปิดอยู่';
-  if (/ENOTFOUND|EAI_AGAIN/.test(msg)) return 'ไม่พบ host นี้ ตรวจสอบชื่อเครื่องหรือ IP';
-  if (/password authentication failed|Access denied/i.test(msg)) return 'ชื่อผู้ใช้หรือรหัสผ่านฐานข้อมูลไม่ถูกต้อง';
-  if (/does not exist|Unknown database/i.test(msg)) return 'ไม่พบฐานข้อมูลชื่อนี้ กรุณาสร้างฐานข้อมูลว่างก่อน';
-  if (/timeout/i.test(msg)) return 'หมดเวลาเชื่อมต่อ ตรวจสอบเครือข่ายหรือไฟร์วอลล์';
-  return `เชื่อมต่อไม่สำเร็จ: ${msg}`;
+  if (/ECONNREFUSED/.test(msg)) return t('เชื่อมต่อไม่ได้: เซิร์ฟเวอร์ฐานข้อมูลไม่ตอบรับ ตรวจสอบ host/port และว่าฐานข้อมูลเปิดอยู่');
+  if (/ENOTFOUND|EAI_AGAIN/.test(msg)) return t('ไม่พบ host นี้ ตรวจสอบชื่อเครื่องหรือ IP');
+  if (/password authentication failed|Access denied/i.test(msg)) return t('ชื่อผู้ใช้หรือรหัสผ่านฐานข้อมูลไม่ถูกต้อง');
+  if (/does not exist|Unknown database/i.test(msg)) return t('ไม่พบฐานข้อมูลชื่อนี้ กรุณาสร้างฐานข้อมูลว่างก่อน');
+  if (/timeout/i.test(msg)) return t('หมดเวลาเชื่อมต่อ ตรวจสอบเครือข่ายหรือไฟร์วอลล์');
+  return t('เชื่อมต่อไม่สำเร็จ: {0}', msg);
 }
 
 export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: LicenseService) {
@@ -70,6 +74,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
       loginSubtitle: ctx.settings.brand.loginSubtitle,
       storeName: ctx.settings.store.name,
     },
+    language: ctx.settings.locale.language,
   }));
 
   /** Setup endpoints are open only until an owner exists; afterwards they require settings permission. */
@@ -79,7 +84,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
 
   app.post('/api/setup/test-db', { preHandler: guardSetup }, async (req) => {
     const cfg = dbConfigSchema.parse(req.body);
-    if (cfg.kind === 'sqlite') return { ok: true, version: 'SQLite (ในเครื่อง)' };
+    if (cfg.kind === 'sqlite') return { ok: true, version: t('SQLite (ในเครื่อง)') };
     try {
       return await testConnection(cfg);
     } catch (e) {
@@ -114,7 +119,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
   app.post('/api/setup/client', { preHandler: guardSetup }, async (req) => {
     const { hostUrl } = z.object({ hostUrl: z.string().url() }).parse(req.body);
     const res = await fetch(new URL('/api/setup/status', hostUrl)).catch(() => null);
-    if (!res || !res.ok) throw badRequest('ติดต่อเครื่อง Host ไม่ได้ ตรวจสอบว่าเครื่อง Host เปิดอยู่และอยู่ในวง LAN เดียวกัน');
+    if (!res || !res.ok) throw badRequest(t('ติดต่อเครื่อง Host ไม่ได้ ตรวจสอบว่าเครื่อง Host เปิดอยู่และอยู่ในวง LAN เดียวกัน'));
     ctx.config = { ...ctx.config, mode: 'client', hostUrl: hostUrl.replace(/\/$/, '') };
     ctx.store.save(ctx.config);
     return { ok: true, hostUrl: ctx.config.hostUrl };
@@ -139,14 +144,16 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
   });
 
   app.post('/api/setup/complete', async (req, reply): Promise<AuthResponse> => {
-    if (!ctx.conn) throw badRequest('กรุณาเลือกฐานข้อมูลก่อน');
-    if (await hasOwner(ctx)) throw conflict('ร้านนี้ตั้งค่าเรียบร้อยแล้ว');
+    if (!ctx.conn) throw badRequest(t('กรุณาเลือกฐานข้อมูลก่อน'));
+    if (await hasOwner(ctx)) throw conflict(t('ร้านนี้ตั้งค่าเรียบร้อยแล้ว'));
     const input = setupCompleteSchema.parse(req.body);
+    // Defaults and sample data are written in the chosen language.
+    setLanguage(input.language);
     const ownerId = uuid();
     const branchId = uuid();
     const now = nowIso();
     const settings = mergeSettings(
-      mergeSettings(DEFAULT_SETTINGS, templateSettings(input.businessType)),
+      translateDeep(mergeSettings(DEFAULT_SETTINGS, templateSettings(input.businessType))),
       {
         store: {
           name: input.store.name,
@@ -157,7 +164,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
           promptPayId: input.store.promptPayId,
         },
         tax: { ...input.tax },
-        locale: { language: input.language },
+        locale: { language: input.language, ...(input.language === 'en' ? { era: 'CE' as const } : {}) },
       },
     );
     const pwHash = await hashPassword(input.owner.password);
@@ -167,7 +174,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
         .values({
           id: branchId,
           code: '01',
-          name: input.store.branchName || 'สำนักงานใหญ่',
+          name: input.store.branchName || t('สำนักงานใหญ่'),
           address: input.store.address,
           phone: input.store.phone,
           tax_branch_no: '00000',
@@ -180,7 +187,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
         roleIds[r.code] = uuid();
         await tx
           .insertInto('roles')
-          .values({ id: roleIds[r.code]!, code: r.code, name: r.name, permissions: JSON.stringify(r.permissions), system: r.code === 'owner' ? 1 : 0 })
+          .values({ id: roleIds[r.code]!, code: r.code, name: translate(r.name), permissions: JSON.stringify(r.permissions), system: r.code === 'owner' ? 1 : 0 })
           .execute();
       }
       await tx
@@ -201,12 +208,12 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
       for (const m of DEFAULT_PAYMENT_METHODS) {
         await tx
           .insertInto('payment_methods')
-          .values({ id: uuid(), code: m.code, name: m.name, kind: m.kind, active: m.code === 'credit' ? 0 : 1, sort: m.sort })
+          .values({ id: uuid(), code: m.code, name: translate(m.name), kind: m.kind, active: m.code === 'credit' ? 0 : 1, sort: m.sort })
           .execute();
       }
       await tx.insertInto('price_tiers').values([
-        { id: uuid(), name: 'ราคาส่ง' },
-        { id: uuid(), name: 'ราคาสมาชิก' },
+        { id: uuid(), name: t('ราคาส่ง') },
+        { id: uuid(), name: t('ราคาสมาชิก') },
       ]).execute();
       await ctx.saveSettings(settings, tx);
       if (input.sampleData) await seedSampleData(tx, input.businessType, branchId, ownerId);
@@ -225,8 +232,8 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const u = await ctx.db.selectFrom('users').select(['id', 'password_hash', 'active']).where('username', '=', username.toLowerCase()).executeTakeFirst();
     // Verify even when the user is missing to keep timing similar.
     const ok = await verifyPassword(u?.password_hash ?? '$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$0000000000000000000000000000000000000000000', password);
-    if (!u || !ok) throw unauthorized('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-    if (u.active !== 1) throw unauthorized('บัญชีนี้ถูกปิดการใช้งาน');
+    if (!u || !ok) throw unauthorized(t('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'));
+    if (u.active !== 1) throw unauthorized(t('บัญชีนี้ถูกปิดการใช้งาน'));
     const tokens = await issueTokens(ctx, reply, u.id);
     const user = await loadSessionUser(ctx, u.id);
     await audit(ctx, ctx.db, req, 'auth.login', 'user', u.id, {}, user);
@@ -241,7 +248,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
       .where('pin_hash', '=', pinHash(ctx.config.secret, pin))
       .where('active', '=', 1)
       .executeTakeFirst();
-    if (!u) throw unauthorized('PIN ไม่ถูกต้อง');
+    if (!u) throw unauthorized(t('PIN ไม่ถูกต้อง'));
     const tokens = await issueTokens(ctx, reply, u.id);
     const user = await loadSessionUser(ctx, u.id);
     return { ...tokens, user: user! };
@@ -252,7 +259,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const userId = await rotateRefresh(ctx, refreshToken);
     if (!userId) throw unauthorized();
     const user = await loadSessionUser(ctx, userId);
-    if (!user) throw unauthorized('บัญชีนี้ถูกปิดการใช้งาน');
+    if (!user) throw unauthorized(t('บัญชีนี้ถูกปิดการใช้งาน'));
     const tokens = await issueTokens(ctx, reply, userId);
     return { ...tokens, user };
   });
@@ -269,7 +276,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
   app.post('/api/auth/verify-pin', { ...loginLimit, preHandler: requireAuth(ctx) }, async (req) => {
     const { pin } = pinLoginSchema.parse(req.body);
     const u = await ctx.db.selectFrom('users').select('id').where('pin_hash', '=', pinHash(ctx.config.secret, pin)).where('active', '=', 1).executeTakeFirst();
-    if (!u) throw unauthorized('PIN ไม่ถูกต้อง');
+    if (!u) throw unauthorized(t('PIN ไม่ถูกต้อง'));
     const user = await loadSessionUser(ctx, u.id);
     return { id: user!.id, name: user!.name, permissions: user!.permissions };
   });
@@ -287,7 +294,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
       await audit(ctx, ctx.db, req, 'license.activate', 'license', s.machineId, { plan: s.plan });
       return s;
     } catch (e) {
-      throw badRequest(e instanceof Error ? e.message : 'License key ไม่ถูกต้อง');
+      throw badRequest(e instanceof Error ? e.message : t('License key ไม่ถูกต้อง'));
     }
   });
 }

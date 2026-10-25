@@ -5,6 +5,7 @@ import { Socket } from 'node:net';
 import { createCanvas, GlobalFonts, loadImage, type Canvas, type SKRSContext2D } from '@napi-rs/canvas';
 import QRCode from 'qrcode';
 import type { DocBlock, PrintDoc } from '@flexpos/shared';
+import { t } from '@flexpos/shared';
 
 const FONT_THAI = 'FlexPOS Thai';
 const FONT_LATIN = 'FlexPOS Latin';
@@ -271,8 +272,8 @@ export function sendRaw(host: string, port: number, data: Buffer, timeoutMs = 50
       if (err) reject(err);
       else resolve();
     };
-    s.setTimeout(timeoutMs, () => finish(new Error('เครื่องพิมพ์ไม่ตอบสนอง (หมดเวลา)')));
-    s.once('error', (e) => finish(new Error(`เชื่อมต่อเครื่องพิมพ์ไม่ได้: ${e.message}`)));
+    s.setTimeout(timeoutMs, () => finish(new Error(t('เครื่องพิมพ์ไม่ตอบสนอง (หมดเวลา)'))));
+    s.once('error', (e) => finish(new Error(t('เชื่อมต่อเครื่องพิมพ์ไม่ได้: {0}', e.message))));
     s.connect(port, host, () => {
       s.write(data, (err) => {
         if (err) return finish(err);

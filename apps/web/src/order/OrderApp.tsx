@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Bell, ChevronLeft, ClipboardList, LayoutGrid, Minus, MoreHorizontal, Plus, Search, UserRound, X } from 'lucide-react';
-import { effectiveBillDiscount, initials, priceCart, resolveBasePrice, type CatalogProduct, type SetupStatus } from '@flexpos/shared';
+import { effectiveBillDiscount, initials, priceCart, resolveBasePrice, type CatalogProduct, type SetupStatus, t } from '@flexpos/shared';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useCatalog } from '@/lib/catalog';
 import { useLive, useLiveInvalidation, useLiveStatus } from '@/lib/live';
@@ -15,6 +15,7 @@ import { QrImage } from '@/components/PrintDocView';
 import { useConfirm } from '@/components/ui/dialog';
 import type { FloorData } from '@/pages/pos/BillPicker';
 import type { OrderDetail } from '@/pages/pos/PosPage';
+import { tn } from '@/lib/i18n';
 
 interface Line {
   key: string;
@@ -103,7 +104,7 @@ export default function OrderApp() {
           </span>
         </div>
         <div className="mt-2 flex flex-col items-center gap-3.5">
-          <span className="text-[20px] font-semibold">ใส่ PIN พนักงาน</span>
+          <span className="text-[20px] font-semibold">{t('ใส่ PIN พนักงาน')}</span>
         </div>
         <div className="mt-auto">
           <PinPad dark onComplete={onPin} error={error} busy={busy} />
@@ -142,7 +143,7 @@ function Shell() {
       try {
         await api.post(`/api/orders/${p.orderId}/items`, { requestId: p.requestId, source: 'app', items: p.items.map((l) => ({ productId: l.productId, variantId: l.variantId, qty: l.qty, modifiers: l.modifiers, note: l.note })) });
         setPending((cur) => cur.filter((x) => x.requestId !== p.requestId));
-        toast.success(`ส่ง ${p.title} ที่ค้างไว้แล้ว`);
+        toast.success(t('ส่ง {0} ที่ค้างไว้แล้ว', p.title));
       } catch (e) {
         if (!(e instanceof ApiError && e.isNetwork)) setPending((cur) => cur.map((x) => (x.requestId === p.requestId ? { ...x, error: errorMessage(e) } : x)));
         break;
@@ -178,12 +179,12 @@ function Shell() {
         {screen.s === 'me' && <Me />}
       </div>
       {showTabs && (
-        <nav className="flex flex-none border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]" aria-label="แท็บ">
+        <nav className="flex flex-none border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]" aria-label={t('แท็บ')}>
           {[
-            { id: 'tables', label: 'โต๊ะ', icon: <LayoutGrid className="h-5 w-5" />, go: { s: 'tables' } as Screen },
-            { id: 'orders', label: 'ออเดอร์', icon: <ClipboardList className="h-5 w-5" />, go: { s: 'orders' } as Screen, badge: pending.length },
-            { id: 'notifications', label: 'แจ้งเตือน', icon: <Bell className="h-5 w-5" />, go: { s: 'notifications' } as Screen, badge: unread },
-            { id: 'me', label: 'ฉัน', icon: <UserRound className="h-5 w-5" />, go: { s: 'me' } as Screen },
+            { id: 'tables', label: t('โต๊ะ'), icon: <LayoutGrid className="h-5 w-5" />, go: { s: 'tables' } as Screen },
+            { id: 'orders', label: t('ออเดอร์'), icon: <ClipboardList className="h-5 w-5" />, go: { s: 'orders' } as Screen, badge: pending.length },
+            { id: 'notifications', label: t('แจ้งเตือน'), icon: <Bell className="h-5 w-5" />, go: { s: 'notifications' } as Screen, badge: unread },
+            { id: 'me', label: t('ฉัน'), icon: <UserRound className="h-5 w-5" />, go: { s: 'me' } as Screen },
           ].map((t) => (
             <button key={t.id} onClick={() => setScreen(t.go)} className={cn('relative flex h-[60px] flex-1 flex-col items-center justify-center gap-0.5 text-[12px]', tab === t.id ? 'font-semibold text-primary' : 'text-muted')}>
               {t.icon}
@@ -201,7 +202,7 @@ function Header({ title, sub, back, right }: { title: string; sub?: string; back
   return (
     <div className="flex flex-none items-center gap-2.5 border-b border-line bg-surface px-4 py-3.5">
       {back && (
-        <button onClick={back} className="grid h-10 w-10 place-items-center rounded-xl bg-canvas" aria-label="ย้อนกลับ">
+        <button onClick={back} className="grid h-10 w-10 place-items-center rounded-xl bg-canvas" aria-label={t('ย้อนกลับ')}>
           <ChevronLeft className="h-5 w-5" />
         </button>
       )}
@@ -219,7 +220,7 @@ function SyncPill() {
   return (
     <span className={cn('flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium', online ? 'bg-soft text-soft-fg' : 'bg-danger-soft text-danger')}>
       <span className={cn('h-[7px] w-[7px] rounded-full', online ? 'bg-accent' : 'bg-danger')} />
-      {online ? 'ซิงก์แล้ว' : 'ออฟไลน์'}
+      {online ? t('ซิงก์แล้ว') : t('ออฟไลน์')}
     </span>
   );
 }
@@ -242,32 +243,32 @@ function Tables({ go }: { go: (s: Screen) => void }) {
     <>
       <div className="flex flex-none items-center justify-between border-b border-line bg-surface px-5 pb-3 pt-4">
         <div className="flex flex-col">
-          <span className="text-[20px] font-semibold">โต๊ะ</span>
-          <span className="text-[13px] text-muted">{user?.name}{shift.data ? ` · กะ #${shift.data.number}` : ''}</span>
+          <span className="text-[20px] font-semibold">{t('โต๊ะ')}</span>
+          <span className="text-[13px] text-muted">{user?.name}{shift.data ? t(' · กะ #{0}', shift.data.number) : ''}</span>
         </div>
         <SyncPill />
       </div>
       <div className="flex flex-none gap-1.5 overflow-x-auto px-5 py-3">
-        {[{ id: 'all', name: 'ทั้งหมด' }, ...(floor.data?.zones ?? [])].map((z) => (
+        {[{ id: 'all', name: t('ทั้งหมด') }, ...(floor.data?.zones ?? [])].map((z) => (
           <button key={z.id} onClick={() => setZone(z.id)} className={cn('h-10 flex-none whitespace-nowrap rounded-full border px-3.5 text-[14px] font-medium', zone === z.id ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-surface')}>{z.name}</button>
         ))}
       </div>
       <div className="scroll-thin grid flex-1 auto-rows-min grid-cols-3 gap-2.5 overflow-y-auto px-5 pb-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {floor.isLoading && Array.from({ length: 9 }, (_, i) => <div key={i} className="skeleton h-24 rounded-[14px]" />)}
-        {tables.map((t) => {
-          const o = t.order;
-          const status = !o ? 'ว่าง' : o.billRequested ? 'เช็คบิล' : o.readyCount ? `พร้อมเสิร์ฟ ${o.readyCount}` : o.waitingCount ? `รออาหาร ${o.waitingCount}` : 'กำลังทาน';
+        {tables.map((tk) => {
+          const o = tk.order;
+          const status = !o ? t('ว่าง') : o.billRequested ? t('เช็คบิล') : o.readyCount ? t('พร้อมเสิร์ฟ {0}', o.readyCount) : o.waitingCount ? t('รออาหาร {0}', o.waitingCount) : t('กำลังทาน');
           return (
-            <button key={t.id} onClick={() => void open(t.id, o?.id)} className={cn('flex h-24 flex-col items-start justify-between rounded-[14px] border px-3 py-2.5 text-left', !o ? 'border-line bg-surface' : o.billRequested ? 'border-danger/40 bg-danger-soft' : o.readyCount ? 'border-primary/50 bg-soft' : 'border-[#c9b98f] bg-[#fbf3df] dark:bg-warn-soft')}>
-              <span className="flex flex-col"><span className="text-[20px] font-semibold leading-tight">{t.name}</span>{zone === 'all' && t.zoneName && <span className="text-[11px] text-muted">{t.zoneName}</span>}</span>
+            <button key={tk.id} onClick={() => void open(tk.id, o?.id)} className={cn('flex h-24 flex-col items-start justify-between rounded-[14px] border px-3 py-2.5 text-left', !o ? 'border-line bg-surface' : o.billRequested ? 'border-danger/40 bg-danger-soft' : o.readyCount ? 'border-primary/50 bg-soft' : 'border-[#c9b98f] bg-[#fbf3df] dark:bg-warn-soft')}>
+              <span className="flex flex-col"><span className="text-[20px] font-semibold leading-tight">{tk.name}</span>{zone === 'all' && tk.zoneName && <span className="text-[11px] text-muted">{tk.zoneName}</span>}</span>
               <span className="flex flex-col gap-px">
                 <span className={cn('text-[12px] font-semibold', !o ? 'text-muted' : o.billRequested ? 'text-danger' : o.readyCount ? 'text-soft-fg' : 'text-warn')}>{status}</span>
-                {o && <span className="num text-[12px] text-muted">{money(o.total)} · {mins(o.openedAt)}น.</span>}
+                {o && <span className="num text-[12px] text-muted">{tn('{0} · {1}น.', money(o.total), mins(o.openedAt))}</span>}
               </span>
             </button>
           );
         })}
-        {floor.data && !floor.data.tables.length && <p className="col-span-3 py-10 text-center text-[14px] text-muted">ยังไม่มีโต๊ะ ให้ผู้ดูแลเพิ่มที่ ตั้งค่า → โต๊ะและโซน</p>}
+        {floor.data && !floor.data.tables.length && <p className="col-span-3 py-10 text-center text-[14px] text-muted">{t('ยังไม่มีโต๊ะ ให้ผู้ดูแลเพิ่มที่ ตั้งค่า → โต๊ะและโซน')}</p>}
       </div>
     </>
   );
@@ -303,21 +304,21 @@ function TableDetail({ orderId, go }: { orderId: string; go: (s: Screen) => void
       toast.error(errorMessage(e));
     }
   };
-  if (!d) return <Header title="กำลังโหลด…" back={() => go({ s: 'tables' })} />;
+  if (!d) return <Header title={t('กำลังโหลด…')} back={() => go({ s: 'tables' })} />;
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <Header
-        title={d.tableName ? `โต๊ะ ${d.tableName}` : d.name}
-        sub={`${d.guests ? `${d.guests} คน · ` : ''}เปิด ${hhmm(d.openedAt)} · ${mins(d.openedAt)} นาที`}
+        title={d.tableName ? t('โต๊ะ {0}', d.tableName) : d.name}
+        sub={t('{0}เปิด {1} · {2} นาที', d.guests ? t('{0} คน · ', d.guests) : '', hhmm(d.openedAt), mins(d.openedAt))}
         back={() => go({ s: 'tables' })}
-        right={<button onClick={() => setMenu(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-line-strong bg-surface" aria-label="เมนูเพิ่มเติม"><MoreHorizontal className="h-5 w-5" /></button>}
+        right={<button onClick={() => setMenu(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-line-strong bg-surface" aria-label={t('เมนูเพิ่มเติม')}><MoreHorizontal className="h-5 w-5" /></button>}
       />
       <div className="scroll-thin flex flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-3">
         {rounds.map(([round, items]) => (
           <div key={round} className="flex flex-col gap-2 rounded-[14px] border border-line bg-surface p-3.5">
             <div className="flex items-center justify-between text-[13px] text-muted">
-              <span>รอบ {round} · {hhmm(items[0]!.created_at)} · {items[0]!.by}</span>
-              <span className="text-[12px]">{items.every((i) => i.status === 'ready' || i.status === 'served') ? 'พร้อมเสิร์ฟ' : 'ส่งครัวแล้ว'}</span>
+              <span>{tn('รอบ {0} · {1} · {2}', round, hhmm(items[0]!.created_at), items[0]!.by)}</span>
+              <span className="text-[12px]">{items.every((i) => i.status === 'ready' || i.status === 'served') ? t('พร้อมเสิร์ฟ') : t('ส่งครัวแล้ว')}</span>
             </div>
             {items.map((i) => (
               <div key={i.id} className="flex items-baseline gap-2.5 text-[15px]">
@@ -326,10 +327,10 @@ function TableDetail({ orderId, go }: { orderId: string; go: (s: Screen) => void
                 <span className="num">{money(Math.round(i.qty * i.unit_price))}</span>
                 <button
                   className="text-faint"
-                  aria-label={`ยกเลิก ${i.name}`}
+                  aria-label={t('ยกเลิก {0}', i.name)}
                   onClick={async () => {
-                    const r = await confirm({ title: `ยกเลิก ${i.name}?`, body: i.status === 'sent' ? undefined : 'รายการนี้ครัวเริ่มทำแล้ว ต้องให้หัวหน้ากะใส่ PIN ที่ POS', danger: true, confirmText: 'ยกเลิกรายการ', reason: { label: 'เหตุผล' } });
-                    if (r.ok) await act(() => api.post(`/api/orders/${orderId}/items/${i.id}/cancel`, { reason: r.reason }), 'ยกเลิกรายการแล้ว');
+                    const r = await confirm({ title: t('ยกเลิก {0}?', i.name), body: i.status === 'sent' ? undefined : t('รายการนี้ครัวเริ่มทำแล้ว ต้องให้หัวหน้ากะใส่ PIN ที่ POS'), danger: true, confirmText: t('ยกเลิกรายการ'), reason: { label: t('เหตุผล') } });
+                    if (r.ok) await act(() => api.post(`/api/orders/${orderId}/items/${i.id}/cancel`, { reason: r.reason }), t('ยกเลิกรายการแล้ว'));
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -338,40 +339,38 @@ function TableDetail({ orderId, go }: { orderId: string; go: (s: Screen) => void
             ))}
           </div>
         ))}
-        {!rounds.length && <p className="py-8 text-center text-[14px] text-muted">ยังไม่มีรายการ กด “สั่งเพิ่ม” เพื่อเลือกเมนู</p>}
-        <div className="flex items-baseline justify-between px-1 pt-1"><span className="text-[14px] text-muted">ยอดสะสมของโต๊ะ</span><span className="num text-[22px] font-bold">{money(d.total)}</span></div>
-        <span className="px-1 text-[12px] text-muted">รวมรายการที่สั่งจากแอปและเคาน์เตอร์ไว้ในบิลเดียว เก็บเงินครั้งเดียวที่ POS</span>
+        {!rounds.length && <p className="py-8 text-center text-[14px] text-muted">{t('ยังไม่มีรายการ กด “สั่งเพิ่ม” เพื่อเลือกเมนู')}</p>}
+        <div className="flex items-baseline justify-between px-1 pt-1"><span className="text-[14px] text-muted">{t('ยอดสะสมของโต๊ะ')}</span><span className="num text-[22px] font-bold">{money(d.total)}</span></div>
+        <span className="px-1 text-[12px] text-muted">{t('รวมรายการที่สั่งจากแอปและเคาน์เตอร์ไว้ในบิลเดียว เก็บเงินครั้งเดียวที่ POS')}</span>
       </div>
       <div className="flex flex-none gap-2 border-t border-line bg-surface px-4 pb-4 pt-3">
-        <button onClick={() => go({ s: 'bill', orderId })} disabled={!rounds.length} className="h-14 flex-1 whitespace-nowrap rounded-[14px] border border-line-strong bg-surface text-[15px] font-semibold disabled:opacity-40">ขอเช็คบิล</button>
-        <button onClick={() => go({ s: 'menu', orderId })} className="h-14 flex-[1.4] whitespace-nowrap rounded-[14px] bg-primary text-[15px] font-semibold text-primary-fg">+ สั่งเพิ่ม</button>
+        <button onClick={() => go({ s: 'bill', orderId })} disabled={!rounds.length} className="h-14 flex-1 whitespace-nowrap rounded-[14px] border border-line-strong bg-surface text-[15px] font-semibold disabled:opacity-40">{t('ขอเช็คบิล')}</button>
+        <button onClick={() => go({ s: 'menu', orderId })} className="h-14 flex-[1.4] whitespace-nowrap rounded-[14px] bg-primary text-[15px] font-semibold text-primary-fg">{t('+ สั่งเพิ่ม')}</button>
       </div>
       {menu && (
         <div className="absolute inset-0 z-10 bg-[rgb(23_25_28/0.35)]" onClick={() => setMenu(false)}>
           <div className="absolute right-4 top-[62px] flex w-[230px] flex-col rounded-[14px] bg-surface p-1.5 shadow-pop" onClick={(e) => e.stopPropagation()}>
-            <MenuItem onClick={() => (setMenu(false), setPick('move'))}>ย้ายโต๊ะ</MenuItem>
-            <MenuItem onClick={() => (setMenu(false), setPick('merge'))}>รวมโต๊ะ</MenuItem>
+            <MenuItem onClick={() => (setMenu(false), setPick('move'))}>{t('ย้ายโต๊ะ')}</MenuItem>
+            <MenuItem onClick={() => (setMenu(false), setPick('merge'))}>{t('รวมโต๊ะ')}</MenuItem>
             <MenuItem
               onClick={async () => {
                 setMenu(false);
-                const r = await confirm({ title: 'จำนวนลูกค้า', confirmText: 'บันทึก', reason: { label: 'จำนวนคน', placeholder: String(d.guests || 2) } });
-                if (r.ok && /^\d+$/.test(r.reason)) await act(() => api.post(`/api/orders/${orderId}/guests`, { guests: Number(r.reason) }), 'บันทึกแล้ว');
+                const r = await confirm({ title: t('จำนวนลูกค้า'), confirmText: t('บันทึก'), reason: { label: t('จำนวนคน'), placeholder: String(d.guests || 2) } });
+                if (r.ok && /^\d+$/.test(r.reason)) await act(() => api.post(`/api/orders/${orderId}/guests`, { guests: Number(r.reason) }), t('บันทึกแล้ว'));
               }}
-            >
-              แก้จำนวนลูกค้า
-            </MenuItem>
-            <MenuItem danger onClick={async () => { setMenu(false); const r = await confirm({ title: 'ยกเลิกบิลโต๊ะนี้?', body: 'ต้องให้หัวหน้ากะอนุมัติที่ POS ถ้ามีรายการแล้ว', danger: true, confirmText: 'ยกเลิกบิล', reason: { label: 'เหตุผล' } }); if (r.ok) { await act(() => api.post(`/api/orders/${orderId}/cancel`, { reason: r.reason }), 'ยกเลิกบิลแล้ว'); go({ s: 'tables' }); } }}>ขอยกเลิกบิล (ต้องมีหัวหน้ากะ)</MenuItem>
+            >{t('แก้จำนวนลูกค้า')}</MenuItem>
+            <MenuItem danger onClick={async () => { setMenu(false); const r = await confirm({ title: t('ยกเลิกบิลโต๊ะนี้?'), body: t('ต้องให้หัวหน้ากะอนุมัติที่ POS ถ้ามีรายการแล้ว'), danger: true, confirmText: t('ยกเลิกบิล'), reason: { label: t('เหตุผล') } }); if (r.ok) { await act(() => api.post(`/api/orders/${orderId}/cancel`, { reason: r.reason }), t('ยกเลิกบิลแล้ว')); go({ s: 'tables' }); } }}>{t('ขอยกเลิกบิล (ต้องมีหัวหน้ากะ)')}</MenuItem>
           </div>
         </div>
       )}
       {pick && (
         <div className="absolute inset-0 z-10 flex flex-col bg-canvas">
-          <Header title={pick === 'move' ? 'ย้ายไปโต๊ะ' : 'รวมโต๊ะเข้าบิลนี้'} back={() => setPick(null)} />
+          <Header title={pick === 'move' ? t('ย้ายไปโต๊ะ') : t('รวมโต๊ะเข้าบิลนี้')} back={() => setPick(null)} />
           <div className="grid auto-rows-min grid-cols-3 gap-2.5 overflow-y-auto p-4 md:grid-cols-5">
-            {floor.data?.tables.filter((t) => t.id !== d.tableId && (pick === 'move' ? !t.order : !!t.order)).map((t) => (
-              <button key={t.id} onClick={async () => { setPick(null); await act(() => (pick === 'move' ? api.post(`/api/orders/${orderId}/move`, { tableId: t.id }) : api.post(`/api/orders/${orderId}/merge`, { fromId: t.order!.id })), pick === 'move' ? `ย้ายไปโต๊ะ ${t.name} แล้ว` : `รวมโต๊ะ ${t.name} แล้ว`); }} className="flex h-20 flex-col items-start justify-between rounded-[14px] border border-line bg-surface px-3 py-2 text-left">
-                <span className="text-[18px] font-semibold">{t.name}</span>
-                <span className="text-[12px] text-muted">{t.order ? money(t.order.total) : 'ว่าง'}</span>
+            {floor.data?.tables.filter((t) => t.id !== d.tableId && (pick === 'move' ? !t.order : !!t.order)).map((tk) => (
+              <button key={tk.id} onClick={async () => { setPick(null); await act(() => (pick === 'move' ? api.post(`/api/orders/${orderId}/move`, { tableId: tk.id }) : api.post(`/api/orders/${orderId}/merge`, { fromId: tk.order!.id })), pick === 'move' ? t('ย้ายไปโต๊ะ {0} แล้ว', tk.name) : t('รวมโต๊ะ {0} แล้ว', tk.name)); }} className="flex h-20 flex-col items-start justify-between rounded-[14px] border border-line bg-surface px-3 py-2 text-left">
+                <span className="text-[18px] font-semibold">{tk.name}</span>
+                <span className="text-[12px] text-muted">{tk.order ? money(tk.order.total) : t('ว่าง')}</span>
               </button>
             ))}
           </div>
@@ -402,17 +401,17 @@ function Menu({ orderId, lines, setLines, go }: { orderId: string; lines: Line[]
     if (ex) setLines(lines.map((l) => (l === ex ? { ...l, qty: l.qty + 1 } : l)));
     else setLines([...lines, { key: uuid(), productId: p.id, variantId: null, name: p.name, qty: 1, unitPrice: p.price, modifiers: [], note: '' }]);
   };
-  const title = o.data ? (o.data.tableName ? `โต๊ะ ${o.data.tableName}` : o.data.name) : '';
+  const title = o.data ? (o.data.tableName ? t('โต๊ะ {0}', o.data.tableName) : o.data.name) : '';
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <Header title={`เมนู · ${title}`} back={() => go({ s: 'table', orderId })} />
+      <Header title={t('เมนู · {0}', title)} back={() => go({ s: 'table', orderId })} />
       <div className="flex flex-none flex-col gap-2.5 bg-surface px-4 pb-3 pt-2">
         <div className="flex h-11 items-center gap-2 rounded-xl border border-line-strong bg-sunken px-3">
           <Search className="h-4 w-4 text-faint" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาเมนู" className="flex-1 bg-transparent text-[15px] outline-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ค้นหาเมนู')} className="flex-1 bg-transparent text-[15px] outline-none" />
         </div>
         <div className="flex gap-1.5 overflow-x-auto">
-          {[{ id: null as string | null, name: 'ทั้งหมด' }, ...(index?.catalog.categories.filter((c) => !c.parentId) ?? [])].map((c) => (
+          {[{ id: null as string | null, name: t('ทั้งหมด') }, ...(index?.catalog.categories.filter((c) => !c.parentId) ?? [])].map((c) => (
             <button key={c.id ?? 'all'} onClick={() => setCat(c.id)} className={cn('h-9 flex-none whitespace-nowrap rounded-full border px-3.5 text-[14px] font-medium', cat === c.id ? 'border-ink bg-ink text-surface' : 'border-line-strong')}>{c.name}</button>
           ))}
         </div>
@@ -426,7 +425,7 @@ function Menu({ orderId, lines, setLines, go }: { orderId: string; lines: Line[]
               <span className="h-12 w-12 flex-none overflow-hidden rounded-xl" style={{ background: p.color || '#efe3d3' }}>{p.image && <img src={p.image} alt="" className="h-full w-full object-cover" />}</span>
               <span className="flex flex-1 flex-col">
                 <span className="text-[15px] font-medium">{p.name}</span>
-                <span className="num text-[14px] font-semibold text-primary">{money(p.variants.length ? Math.min(...p.variants.map((v) => v.price)) : p.price)}{out && <span className="ml-2 text-[12px] font-normal text-danger">หมด</span>}</span>
+                <span className="num text-[14px] font-semibold text-primary">{money(p.variants.length ? Math.min(...p.variants.map((v) => v.price)) : p.price)}{out && <span className="ml-2 text-[12px] font-normal text-danger">{t('หมด')}</span>}</span>
               </span>
               {n > 0 ? <span className="num grid h-8 min-w-[32px] place-items-center rounded-full bg-ink px-2 text-[14px] font-semibold text-surface">{qtyText(n)}</span> : <span className="grid h-8 w-8 place-items-center rounded-full border border-line-strong"><Plus className="h-4 w-4" /></span>}
             </button>
@@ -435,7 +434,7 @@ function Menu({ orderId, lines, setLines, go }: { orderId: string; lines: Line[]
       </div>
       {count > 0 && (
         <button onClick={() => go({ s: 'review', orderId })} className="absolute inset-x-4 bottom-4 mx-auto flex h-14 max-w-[640px] items-center justify-between rounded-[14px] bg-primary px-5 text-[16px] font-semibold text-primary-fg shadow-pop">
-          <span>ตรวจออเดอร์ · {qtyText(count)} รายการ</span>
+          <span>{tn('ตรวจออเดอร์ · {0} รายการ', qtyText(count))}</span>
           <span className="num">{money(Math.round(total))}</span>
         </button>
       )}
@@ -464,10 +463,10 @@ function OptionSheet({ p, index, onClose, onAdd }: { p: CatalogProduct; index: N
   return (
     <div className="absolute inset-0 z-20 flex flex-col justify-end bg-[rgb(23_25_28/0.4)]" onClick={onClose}>
       <div className="flex max-h-[88%] flex-col rounded-t-[22px] bg-surface" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 pb-2 pt-4"><span className="text-[18px] font-semibold">{p.name}</span><button onClick={onClose} aria-label="ปิด"><X className="h-5 w-5" /></button></div>
+        <div className="flex items-center justify-between px-5 pb-2 pt-4"><span className="text-[18px] font-semibold">{p.name}</span><button onClick={onClose} aria-label={t('ปิด')}><X className="h-5 w-5" /></button></div>
         <div className="flex flex-col gap-4 overflow-y-auto px-5 pb-3">
           {p.variants.length > 0 && (
-            <OptGroup label="ตัวเลือก">
+            <OptGroup label={t('ตัวเลือก')}>
               {p.variants.map((x) => <Chip key={x.id} on={variantId === x.id} onClick={() => setVariantId(x.id)}>{x.name} · {money(x.price)}</Chip>)}
             </OptGroup>
           )}
@@ -476,16 +475,16 @@ function OptionSheet({ p, index, onClose, onAdd }: { p: CatalogProduct; index: N
               {g.modifiers.map((m) => <Chip key={m.id} on={mods.some((x) => x.id === m.id)} onClick={() => toggle(g.id, m)}>{m.name}{m.priceDelta ? ` +${money(m.priceDelta)}` : ''}</Chip>)}
             </OptGroup>
           ))}
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="หมายเหตุถึงครัว เช่น ไม่ใส่น้ำแข็ง" className="h-12 rounded-xl border border-line-strong px-3 text-[15px] outline-none focus:border-primary" />
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('หมายเหตุถึงครัว เช่น ไม่ใส่น้ำแข็ง')} className="h-12 rounded-xl border border-line-strong px-3 text-[15px] outline-none focus:border-primary" />
         </div>
         <div className="flex items-center gap-3 border-t border-line-soft px-5 pb-5 pt-3">
           <div className="flex items-center rounded-xl border border-line-strong">
-            <button className="grid h-12 w-12 place-items-center" aria-label="ลด" onClick={() => setQty(Math.max(1, qty - 1))}><Minus className="h-4 w-4" /></button>
+            <button className="grid h-12 w-12 place-items-center" aria-label={t('ลด')} onClick={() => setQty(Math.max(1, qty - 1))}><Minus className="h-4 w-4" /></button>
             <span className="num w-8 text-center text-[17px] font-semibold">{qty}</span>
-            <button className="grid h-12 w-12 place-items-center" aria-label="เพิ่ม" onClick={() => setQty(qty + 1)}><Plus className="h-4 w-4" /></button>
+            <button className="grid h-12 w-12 place-items-center" aria-label={t('เพิ่ม')} onClick={() => setQty(qty + 1)}><Plus className="h-4 w-4" /></button>
           </div>
           <button disabled={missing} onClick={() => onAdd({ key: uuid(), productId: p.id, variantId, name: v ? `${p.name} (${v.name})` : p.name, qty, unitPrice: unit, modifiers: mods, note: note.trim() })} className="flex h-12 flex-1 items-center justify-between rounded-xl bg-primary px-4 text-[15px] font-semibold text-primary-fg disabled:opacity-40">
-            <span>เพิ่ม</span><span className="num">{money(unit * qty)}</span>
+            <span>{t('เพิ่ม')}</span><span className="num">{money(unit * qty)}</span>
           </button>
         </div>
       </div>
@@ -504,7 +503,7 @@ function Review({ orderId, lines, setLines, go, queue }: { orderId: string; line
   const o = useOrder(orderId);
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
-  const title = o.data ? (o.data.tableName ? `โต๊ะ ${o.data.tableName}` : o.data.name) : '';
+  const title = o.data ? (o.data.tableName ? t('โต๊ะ {0}', o.data.tableName) : o.data.name) : '';
   const total = lines.reduce((a, l) => a + l.qty * l.unitPrice, 0);
   const send = async () => {
     setBusy(true);
@@ -520,7 +519,7 @@ function Review({ orderId, lines, setLines, go, queue }: { orderId: string; line
       if (e instanceof ApiError && e.isNetwork) {
         queue({ requestId, orderId, title, items: lines, at: new Date().toISOString() });
         setLines([]);
-        toast.warning('ยังส่งไม่ได้ เก็บออเดอร์ไว้ในเครื่องแล้ว จะส่งอัตโนมัติเมื่อเชื่อมต่อได้');
+        toast.warning(t('ยังส่งไม่ได้ เก็บออเดอร์ไว้ในเครื่องแล้ว จะส่งอัตโนมัติเมื่อเชื่อมต่อได้'));
         go({ s: 'orders' });
       } else toast.error(errorMessage(e));
     } finally {
@@ -529,7 +528,7 @@ function Review({ orderId, lines, setLines, go, queue }: { orderId: string; line
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <Header title={`ตรวจออเดอร์ · ${title}`} back={() => go({ s: 'menu', orderId })} />
+      <Header title={t('ตรวจออเดอร์ · {0}', title)} back={() => go({ s: 'menu', orderId })} />
       <div className="scroll-thin flex-1 overflow-y-auto px-4 py-2">
         {lines.map((l) => (
           <div key={l.key} className="flex items-center gap-3 border-b border-line-soft py-3">
@@ -539,17 +538,17 @@ function Review({ orderId, lines, setLines, go, queue }: { orderId: string; line
               <span className="num text-[13px] text-muted">{money(l.unitPrice)}</span>
             </span>
             <div className="flex items-center rounded-xl border border-line-strong">
-              <button className="grid h-10 w-10 place-items-center" aria-label="ลด" onClick={() => setLines(l.qty <= 1 ? lines.filter((x) => x !== l) : lines.map((x) => (x === l ? { ...x, qty: x.qty - 1 } : x)))}><Minus className="h-4 w-4" /></button>
+              <button className="grid h-10 w-10 place-items-center" aria-label={t('ลด')} onClick={() => setLines(l.qty <= 1 ? lines.filter((x) => x !== l) : lines.map((x) => (x === l ? { ...x, qty: x.qty - 1 } : x)))}><Minus className="h-4 w-4" /></button>
               <span className="num w-7 text-center font-semibold">{l.qty}</span>
-              <button className="grid h-10 w-10 place-items-center" aria-label="เพิ่ม" onClick={() => setLines(lines.map((x) => (x === l ? { ...x, qty: x.qty + 1 } : x)))}><Plus className="h-4 w-4" /></button>
+              <button className="grid h-10 w-10 place-items-center" aria-label={t('เพิ่ม')} onClick={() => setLines(lines.map((x) => (x === l ? { ...x, qty: x.qty + 1 } : x)))}><Plus className="h-4 w-4" /></button>
             </div>
           </div>
         ))}
-        {!lines.length && <p className="py-10 text-center text-[14px] text-muted">ยังไม่มีรายการ</p>}
+        {!lines.length && <p className="py-10 text-center text-[14px] text-muted">{t('ยังไม่มีรายการ')}</p>}
       </div>
       <div className="flex flex-none flex-col gap-2 border-t border-line bg-surface px-4 pb-4 pt-3">
-        <div className="flex justify-between"><span className="text-muted">รวมรอบนี้</span><span className="num text-[20px] font-bold">{money(Math.round(total))}</span></div>
-        <button disabled={!lines.length || busy} onClick={() => void send()} className="h-14 rounded-[14px] bg-primary text-[16px] font-semibold text-primary-fg disabled:opacity-40">{busy ? 'กำลังส่ง…' : 'ส่งเข้าครัว'}</button>
+        <div className="flex justify-between"><span className="text-muted">{t('รวมรอบนี้')}</span><span className="num text-[20px] font-bold">{money(Math.round(total))}</span></div>
+        <button disabled={!lines.length || busy} onClick={() => void send()} className="h-14 rounded-[14px] bg-primary text-[16px] font-semibold text-primary-fg disabled:opacity-40">{busy ? t('กำลังส่ง…') : t('ส่งเข้าครัว')}</button>
       </div>
     </div>
   );
@@ -559,11 +558,11 @@ function Sent({ orderId, title, printed, queued, go }: { orderId: string; title:
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
       <div className={cn('grid h-16 w-16 place-items-center rounded-full text-[28px]', queued ? 'bg-warn-soft text-warn' : 'bg-soft text-primary')}>✓</div>
-      <h2 className="text-[22px] font-semibold">ส่งออเดอร์ {title} แล้ว</h2>
-      <p className="text-[14px] text-muted">{queued ? 'เครื่องพิมพ์ครัวยังไม่พร้อม ใบออเดอร์อยู่ในคิว จะพิมพ์อัตโนมัติเมื่อเครื่องกลับมา' : printed ? `พิมพ์ใบออเดอร์ที่ ${printed} เครื่องแล้ว` : 'ครัวเห็นออเดอร์บนจอครัวแล้ว'}</p>
+      <h2 className="text-[22px] font-semibold">{tn('ส่งออเดอร์ {0} แล้ว', title)}</h2>
+      <p className="text-[14px] text-muted">{queued ? t('เครื่องพิมพ์ครัวยังไม่พร้อม ใบออเดอร์อยู่ในคิว จะพิมพ์อัตโนมัติเมื่อเครื่องกลับมา') : printed ? t('พิมพ์ใบออเดอร์ที่ {0} เครื่องแล้ว', printed) : t('ครัวเห็นออเดอร์บนจอครัวแล้ว')}</p>
       <div className="flex w-full max-w-[320px] flex-col gap-2">
-        <button onClick={() => go({ s: 'table', orderId })} className="h-12 rounded-[14px] border border-line-strong bg-surface font-semibold">ดูโต๊ะนี้</button>
-        <button onClick={() => go({ s: 'tables' })} className="h-12 rounded-[14px] bg-primary font-semibold text-primary-fg">กลับไปหน้าโต๊ะ</button>
+        <button onClick={() => go({ s: 'table', orderId })} className="h-12 rounded-[14px] border border-line-strong bg-surface font-semibold">{t('ดูโต๊ะนี้')}</button>
+        <button onClick={() => go({ s: 'tables' })} className="h-12 rounded-[14px] bg-primary font-semibold text-primary-fg">{t('กลับไปหน้าโต๊ะ')}</button>
       </div>
     </div>
   );
@@ -588,40 +587,40 @@ function CheckBill({ orderId, go }: { orderId: string; go: (s: Screen) => void }
     try {
       await api.post(`/api/orders/${orderId}/request-bill`, { value: true });
       qc.invalidateQueries({ queryKey: ['floor'] });
-      toast.success('แจ้งแคชเชียร์แล้ว');
+      toast.success(t('แจ้งแคชเชียร์แล้ว'));
       go({ s: 'tables' });
     } catch (e) {
       toast.error(errorMessage(e));
     }
   };
-  if (!d || !pricing) return <Header title="เช็คบิล" back={() => go({ s: 'table', orderId })} />;
+  if (!d || !pricing) return <Header title={t('เช็คบิล')} back={() => go({ s: 'table', orderId })} />;
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface">
-      <Header title={`เช็คบิล · ${d.tableName ? `โต๊ะ ${d.tableName}` : d.name}`} back={() => go({ s: 'table', orderId })} />
+      <Header title={t('เช็คบิล · {0}', d.tableName ? t('โต๊ะ {0}', d.tableName) : d.name)} back={() => go({ s: 'table', orderId })} />
       <div className="mx-4 mt-3.5 flex rounded-xl bg-canvas p-1">
-        {(['sum', 'qr'] as const).map((m) => <button key={m} onClick={() => setMode(m)} className={cn('h-11 flex-1 rounded-[9px] text-[14px]', mode === m ? 'bg-surface font-semibold shadow-card' : '')}>{m === 'sum' ? 'สรุปรายการ' : 'QR PromptPay'}</button>)}
+        {(['sum', 'qr'] as const).map((m) => <button key={m} onClick={() => setMode(m)} className={cn('h-11 flex-1 rounded-[9px] text-[14px]', mode === m ? 'bg-surface font-semibold shadow-card' : '')}>{m === 'sum' ? t('สรุปรายการ') : 'QR PromptPay'}</button>)}
       </div>
       {mode === 'qr' ? (
         <div className="flex flex-1 flex-col items-center gap-3.5 px-6 py-5">
-          <span className="text-[14px] text-muted">ให้ลูกค้าสแกนจ่าย</span>
+          <span className="text-[14px] text-muted">{t('ให้ลูกค้าสแกนจ่าย')}</span>
           <span className="num text-[36px] font-bold">{money(pricing.total)}</span>
           {qr.data ? <QrImage data={qr.data.payload} size={232} className="rounded-2xl border border-line p-2" /> : qr.isError ? <span className="text-[14px] text-danger">{errorMessage(qr.error)}</span> : <div className="skeleton h-[232px] w-[232px]" />}
-          <span className="text-center text-[12px] text-muted">แคชเชียร์ตรวจยอดเข้าแล้วกดยืนยันที่ POS เพื่อปิดบิลและพิมพ์ใบเสร็จ</span>
+          <span className="text-center text-[12px] text-muted">{t('แคชเชียร์ตรวจยอดเข้าแล้วกดยืนยันที่ POS เพื่อปิดบิลและพิมพ์ใบเสร็จ')}</span>
         </div>
       ) : (
         <div className="num flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
           {d.items.filter((i) => i.status !== 'cancelled').map((i) => <div key={i.id} className="flex justify-between py-1.5 text-[15px]"><span>{qtyText(i.qty)}× {i.name}</span><span>{money(Math.round(i.qty * i.unit_price))}</span></div>)}
           <div className="mt-1.5 flex flex-col gap-1.5 border-t border-line-soft pt-2.5 text-[14px] text-muted">
-            <div className="flex justify-between"><span>ยอดรวม</span><span>{money(pricing.subtotal)}</span></div>
-            {pricing.serviceCharge > 0 && <div className="flex justify-between"><span>ค่าบริการ {settings.tax.serviceChargeRate}%</span><span>{money(pricing.serviceCharge)}</span></div>}
+            <div className="flex justify-between"><span>{t('ยอดรวม')}</span><span>{money(pricing.subtotal)}</span></div>
+            {pricing.serviceCharge > 0 && <div className="flex justify-between"><span>{tn('ค่าบริการ {0}%', settings.tax.serviceChargeRate)}</span><span>{money(pricing.serviceCharge)}</span></div>}
             {settings.tax.vatEnabled && <div className="flex justify-between"><span>VAT {settings.tax.vatRate}%</span><span>{money(pricing.vat)}</span></div>}
           </div>
-          <div className="mt-1 flex items-baseline justify-between"><span className="font-semibold">ยอดชำระ</span><span className="text-[26px] font-bold">{money(pricing.total)}</span></div>
-          <span className="text-[12px] text-muted">ส่วนลดสมาชิก/โปรโมชั่นจะคำนวณที่ POS ตอนเก็บเงิน</span>
+          <div className="mt-1 flex items-baseline justify-between"><span className="font-semibold">{t('ยอดชำระ')}</span><span className="text-[26px] font-bold">{money(pricing.total)}</span></div>
+          <span className="text-[12px] text-muted">{t('ส่วนลดสมาชิก/โปรโมชั่นจะคำนวณที่ POS ตอนเก็บเงิน')}</span>
         </div>
       )}
       <div className="flex flex-col gap-2 border-t border-line-soft px-4 pb-4 pt-3.5">
-        <button onClick={() => void request()} className="h-14 rounded-[14px] bg-primary text-[16px] font-semibold text-primary-fg">ส่งไปชำระที่เคาน์เตอร์</button>
+        <button onClick={() => void request()} className="h-14 rounded-[14px] bg-primary text-[16px] font-semibold text-primary-fg">{t('ส่งไปชำระที่เคาน์เตอร์')}</button>
       </div>
     </div>
   );
@@ -633,34 +632,34 @@ function MyOrders({ pending, retry, discard }: { pending: Pending[]; retry: () =
   const kitchen = (pq.data ?? []).filter((p) => p.role === 'kitchen' || p.role === 'bar');
   const off = kitchen.filter((p) => !p.online);
   const queued = kitchen.reduce((a, p) => a + p.queued.length, 0);
-  const banner = off.length ? { bg: 'bg-danger-soft text-danger', dot: 'bg-danger', text: `${off.map((p) => p.name).join(', ')} ไม่พร้อม · รอพิมพ์ ${queued} ใบ` } : kitchen.length ? { bg: 'bg-soft text-soft-fg', dot: 'bg-accent', text: 'เครื่องพิมพ์ออเดอร์พร้อม' } : null;
+  const banner = off.length ? { bg: 'bg-danger-soft text-danger', dot: 'bg-danger', text: t('{0} ไม่พร้อม · รอพิมพ์ {1} ใบ', off.map((p) => p.name).join(', '), queued) } : kitchen.length ? { bg: 'bg-soft text-soft-fg', dot: 'bg-accent', text: t('เครื่องพิมพ์ออเดอร์พร้อม') } : null;
   return (
     <>
       {banner && (
         <div className={cn('flex flex-none items-center gap-2.5 px-4 py-3 text-[14px] font-medium', banner.bg)}>
           <span className={cn('h-[9px] w-[9px] rounded-full', banner.dot)} />
           <span className="flex-1">{banner.text}</span>
-          {off.length > 0 && <button onClick={() => void Promise.all(off.map((p) => api.post(`/api/printers/${p.id}/retry`))).then(() => pq.refetch())} className="h-9 rounded-[10px] bg-white/70 px-3 text-[13px] font-semibold text-ink">ลองอีกครั้ง</button>}
+          {off.length > 0 && <button onClick={() => void Promise.all(off.map((p) => api.post(`/api/printers/${p.id}/retry`))).then(() => pq.refetch())} className="h-9 rounded-[10px] bg-white/70 px-3 text-[13px] font-semibold text-ink">{t('ลองอีกครั้ง')}</button>}
         </div>
       )}
-      <div className="px-5 pb-2 pt-4"><span className="text-[20px] font-semibold">ออเดอร์ของฉัน</span></div>
+      <div className="px-5 pb-2 pt-4"><span className="text-[20px] font-semibold">{t('ออเดอร์ของฉัน')}</span></div>
       <div className="scroll-thin flex flex-1 flex-col gap-2.5 overflow-y-auto px-4 pb-4">
         {pending.map((p) => (
           <div key={p.requestId} className="flex flex-col gap-1.5 rounded-[14px] border border-warn/40 bg-surface p-3.5">
-            <div className="flex items-center justify-between"><span className="text-[16px] font-semibold">{p.title}</span><span className="rounded-full bg-warn-soft px-2.5 py-1 text-[12px] font-semibold text-warn">รอส่ง</span></div>
+            <div className="flex items-center justify-between"><span className="text-[16px] font-semibold">{p.title}</span><span className="rounded-full bg-warn-soft px-2.5 py-1 text-[12px] font-semibold text-warn">{t('รอส่ง')}</span></div>
             <span className="text-[14px] text-ink-2">{p.items.map((i) => `${i.qty}× ${i.name}`).join(', ')}</span>
-            <span className="text-[12px] text-muted">{hhmm(p.at)}{p.error ? ` · ${p.error}` : ' · จะส่งอัตโนมัติเมื่อเชื่อมต่อได้'}</span>
-            <div className="flex gap-2"><button onClick={retry} className="h-9 rounded-lg border border-line-strong px-3 text-[13px]">ส่งตอนนี้</button>{p.error && <button onClick={() => discard(p.requestId)} className="h-9 rounded-lg px-3 text-[13px] text-danger">ทิ้ง</button>}</div>
+            <span className="text-[12px] text-muted">{hhmm(p.at)}{p.error ? ` · ${p.error}` : t(' · จะส่งอัตโนมัติเมื่อเชื่อมต่อได้')}</span>
+            <div className="flex gap-2"><button onClick={retry} className="h-9 rounded-lg border border-line-strong px-3 text-[13px]">{t('ส่งตอนนี้')}</button>{p.error && <button onClick={() => discard(p.requestId)} className="h-9 rounded-lg px-3 text-[13px] text-danger">{t('ทิ้ง')}</button>}</div>
           </div>
         ))}
         {orders.data?.map((o) => (
           <div key={o.id} className="flex flex-col gap-1.5 rounded-[14px] border border-line bg-surface p-3.5">
-            <div className="flex items-center justify-between"><span className="text-[16px] font-semibold">{o.table_name ? `โต๊ะ ${o.table_name}` : o.name}</span><span className={cn('rounded-full px-2.5 py-1 text-[12px] font-semibold', o.ready ? 'bg-soft text-soft-fg' : o.pending ? 'bg-warn-soft text-warn' : 'bg-canvas text-muted')}>{o.ready ? `พร้อมเสิร์ฟ ${o.ready}` : o.pending ? `กำลังทำ ${o.pending}` : 'เสิร์ฟแล้ว'}</span></div>
-            <span className="num text-[14px] text-ink-2">{qtyText(o.itemCount)} รายการ · {money(o.total)}</span>
-            <span className="text-[12px] text-muted">เปิด {hhmm(o.opened_at)} · {mins(o.opened_at)} นาที</span>
+            <div className="flex items-center justify-between"><span className="text-[16px] font-semibold">{o.table_name ? t('โต๊ะ {0}', o.table_name) : o.name}</span><span className={cn('rounded-full px-2.5 py-1 text-[12px] font-semibold', o.ready ? 'bg-soft text-soft-fg' : o.pending ? 'bg-warn-soft text-warn' : 'bg-canvas text-muted')}>{o.ready ? t('พร้อมเสิร์ฟ {0}', o.ready) : o.pending ? t('กำลังทำ {0}', o.pending) : t('เสิร์ฟแล้ว')}</span></div>
+            <span className="num text-[14px] text-ink-2">{tn('{0} รายการ · {1}', qtyText(o.itemCount), money(o.total))}</span>
+            <span className="text-[12px] text-muted">{tn('เปิด {0} · {1} นาที', hhmm(o.opened_at), mins(o.opened_at))}</span>
           </div>
         ))}
-        {!pending.length && !orders.data?.length && <p className="py-10 text-center text-[14px] text-muted">ยังไม่มีออเดอร์ที่เปิดอยู่</p>}
+        {!pending.length && !orders.data?.length && <p className="py-10 text-center text-[14px] text-muted">{t('ยังไม่มีออเดอร์ที่เปิดอยู่')}</p>}
       </div>
     </>
   );
@@ -676,8 +675,8 @@ function Notifications({ go }: { go: (s: Screen) => void }) {
   return (
     <>
       <div className="flex flex-none items-center justify-between border-b border-line bg-surface px-5 pb-3 pt-4">
-        <span className="text-[20px] font-semibold">แจ้งเตือน</span>
-        <button onClick={() => void read((q.data ?? []).filter((n) => !n.read_at).map((n) => n.id))} className="h-11 text-[14px] font-semibold text-primary">อ่านทั้งหมด</button>
+        <span className="text-[20px] font-semibold">{t('แจ้งเตือน')}</span>
+        <button onClick={() => void read((q.data ?? []).filter((n) => !n.read_at).map((n) => n.id))} className="h-11 text-[14px] font-semibold text-primary">{t('อ่านทั้งหมด')}</button>
       </div>
       <div className="scroll-thin flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-3">
         {q.data?.map((n) => (
@@ -687,7 +686,7 @@ function Notifications({ go }: { go: (s: Screen) => void }) {
             <span className="whitespace-nowrap text-[12px] text-muted">{hhmm(n.created_at)}</span>
           </button>
         ))}
-        {q.data && !q.data.length && <p className="py-10 text-center text-[14px] text-muted">ยังไม่มีแจ้งเตือน · จะแจ้งเมื่ออาหารพร้อมเสิร์ฟหรือมีการเช็คบิล</p>}
+        {q.data && !q.data.length && <p className="py-10 text-center text-[14px] text-muted">{t('ยังไม่มีแจ้งเตือน · จะแจ้งเมื่ออาหารพร้อมเสิร์ฟหรือมีการเช็คบิล')}</p>}
       </div>
     </>
   );
@@ -706,21 +705,21 @@ function Me() {
         <div className="flex flex-col"><span className="text-[18px] font-semibold">{user?.name}</span><span className="text-[13px] text-muted">{user?.roleName} · {settings.store.name}</span></div>
       </div>
       <div className="num grid grid-cols-3 gap-2 rounded-2xl border border-line bg-surface p-4">
-        <div className="flex flex-col"><span className="text-[12px] text-muted">เข้ากะ</span><span className="text-[18px] font-semibold">{shift.data ? hhmm(shift.data.openedAt) : '—'}</span></div>
-        <div className="flex flex-col"><span className="text-[12px] text-muted">ออเดอร์วันนี้</span><span className="text-[18px] font-semibold">{orders.data?.length ?? '—'}</span></div>
-        <div className="flex flex-col"><span className="text-[12px] text-muted">ยอดขายกะ</span><span className="text-[18px] font-semibold">{shift.data ? money(shift.data.salesTotal) : '—'}</span></div>
+        <div className="flex flex-col"><span className="text-[12px] text-muted">{t('เข้ากะ')}</span><span className="text-[18px] font-semibold">{shift.data ? hhmm(shift.data.openedAt) : '—'}</span></div>
+        <div className="flex flex-col"><span className="text-[12px] text-muted">{t('ออเดอร์วันนี้')}</span><span className="text-[18px] font-semibold">{orders.data?.length ?? '—'}</span></div>
+        <div className="flex flex-col"><span className="text-[12px] text-muted">{t('ยอดขายกะ')}</span><span className="text-[18px] font-semibold">{shift.data ? money(shift.data.salesTotal) : '—'}</span></div>
       </div>
       <div className="rounded-2xl border border-line bg-surface px-4 py-1">
         <div className="flex items-center gap-3 border-b border-line-soft py-3">
-          <span className="flex flex-1 flex-col"><span className="text-[15px] font-medium">สั่นเมื่ออาหารพร้อม</span><span className="text-[12px] text-muted">แจ้งเตือนเมื่อครัวกด “พร้อมเสิร์ฟ”</span></span>
+          <span className="flex flex-1 flex-col"><span className="text-[15px] font-medium">{t('สั่นเมื่ออาหารพร้อม')}</span><span className="text-[12px] text-muted">{t('แจ้งเตือนเมื่อครัวกด “พร้อมเสิร์ฟ”')}</span></span>
           <button role="switch" aria-checked={vibrate} onClick={() => { setVibrate(!vibrate); localStorage.setItem('flexpos.order.vibrate', vibrate ? '0' : '1'); }} className={cn('flex h-7 w-12 flex-none items-center rounded-full p-[3px]', vibrate ? 'justify-end bg-primary' : 'justify-start bg-line-strong')}><span className="h-[22px] w-[22px] rounded-full bg-white" /></button>
         </div>
-        <div className="flex h-[52px] items-center justify-between border-b border-line-soft text-[15px]"><span>เครื่องพิมพ์ออเดอร์</span><span className="text-[13px] text-muted">แอดมินตั้งค่าที่ POS</span></div>
-        <div className="flex h-[52px] items-center justify-between text-[15px]"><span>เวอร์ชันแอป</span><span className="text-[13px] text-muted">1.0.0</span></div>
+        <div className="flex h-[52px] items-center justify-between border-b border-line-soft text-[15px]"><span>{t('เครื่องพิมพ์ออเดอร์')}</span><span className="text-[13px] text-muted">{t('แอดมินตั้งค่าที่ POS')}</span></div>
+        <div className="flex h-[52px] items-center justify-between text-[15px]"><span>{t('เวอร์ชันแอป')}</span><span className="text-[13px] text-muted">1.0.0</span></div>
       </div>
       <div className="flex gap-2">
-        <button onClick={() => void logout()} className="h-[52px] flex-1 rounded-[14px] border border-line-strong bg-surface text-[15px]">เปลี่ยนผู้ใช้</button>
-        <button onClick={() => void logout()} className="h-[52px] flex-1 rounded-[14px] border border-danger/30 bg-surface text-[15px] font-semibold text-danger">ออกจากระบบ</button>
+        <button onClick={() => void logout()} className="h-[52px] flex-1 rounded-[14px] border border-line-strong bg-surface text-[15px]">{t('เปลี่ยนผู้ใช้')}</button>
+        <button onClick={() => void logout()} className="h-[52px] flex-1 rounded-[14px] border border-danger/30 bg-surface text-[15px] font-semibold text-danger">{t('ออกจากระบบ')}</button>
       </div>
     </div>
   );

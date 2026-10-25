@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useRef, useState, type ReactNod
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button, Field, Input } from './core';
+import { t } from '@flexpos/shared';
 
 export function Dialog({
   open,
@@ -49,7 +50,7 @@ export function Dialog({
             </div>
             {!hideClose && (
               <RD.Close asChild>
-                <button className="-mr-2 grid h-10 w-10 flex-none place-items-center rounded-xl text-muted hover:bg-sunken" aria-label="ปิด">
+                <button className="-mr-2 grid h-10 w-10 flex-none place-items-center rounded-xl text-muted hover:bg-sunken" aria-label={t('ปิด')}>
                   <X className="h-5 w-5" />
                 </button>
               </RD.Close>
@@ -99,9 +100,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         size="sm"
         footer={
           <>
-            <Button onClick={() => close({ ok: false })}>ยกเลิก</Button>
+            <Button onClick={() => close({ ok: false })}>{t('ยกเลิก')}</Button>
             <Button variant={opts?.danger ? 'danger' : 'primary'} disabled={!!opts?.reason && !reason.trim()} onClick={() => close({ ok: true, reason: reason.trim() })}>
-              {opts?.confirmText ?? 'ยืนยัน'}
+              {opts?.confirmText ?? t('ยืนยัน')}
             </Button>
           </>
         }

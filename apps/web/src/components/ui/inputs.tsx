@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useState, type InputHTMLAttributes } from 'react';
 import { Delete } from 'lucide-react';
-import { bahtToSatang } from '@flexpos/shared';
+import { bahtToSatang, t } from '@flexpos/shared';
 import { cn } from '@/lib/utils';
 import { Input } from './core';
 
@@ -16,7 +16,7 @@ export const MoneyInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<
     }, [value, focused]);
     return (
       <div className="relative">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-faint">฿</span>
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-faint">{t('฿')}</span>
         <Input
           ref={ref}
           inputMode="decimal"
@@ -92,7 +92,7 @@ export function NumPad({ onKey, dot = true, className, dark }: { onKey: (k: stri
           key={k}
           type="button"
           onClick={() => onKey(k)}
-          aria-label={k === 'back' ? 'ลบ' : k}
+          aria-label={k === 'back' ? t('ลบ') : k}
           className={cn(
             'grid h-14 place-items-center rounded-2xl text-[22px] font-medium transition-colors active:scale-[.97]',
             dark ? 'bg-[#24272b] text-white active:bg-[#3a3d42]' : 'border border-line bg-surface hover:bg-sunken',
@@ -139,7 +139,7 @@ export function PinPad({ length = 4, onComplete, error, dark, busy }: { length?:
   }, [pin, length, onComplete]);
   return (
     <div className="flex w-full flex-col items-center gap-5">
-      <div className="flex gap-3.5" aria-label={`ใส่แล้ว ${pin.length} หลัก`}>
+      <div className="flex gap-3.5" aria-label={t('ใส่แล้ว {0} หลัก', pin.length)}>
         {Array.from({ length }, (_, i) => (
           <span key={i} className={cn('h-4 w-4 rounded-full border-2', dark ? 'border-[#7cc4a4]' : 'border-primary', i < pin.length && (dark ? 'bg-[#7cc4a4]' : 'bg-primary'))} />
         ))}

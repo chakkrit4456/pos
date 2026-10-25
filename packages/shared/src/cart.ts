@@ -1,5 +1,6 @@
 import type { Discount } from './pricing.js';
 import type { CatalogModifierGroup, CatalogProduct } from './types.js';
+import { t } from './i18n.js';
 
 /** Base unit price (satang) for a product/variant/unit at the customer's price tier, before modifiers. */
 export function resolveBasePrice(
@@ -35,14 +36,14 @@ export function validateModifiers(
   for (const c of chosen) {
     const g = own.find((gg) => gg.modifiers.some((m) => m.id === c.id));
     const m = g?.modifiers.find((mm) => mm.id === c.id);
-    if (!g || !m) return { ok: false, message: `ตัวเลือกไม่ถูกต้องสำหรับ ${p.name}` };
+    if (!g || !m) return { ok: false, message: t('ตัวเลือกไม่ถูกต้องสำหรับ {0}', p.name) };
     names.push({ id: m.id, name: m.name, priceDelta: m.priceDelta });
     delta += m.priceDelta;
   }
   for (const g of own) {
     const n = chosen.filter((c) => g.modifiers.some((m) => m.id === c.id)).length;
-    if (n < g.minSelect) return { ok: false, message: `กรุณาเลือก “${g.name}” สำหรับ ${p.name}` };
-    if (g.maxSelect > 0 && n > g.maxSelect) return { ok: false, message: `“${g.name}” เลือกได้ไม่เกิน ${g.maxSelect}` };
+    if (n < g.minSelect) return { ok: false, message: t('กรุณาเลือก “{0}” สำหรับ {1}', g.name, p.name) };
+    if (g.maxSelect > 0 && n > g.maxSelect) return { ok: false, message: t('“{0}” เลือกได้ไม่เกิน {1}', g.name, g.maxSelect) };
   }
   return { ok: true, priceDelta: delta, names };
 }

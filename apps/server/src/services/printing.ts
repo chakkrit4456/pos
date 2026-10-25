@@ -1,5 +1,5 @@
 import type { PrintDoc } from '@flexpos/shared';
-import { buildKitchenTicket } from '@flexpos/shared';
+import { buildKitchenTicket, t } from '@flexpos/shared';
 import type { PrintersTable } from '@flexpos/db';
 import type { AppContext, Tx } from '../context.js';
 import { nowIso, parseJson, uuid } from '../util.js';
@@ -50,7 +50,7 @@ export class PrintService {
         if (failedPrinters.has(j.printer_id)) continue;
         const p = await this.ctx.db.selectFrom('printers').selectAll().where('id', '=', j.printer_id).executeTakeFirst();
         if (!p || p.active !== 1 || p.kind !== 'network') {
-          await this.ctx.db.updateTable('print_jobs').set({ status: 'failed', error: 'เครื่องพิมพ์ถูกปิดหรือถูกลบ' }).where('id', '=', j.id).execute();
+          await this.ctx.db.updateTable('print_jobs').set({ status: 'failed', error: t('เครื่องพิมพ์ถูกปิดหรือถูกลบ') }).where('id', '=', j.id).execute();
           continue;
         }
         try {
@@ -80,7 +80,7 @@ export class PrintService {
     const printers = await this.ctx.db.selectFrom('printers').selectAll().where('active', '=', 1).where('kind', '=', 'network').execute();
     for (const p of printers) {
       const ok = await probe(p.address, p.port);
-      if (ok !== (p.online === 1)) await this.setOnline(p.id, ok, ok ? '' : 'ไม่พบเครื่องพิมพ์ในเครือข่าย');
+      if (ok !== (p.online === 1)) await this.setOnline(p.id, ok, ok ? '' : t('ไม่พบเครื่องพิมพ์ในเครือข่าย'));
     }
     void this.process();
   }

@@ -1,6 +1,7 @@
 import type { BusinessType } from '@flexpos/shared';
 import type { Tx } from '../context.js';
 import { nowIso, uuid } from '../util.js';
+import { t } from '@flexpos/shared';
 
 interface SeedProduct {
   name: string;
@@ -22,144 +23,145 @@ interface SeedSet {
   zones?: { name: string; tables: string[] }[];
 }
 
-const SEEDS: Record<BusinessType, SeedSet> = {
+// Built per call so names follow the store language chosen at setup.
+const seeds = (): Record<BusinessType, SeedSet> => ({
   cafe: {
     modifierGroups: [
-      { key: 'size', name: 'ขนาด', min: 1, max: 1, items: [['ปกติ', 0], ['ใหญ่', 1500]] },
-      { key: 'sweet', name: 'ความหวาน', min: 0, max: 1, items: [['หวานน้อย', 0], ['หวานปกติ', 0], ['ไม่หวาน', 0]] },
-      { key: 'milk', name: 'นม', min: 0, max: 1, items: [['นมวัว', 0], ['นมโอ๊ต', 1500], ['นมอัลมอนด์', 1500]] },
+      { key: 'size', name: t('ขนาด'), min: 1, max: 1, items: [[t('ปกติ'), 0], [t('ใหญ่'), 1500]] },
+      { key: 'sweet', name: t('ความหวาน'), min: 0, max: 1, items: [[t('หวานน้อย'), 0], [t('หวานปกติ'), 0], [t('ไม่หวาน'), 0]] },
+      { key: 'milk', name: t('นม'), min: 0, max: 1, items: [[t('นมวัว'), 0], [t('นมโอ๊ต'), 1500], [t('นมอัลมอนด์'), 1500]] },
     ],
     categories: [
       {
-        name: 'กาแฟ',
+        name: t('กาแฟ'),
         color: '#e8dccb',
         station: 'bar',
         products: [
-          { name: 'อเมริกาโน่เย็น', price: 6500, sku: 'C001', cost: 1800, modifiers: ['size', 'sweet'] },
-          { name: 'ลาเต้ร้อน', price: 7500, sku: 'C002', cost: 2200, modifiers: ['size', 'milk'] },
-          { name: 'ลาเต้เย็น', price: 8000, sku: 'C003', cost: 2400, modifiers: ['size', 'sweet', 'milk'] },
-          { name: 'คาปูชิโน่', price: 7500, sku: 'C004', cost: 2200, modifiers: ['size', 'milk'] },
-          { name: 'เอสเพรสโซ่', price: 5500, sku: 'C005', cost: 1500 },
+          { name: t('อเมริกาโน่เย็น'), price: 6500, sku: 'C001', cost: 1800, modifiers: ['size', 'sweet'] },
+          { name: t('ลาเต้ร้อน'), price: 7500, sku: 'C002', cost: 2200, modifiers: ['size', 'milk'] },
+          { name: t('ลาเต้เย็น'), price: 8000, sku: 'C003', cost: 2400, modifiers: ['size', 'sweet', 'milk'] },
+          { name: t('คาปูชิโน่'), price: 7500, sku: 'C004', cost: 2200, modifiers: ['size', 'milk'] },
+          { name: t('เอสเพรสโซ่'), price: 5500, sku: 'C005', cost: 1500 },
         ],
       },
       {
-        name: 'ชา',
+        name: t('ชา'),
         color: '#dcebd6',
         station: 'bar',
         products: [
-          { name: 'มัทฉะลาเต้', price: 8500, sku: 'T001', cost: 2800, modifiers: ['size', 'sweet', 'milk'] },
-          { name: 'ชาไทยเย็น', price: 6000, sku: 'T002', cost: 1500, modifiers: ['size', 'sweet'] },
-          { name: 'ชาเขียวมะลิ', price: 5500, sku: 'T003', cost: 1200, modifiers: ['sweet'] },
+          { name: t('มัทฉะลาเต้'), price: 8500, sku: 'T001', cost: 2800, modifiers: ['size', 'sweet', 'milk'] },
+          { name: t('ชาไทยเย็น'), price: 6000, sku: 'T002', cost: 1500, modifiers: ['size', 'sweet'] },
+          { name: t('ชาเขียวมะลิ'), price: 5500, sku: 'T003', cost: 1200, modifiers: ['sweet'] },
         ],
       },
       {
-        name: 'เบเกอรี่',
+        name: t('เบเกอรี่'),
         color: '#f3e3c3',
         station: 'kitchen',
         products: [
-          { name: 'ครัวซองต์เนยสด', price: 7500, sku: 'B001', cost: 3000, stock: 24 },
-          { name: 'ชีสเค้กบลูเบอร์รี่', price: 11000, sku: 'B002', cost: 4500, stock: 12 },
-          { name: 'บราวนี่', price: 6500, sku: 'B003', cost: 2000, stock: 18 },
-          { name: 'บานอฟฟี่พาย', price: 9500, sku: 'B004', cost: 3500, stock: 8 },
+          { name: t('ครัวซองต์เนยสด'), price: 7500, sku: 'B001', cost: 3000, stock: 24 },
+          { name: t('ชีสเค้กบลูเบอร์รี่'), price: 11000, sku: 'B002', cost: 4500, stock: 12 },
+          { name: t('บราวนี่'), price: 6500, sku: 'B003', cost: 2000, stock: 18 },
+          { name: t('บานอฟฟี่พาย'), price: 9500, sku: 'B004', cost: 3500, stock: 8 },
         ],
       },
       {
-        name: 'เครื่องดื่มอื่นๆ',
+        name: t('เครื่องดื่มอื่นๆ'),
         color: '#d9e8f2',
         station: 'bar',
         products: [
-          { name: 'โซดาเลมอน', price: 5000, sku: 'D001', cost: 1200 },
-          { name: 'น้ำดื่ม', price: 1500, sku: 'D002', cost: 500, stock: 48, barcode: '8851952350017' },
+          { name: t('โซดาเลมอน'), price: 5000, sku: 'D001', cost: 1200 },
+          { name: t('น้ำดื่ม'), price: 1500, sku: 'D002', cost: 500, stock: 48, barcode: '8851952350017' },
         ],
       },
     ],
     zones: [
-      { name: 'ในร้าน', tables: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6'] },
-      { name: 'ระเบียง', tables: ['B1', 'B2', 'B3'] },
+      { name: t('ในร้าน'), tables: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6'] },
+      { name: t('ระเบียง'), tables: ['B1', 'B2', 'B3'] },
     ],
   },
   restaurant: {
     modifierGroups: [
-      { key: 'spicy', name: 'ความเผ็ด', min: 0, max: 1, items: [['ไม่เผ็ด', 0], ['เผ็ดน้อย', 0], ['เผ็ดมาก', 0]] },
-      { key: 'extra', name: 'เพิ่มเติม', min: 0, max: 3, items: [['ไข่ดาว', 1000], ['พิเศษ', 2000], ['ข้าวเพิ่ม', 1000]] },
+      { key: 'spicy', name: t('ความเผ็ด'), min: 0, max: 1, items: [[t('ไม่เผ็ด'), 0], [t('เผ็ดน้อย'), 0], [t('เผ็ดมาก'), 0]] },
+      { key: 'extra', name: t('เพิ่มเติม'), min: 0, max: 3, items: [[t('ไข่ดาว'), 1000], [t('พิเศษ'), 2000], [t('ข้าวเพิ่ม'), 1000]] },
     ],
     categories: [
       {
-        name: 'อาหารจานเดียว',
+        name: t('อาหารจานเดียว'),
         color: '#f6dccb',
         station: 'kitchen',
         products: [
-          { name: 'ข้าวกะเพราหมูสับ', price: 6000, sku: 'F001', cost: 2500, modifiers: ['spicy', 'extra'] },
-          { name: 'ข้าวผัดกุ้ง', price: 7000, sku: 'F002', cost: 3000, modifiers: ['extra'] },
-          { name: 'ผัดไทยกุ้งสด', price: 8000, sku: 'F003', cost: 3500, modifiers: ['spicy', 'extra'] },
-          { name: 'ข้าวมันไก่', price: 5500, sku: 'F004', cost: 2200, modifiers: ['extra'] },
+          { name: t('ข้าวกะเพราหมูสับ'), price: 6000, sku: 'F001', cost: 2500, modifiers: ['spicy', 'extra'] },
+          { name: t('ข้าวผัดกุ้ง'), price: 7000, sku: 'F002', cost: 3000, modifiers: ['extra'] },
+          { name: t('ผัดไทยกุ้งสด'), price: 8000, sku: 'F003', cost: 3500, modifiers: ['spicy', 'extra'] },
+          { name: t('ข้าวมันไก่'), price: 5500, sku: 'F004', cost: 2200, modifiers: ['extra'] },
         ],
       },
       {
-        name: 'กับข้าว',
+        name: t('กับข้าว'),
         color: '#efe4c8',
         station: 'kitchen',
         products: [
-          { name: 'ต้มยำกุ้งน้ำข้น', price: 18000, sku: 'G001', cost: 7000, modifiers: ['spicy'] },
-          { name: 'แกงเขียวหวานไก่', price: 12000, sku: 'G002', cost: 4500, modifiers: ['spicy'] },
-          { name: 'ปลากะพงทอดน้ำปลา', price: 32000, sku: 'G003', cost: 15000 },
-          { name: 'ผัดผักบุ้งไฟแดง', price: 8000, sku: 'G004', cost: 2000, modifiers: ['spicy'] },
+          { name: t('ต้มยำกุ้งน้ำข้น'), price: 18000, sku: 'G001', cost: 7000, modifiers: ['spicy'] },
+          { name: t('แกงเขียวหวานไก่'), price: 12000, sku: 'G002', cost: 4500, modifiers: ['spicy'] },
+          { name: t('ปลากะพงทอดน้ำปลา'), price: 32000, sku: 'G003', cost: 15000 },
+          { name: t('ผัดผักบุ้งไฟแดง'), price: 8000, sku: 'G004', cost: 2000, modifiers: ['spicy'] },
         ],
       },
       {
-        name: 'เครื่องดื่ม',
+        name: t('เครื่องดื่ม'),
         color: '#d9e8f2',
         station: 'bar',
         products: [
-          { name: 'น้ำเปล่า', price: 1500, sku: 'W001', cost: 500 },
-          { name: 'น้ำอัดลม', price: 2500, sku: 'W002', cost: 1200 },
-          { name: 'ชาเย็น', price: 4500, sku: 'W003', cost: 1200 },
-          { name: 'ข้าวสวย', price: 1500, sku: 'W004', cost: 300 },
+          { name: t('น้ำเปล่า'), price: 1500, sku: 'W001', cost: 500 },
+          { name: t('น้ำอัดลม'), price: 2500, sku: 'W002', cost: 1200 },
+          { name: t('ชาเย็น'), price: 4500, sku: 'W003', cost: 1200 },
+          { name: t('ข้าวสวย'), price: 1500, sku: 'W004', cost: 300 },
         ],
       },
     ],
     zones: [
-      { name: 'โซนใน', tables: ['1', '2', '3', '4', '5', '6', '7', '8'] },
-      { name: 'โซนนอก', tables: ['9', '10', '11', '12'] },
-      { name: 'ห้อง VIP', tables: ['V1', 'V2'] },
+      { name: t('โซนใน'), tables: ['1', '2', '3', '4', '5', '6', '7', '8'] },
+      { name: t('โซนนอก'), tables: ['9', '10', '11', '12'] },
+      { name: t('ห้อง VIP'), tables: ['V1', 'V2'] },
     ],
   },
   retail: {
     categories: [
       {
-        name: 'เครื่องดื่ม',
+        name: t('เครื่องดื่ม'),
         color: '#d9e8f2',
         products: [
-          { name: 'น้ำดื่ม 600 มล.', price: 700, sku: 'R001', cost: 450, stock: 120, barcode: '8850999320014' },
-          { name: 'โค้ก 325 มล.', price: 1700, sku: 'R002', cost: 1200, stock: 96, barcode: '8851959132012' },
-          { name: 'ชาเขียว 500 มล.', price: 2000, sku: 'R003', cost: 1400, stock: 60, barcode: '8854698001012' },
-          { name: 'กาแฟกระป๋อง', price: 1500, sku: 'R004', cost: 1000, stock: 4, barcode: '8851123212014' },
+          { name: t('น้ำดื่ม 600 มล.'), price: 700, sku: 'R001', cost: 450, stock: 120, barcode: '8850999320014' },
+          { name: t('โค้ก 325 มล.'), price: 1700, sku: 'R002', cost: 1200, stock: 96, barcode: '8851959132012' },
+          { name: t('ชาเขียว 500 มล.'), price: 2000, sku: 'R003', cost: 1400, stock: 60, barcode: '8854698001012' },
+          { name: t('กาแฟกระป๋อง'), price: 1500, sku: 'R004', cost: 1000, stock: 4, barcode: '8851123212014' },
         ],
       },
       {
-        name: 'ขนม',
+        name: t('ขนม'),
         color: '#f3e3c3',
         products: [
-          { name: 'มันฝรั่งทอด 50 ก.', price: 2000, sku: 'S001', cost: 1400, stock: 40, barcode: '8850718801015' },
-          { name: 'ขนมปังแผ่น', price: 3500, sku: 'S002', cost: 2500, stock: 15, barcode: '8851234567892' },
-          { name: 'ช็อกโกแลตแท่ง', price: 2500, sku: 'S003', cost: 1700, stock: 3, barcode: '8851234567908' },
+          { name: t('มันฝรั่งทอด 50 ก.'), price: 2000, sku: 'S001', cost: 1400, stock: 40, barcode: '8850718801015' },
+          { name: t('ขนมปังแผ่น'), price: 3500, sku: 'S002', cost: 2500, stock: 15, barcode: '8851234567892' },
+          { name: t('ช็อกโกแลตแท่ง'), price: 2500, sku: 'S003', cost: 1700, stock: 3, barcode: '8851234567908' },
         ],
       },
       {
-        name: 'ของใช้',
+        name: t('ของใช้'),
         color: '#e6e1f0',
         products: [
-          { name: 'สบู่ก้อน', price: 2500, sku: 'H001', cost: 1600, stock: 30, barcode: '8851234567915' },
-          { name: 'ยาสีฟัน 150 ก.', price: 5900, sku: 'H002', cost: 4200, stock: 20, barcode: '8851234567922' },
-          { name: 'ทิชชู่ม้วน 6 ม้วน', price: 8900, sku: 'H003', cost: 6500, stock: 10, barcode: '8851234567939' },
+          { name: t('สบู่ก้อน'), price: 2500, sku: 'H001', cost: 1600, stock: 30, barcode: '8851234567915' },
+          { name: t('ยาสีฟัน 150 ก.'), price: 5900, sku: 'H002', cost: 4200, stock: 20, barcode: '8851234567922' },
+          { name: t('ทิชชู่ม้วน 6 ม้วน'), price: 8900, sku: 'H003', cost: 6500, stock: 10, barcode: '8851234567939' },
         ],
       },
       {
-        name: 'ผักผลไม้ (ชั่งน้ำหนัก)',
+        name: t('ผักผลไม้ (ชั่งน้ำหนัก)'),
         color: '#dcebd6',
         products: [
-          { name: 'กล้วยหอม', price: 6000, sku: 'P001', cost: 3500, stock: 20, unit: 'กก.', kind: 'weighted' },
-          { name: 'ส้มสายน้ำผึ้ง', price: 8000, sku: 'P002', cost: 5000, stock: 15, unit: 'กก.', kind: 'weighted' },
+          { name: t('กล้วยหอม'), price: 6000, sku: 'P001', cost: 3500, stock: 20, unit: t('กก.'), kind: 'weighted' },
+          { name: t('ส้มสายน้ำผึ้ง'), price: 8000, sku: 'P002', cost: 5000, stock: 15, unit: t('กก.'), kind: 'weighted' },
         ],
       },
     ],
@@ -167,47 +169,47 @@ const SEEDS: Record<BusinessType, SeedSet> = {
   fashion: {
     categories: [
       {
-        name: 'เสื้อ',
+        name: t('เสื้อ'),
         color: '#e6e1f0',
         products: [
           {
-            name: 'เสื้อยืดคอกลม',
+            name: t('เสื้อยืดคอกลม'),
             price: 29000,
             sku: 'TS01',
             cost: 12000,
             stock: 0,
             variants: ['S', 'M', 'L', 'XL'].flatMap((s) =>
-              ['ขาว', 'ดำ'].map((c) => ({ name: `${s} / ${c}`, price: s === 'XL' ? 32000 : 29000, options: { ไซซ์: s, สี: c } })),
+              [t('ขาว'), t('ดำ')].map((c) => ({ name: `${s} / ${c}`, price: s === 'XL' ? 32000 : 29000, options: { [t('ไซซ์')]: s, [t('สี')]: c } })),
             ),
           },
           {
-            name: 'เสื้อเชิ้ตลินิน',
+            name: t('เสื้อเชิ้ตลินิน'),
             price: 69000,
             sku: 'SH01',
             cost: 30000,
-            variants: ['M', 'L'].map((s) => ({ name: s, price: 69000, options: { ไซซ์: s } })),
+            variants: ['M', 'L'].map((s) => ({ name: s, price: 69000, options: { [t('ไซซ์')]: s } })),
           },
         ],
       },
       {
-        name: 'กางเกง',
+        name: t('กางเกง'),
         color: '#d9e8f2',
         products: [
           {
-            name: 'กางเกงยีนส์ทรงตรง',
+            name: t('กางเกงยีนส์ทรงตรง'),
             price: 89000,
             sku: 'JN01',
             cost: 40000,
-            variants: ['28', '30', '32', '34'].map((s) => ({ name: `เอว ${s}`, price: 89000, options: { เอว: s } })),
+            variants: ['28', '30', '32', '34'].map((s) => ({ name: t('เอว {0}', s), price: 89000, options: { [t('เอว')]: s } })),
           },
         ],
       },
       {
-        name: 'เครื่องประดับ',
+        name: t('เครื่องประดับ'),
         color: '#f3e3c3',
         products: [
-          { name: 'หมวกแก๊ป', price: 25000, sku: 'AC01', cost: 9000, stock: 25 },
-          { name: 'ถุงเท้า (แพ็ค 3)', price: 15000, sku: 'AC02', cost: 6000, stock: 40 },
+          { name: t('หมวกแก๊ป'), price: 25000, sku: 'AC01', cost: 9000, stock: 25 },
+          { name: t('ถุงเท้า (แพ็ค 3)'), price: 15000, sku: 'AC02', cost: 6000, stock: 40 },
         ],
       },
     ],
@@ -215,21 +217,21 @@ const SEEDS: Record<BusinessType, SeedSet> = {
   service: {
     categories: [
       {
-        name: 'บริการ',
+        name: t('บริการ'),
         color: '#dcebd6',
         products: [
-          { name: 'ตัดผมชาย', price: 20000, sku: 'SV01', kind: 'service' },
-          { name: 'สระไดร์', price: 15000, sku: 'SV02', kind: 'service' },
-          { name: 'ทำสีผม', price: 120000, sku: 'SV03', kind: 'service' },
-          { name: 'นวดไทย 1 ชม.', price: 30000, sku: 'SV04', kind: 'service' },
+          { name: t('ตัดผมชาย'), price: 20000, sku: 'SV01', kind: 'service' },
+          { name: t('สระไดร์'), price: 15000, sku: 'SV02', kind: 'service' },
+          { name: t('ทำสีผม'), price: 120000, sku: 'SV03', kind: 'service' },
+          { name: t('นวดไทย 1 ชม.'), price: 30000, sku: 'SV04', kind: 'service' },
         ],
       },
       {
-        name: 'สินค้า',
+        name: t('สินค้า'),
         color: '#f3e3c3',
         products: [
-          { name: 'แชมพู 250 มล.', price: 35000, sku: 'PR01', cost: 18000, stock: 12 },
-          { name: 'ทรีตเมนต์', price: 45000, sku: 'PR02', cost: 22000, stock: 8 },
+          { name: t('แชมพู 250 มล.'), price: 35000, sku: 'PR01', cost: 18000, stock: 12 },
+          { name: t('ทรีตเมนต์'), price: 45000, sku: 'PR02', cost: 22000, stock: 8 },
         ],
       },
     ],
@@ -237,19 +239,19 @@ const SEEDS: Record<BusinessType, SeedSet> = {
   other: {
     categories: [
       {
-        name: 'ทั่วไป',
+        name: t('ทั่วไป'),
         color: '#e3e1da',
         products: [
-          { name: 'สินค้าตัวอย่าง A', price: 10000, sku: 'X001', cost: 6000, stock: 10 },
-          { name: 'สินค้าตัวอย่าง B', price: 25000, sku: 'X002', cost: 15000, stock: 10 },
+          { name: t('สินค้าตัวอย่าง A'), price: 10000, sku: 'X001', cost: 6000, stock: 10 },
+          { name: t('สินค้าตัวอย่าง B'), price: 25000, sku: 'X002', cost: 15000, stock: 10 },
         ],
       },
     ],
   },
-};
+});
 
 export async function seedSampleData(tx: Tx, type: BusinessType, branchId: string, userId: string): Promise<void> {
-  const set = SEEDS[type];
+  const set = seeds()[type];
   const now = nowIso();
   const groupIds = new Map<string, string>();
   for (const g of set.modifierGroups ?? []) {
@@ -284,7 +286,7 @@ export async function seedSampleData(tx: Tx, type: BusinessType, branchId: strin
           name: p.name,
           category_id: cid,
           kind,
-          unit: p.unit ?? (kind === 'service' ? 'ครั้ง' : 'ชิ้น'),
+          unit: p.unit ?? (kind === 'service' ? t('ครั้ง') : t('ชิ้น')),
           price: p.price,
           cost: p.cost ?? 0,
           taxable: 1,
@@ -354,7 +356,7 @@ export async function seedSampleData(tx: Tx, type: BusinessType, branchId: strin
             ref_id: '',
             lot_no: '',
             expiry_date: '',
-            note: 'ยอดยกมา (ข้อมูลตัวอย่าง)',
+            note: t('ยอดยกมา (ข้อมูลตัวอย่าง)'),
             user_id: userId,
             created_at: now,
           })
@@ -377,13 +379,13 @@ export async function seedSampleData(tx: Tx, type: BusinessType, branchId: strin
     { id: uuid(), name: 'Gold', min_spend: 500000, point_multiplier: 1.5 },
   ]).execute();
   const gid = uuid();
-  await tx.insertInto('customer_groups').values({ id: gid, name: 'สมาชิกทั่วไป', discount_percent: 5, price_tier_id: null }).execute();
+  await tx.insertInto('customer_groups').values({ id: gid, name: t('สมาชิกทั่วไป'), discount_percent: 5, price_tier_id: null }).execute();
   await tx
     .insertInto('customers')
     .values({
       id: uuid(),
       code: 'M0001',
-      name: 'คุณสมใจ ใจดี',
+      name: t('คุณสมใจ ใจดี'),
       phone: '0812345678',
       email: '',
       birthday: '',

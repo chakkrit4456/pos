@@ -9,3 +9,4 @@ export * from './receipt.js';
 export * from './types.js';
 export * from './cart.js';
 export * from './banks.js';
+export * from './i18n.js';

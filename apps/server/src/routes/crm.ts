@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { customerGroupSchema, customerSchema, memberTierSchema, promotionSchema, supplierSchema } from '@flexpos/shared';
+import { customerGroupSchema, customerSchema, memberTierSchema, promotionSchema, supplierSchema, t } from '@flexpos/shared';
 import { ilike } from '@flexpos/db';
 import type { AppContext } from '../context.js';
 import { audit, nextSeq, requireAuth } from '../auth.js';
@@ -37,7 +37,7 @@ export function crmRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/api/customers/:id', auth('customers.view'), async (req) => {
     const { id } = req.params as { id: string };
     const c = await ctx.db.selectFrom('customers').selectAll().where('id', '=', id).executeTakeFirst();
-    if (!c) throw notFound('ลูกค้า');
+    if (!c) throw notFound(t('ลูกค้า'));
     const [points, credits, sales] = await Promise.all([
       ctx.db.selectFrom('point_moves').selectAll().where('customer_id', '=', id).orderBy('created_at', 'desc').limit(50).execute(),
       ctx.db.selectFrom('credit_moves').selectAll().where('customer_id', '=', id).orderBy('created_at', 'desc').limit(50).execute(),
@@ -96,7 +96,7 @@ export function crmRoutes(app: FastifyInstance, ctx: AppContext) {
     let q = ctx.db.selectFrom('customers').select(['id', 'name']).where('phone', '=', p).where('active', '=', 1);
     if (id) q = q.where('id', '!=', id);
     const dup = await q.executeTakeFirst();
-    if (dup) throw conflict(`เบอร์นี้เป็นของสมาชิก “${dup.name}” อยู่แล้ว`);
+    if (dup) throw conflict(t('เบอร์นี้เป็นของสมาชิก “{0}” อยู่แล้ว', dup.name));
   };
 
   app.post('/api/customers', auth('customers.manage'), async (req) => {
@@ -120,8 +120,8 @@ export function crmRoutes(app: FastifyInstance, ctx: AppContext) {
   app.delete('/api/customers/:id', auth('customers.manage'), async (req) => {
     const { id } = req.params as { id: string };
     const c = await ctx.db.selectFrom('customers').select(['credit_balance', 'name']).where('id', '=', id).executeTakeFirst();
-    if (!c) throw notFound('ลูกค้า');
-    if (c.credit_balance > 0) throw conflict('ลูกค้ายังมียอดค้างชำระ ลบไม่ได้');
+    if (!c) throw notFound(t('ลูกค้า'));
+    if (c.credit_balance > 0) throw conflict(t('ลูกค้ายังมียอดค้างชำระ ลบไม่ได้'));
     await ctx.db.updateTable('customers').set({ active: 0, phone: '' }).where('id', '=', id).execute();
     await audit(ctx, ctx.db, req, 'customer.delete', 'customer', id, { name: c.name });
     return { ok: true };
@@ -132,8 +132,8 @@ export function crmRoutes(app: FastifyInstance, ctx: AppContext) {
     const b = z.object({ points: z.number().int(), note: z.string().trim().min(1).max(200) }).parse(req.body);
     await ctx.db.transaction().execute(async (tx) => {
       const c = await tx.selectFrom('customers').select('points').where('id', '=', id).executeTakeFirst();
-      if (!c) throw notFound('ลูกค้า');
-      if (c.points + b.points < 0) throw badRequest('แต้มคงเหลือติดลบไม่ได้');
+      if (!c) throw notFound(t('ลูกค้า'));
+      if (c.points + b.points < 0) throw badRequest(t('แต้มคงเหลือติดลบไม่ได้'));
       await tx.updateTable('customers').set({ points: c.points + b.points }).where('id', '=', id).execute();
       await tx.insertInto('point_moves').values({ id: uuid(), customer_id: id, sale_id: null, points: b.points, type: 'adjust', note: b.note, created_at: nowIso() }).execute();
       await audit(ctx, tx, req, 'customer.points_adjust', 'customer', id, b);
@@ -217,11 +217,11 @@ export function crmRoutes(app: FastifyInstance, ctx: AppContext) {
     return rows.map((r) => ({ ...rowToRule(r), usageCount: r.usage_count, usageLimit: r.usage_limit }));
   });
   const promoRow = (b: z.infer<typeof promotionSchema>) => {
-    if (b.type === 'bxgy' && (b.buyQty < 1 || b.getQty < 1)) throw badRequest('ซื้อ X แถม Y ต้องกำหนดจำนวนซื้อและจำนวนแถมอย่างน้อย 1');
-    if (b.type === 'percent' && b.value > 100) throw badRequest('ส่วนลดเปอร์เซ็นต์ต้องไม่เกิน 100');
-    if (b.type === 'threshold' && b.minSubtotal <= 0) throw badRequest('โปรซื้อครบยอดต้องกำหนดยอดขั้นต่ำ');
-    if (b.startsAt && b.endsAt && b.startsAt > b.endsAt) throw badRequest('วันเริ่มต้องไม่หลังวันสิ้นสุด');
-    if ((b.timeFrom && !b.timeTo) || (!b.timeFrom && b.timeTo)) throw badRequest('กรุณากำหนดทั้งเวลาเริ่มและเวลาสิ้นสุด');
+    if (b.type === 'bxgy' && (b.buyQty < 1 || b.getQty < 1)) throw badRequest(t('ซื้อ X แถม Y ต้องกำหนดจำนวนซื้อและจำนวนแถมอย่างน้อย 1'));
+    if (b.type === 'percent' && b.value > 100) throw badRequest(t('ส่วนลดเปอร์เซ็นต์ต้องไม่เกิน 100'));
+    if (b.type === 'threshold' && b.minSubtotal <= 0) throw badRequest(t('โปรซื้อครบยอดต้องกำหนดยอดขั้นต่ำ'));
+    if (b.startsAt && b.endsAt && b.startsAt > b.endsAt) throw badRequest(t('วันเริ่มต้องไม่หลังวันสิ้นสุด'));
+    if ((b.timeFrom && !b.timeTo) || (!b.timeFrom && b.timeTo)) throw badRequest(t('กรุณากำหนดทั้งเวลาเริ่มและเวลาสิ้นสุด'));
     return {
       name: b.name,
       type: b.type,

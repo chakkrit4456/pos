@@ -22,6 +22,7 @@ import { crmRoutes } from './routes/crm.js';
 import { restaurantRoutes } from './routes/restaurant.js';
 import { adminRoutes } from './routes/admin.js';
 import { reportRoutes } from './routes/reports.js';
+import { t } from '@flexpos/shared';
 
 export interface ServerOptions {
   dataDir: string;
@@ -126,11 +127,11 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
   if (webDir) {
     await app.register(fastifyStatic, { root: webDir, prefix: '/', wildcard: false, maxAge: '1h' });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'not_found', message: 'ไม่พบ API นี้' });
+      if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'not_found', message: t('ไม่พบ API นี้') });
       return reply.type('text/html').header('cache-control', 'no-cache').sendFile('index.html');
     });
   } else {
-    app.setNotFoundHandler((_req, reply) => reply.status(404).send({ error: 'not_found', message: 'ไม่พบหน้านี้' }));
+    app.setNotFoundHandler((_req, reply) => reply.status(404).send({ error: 'not_found', message: t('ไม่พบหน้านี้') }));
   }
 
   if (opts.workers !== false) {

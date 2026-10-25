@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { ALL_PERMISSIONS, type Permission } from './permissions.js';
+import { t } from './i18n.js';
 
 const id = z.string().min(1).max(64);
 const optId = id.nullable().optional();
 const money = z.number().int();
-const name = z.string().trim().min(1, 'กรุณากรอกชื่อ').max(200);
+const name = z.string().trim().min(1, t('กรุณากรอกชื่อ')).max(200);
 const jsonRecord = z.record(z.string(), z.unknown());
 
 export const discountSchema = z.object({
@@ -32,7 +33,7 @@ export const setupCompleteSchema = z.object({
   language: z.enum(['th', 'en']),
   store: z.object({
     name,
-    branchName: z.string().max(100).default('สำนักงานใหญ่'),
+    branchName: z.string().max(100).default(t('สำนักงานใหญ่')),
     address: z.string().max(500).default(''),
     taxId: z.string().max(20).default(''),
     phone: z.string().max(30).default(''),
@@ -51,11 +52,11 @@ export const setupCompleteSchema = z.object({
     username: z
       .string()
       .trim()
-      .min(3, 'อย่างน้อย 3 ตัวอักษร')
+      .min(3, t('อย่างน้อย 3 ตัวอักษร'))
       .max(50)
-      .regex(/^[a-zA-Z0-9._-]+$/, 'ใช้ได้เฉพาะ a-z 0-9 . _ -'),
-    password: z.string().min(8, 'รหัสผ่านอย่างน้อย 8 ตัวอักษร').max(200),
-    pin: z.string().regex(/^\d{4,6}$/, 'PIN 4-6 หลัก'),
+      .regex(/^[a-zA-Z0-9._-]+$/, t('ใช้ได้เฉพาะ a-z 0-9 . _ -')),
+    password: z.string().min(8, t('รหัสผ่านอย่างน้อย 8 ตัวอักษร')).max(200),
+    pin: z.string().regex(/^\d{4,6}$/, t('PIN 4-6 หลัก')),
   }),
   sampleData: z.boolean().default(false),
 });
@@ -127,7 +128,7 @@ export const productSchema = z.object({
   sku: z.string().trim().max(64).default(''),
   categoryId: optId,
   kind: z.enum(PRODUCT_KINDS).default('standard'),
-  unit: z.string().max(30).default('ชิ้น'),
+  unit: z.string().max(30).default(t('ชิ้น')),
   price: money.min(0),
   cost: money.min(0).default(0),
   taxable: z.boolean().default(true),
@@ -162,7 +163,7 @@ export const modifierGroupSchema = z.object({
         active: z.boolean().default(true),
       }),
     )
-    .min(1, 'ต้องมีตัวเลือกอย่างน้อย 1 รายการ'),
+    .min(1, t('ต้องมีตัวเลือกอย่างน้อย 1 รายการ')),
 });
 
 export const priceTierSchema = z.object({ name });
@@ -175,7 +176,7 @@ export const customFieldSchema = z.object({
     .trim()
     .min(1)
     .max(40)
-    .regex(/^[a-z][a-z0-9_]*$/, 'ใช้ a-z 0-9 _ ขึ้นต้นด้วยตัวอักษร'),
+    .regex(/^[a-z][a-z0-9_]*$/, t('ใช้ a-z 0-9 _ ขึ้นต้นด้วยตัวอักษร')),
   label: name,
   type: z.enum(CUSTOM_FIELD_TYPES),
   options: z.array(z.string().trim().min(1)).default([]),
@@ -263,7 +264,7 @@ export const stockDocSchema = z.object({
         expiryDate: z.string().max(10).default(''),
       }),
     )
-    .min(1, 'ต้องมีอย่างน้อย 1 รายการ'),
+    .min(1, t('ต้องมีอย่างน้อย 1 รายการ')),
 });
 
 /* ---------- Promotions ---------- */
@@ -302,7 +303,7 @@ export const saleLineSchema = z.object({
   variantId: optId,
   unitId: optId,
   name: z.string().max(300),
-  qty: z.number().refine((v) => v !== 0, 'จำนวนต้องไม่เป็นศูนย์'),
+  qty: z.number().refine((v) => v !== 0, t('จำนวนต้องไม่เป็นศูนย์')),
   unitPrice: money.min(0),
   priceOverridden: z.boolean().default(false),
   modifiers: z
@@ -320,16 +321,16 @@ export const salePaymentSchema = z.object({
 });
 
 export const taxInvoiceSchema = z.object({
-  name: z.string().trim().min(1, 'กรุณากรอกชื่อผู้ซื้อ').max(200),
-  taxId: z.string().trim().regex(/^\d{13}$/, 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก'),
-  branch: z.string().max(40).default('สำนักงานใหญ่'),
+  name: z.string().trim().min(1, t('กรุณากรอกชื่อผู้ซื้อ')).max(200),
+  taxId: z.string().trim().regex(/^\d{13}$/, t('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก')),
+  branch: z.string().max(40).default(t('สำนักงานใหญ่')),
   address: z.string().max(500).default(''),
 });
 
 export const saleSchema = z.object({
   /** Client-generated UUID; also the idempotency key for offline sync. */
   id: z.string().uuid(),
-  lines: z.array(saleLineSchema).min(1, 'ยังไม่มีรายการ'),
+  lines: z.array(saleLineSchema).min(1, t('ยังไม่มีรายการ')),
   billDiscount: discountSchema.nullable().default(null),
   customerId: optId,
   couponCodes: z.array(z.string()).default([]),
@@ -346,12 +347,12 @@ export type SaleInput = z.infer<typeof saleSchema>;
 
 export const quoteSchema = saleSchema.pick({ lines: true, billDiscount: true, customerId: true, couponCodes: true, pointsRedeemed: true });
 
-export const voidSchema = z.object({ reason: z.string().trim().min(1, 'กรุณาระบุเหตุผล').max(300), managerPin: z.string().optional() });
+export const voidSchema = z.object({ reason: z.string().trim().min(1, t('กรุณาระบุเหตุผล')).max(300), managerPin: z.string().optional() });
 
 export const refundSchema = z.object({
   id: z.string().uuid(),
   lines: z.array(z.object({ lineId: id, qty: z.number().positive() })).min(1),
-  reason: z.string().trim().min(1, 'กรุณาระบุเหตุผล').max(300),
+  reason: z.string().trim().min(1, t('กรุณาระบุเหตุผล')).max(300),
   methodCode: z.string().min(1),
   restock: z.boolean().default(true),
   managerPin: z.string().optional(),

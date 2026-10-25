@@ -4,6 +4,8 @@ import { useCatalog } from '@/lib/catalog';
 import { money } from '@/lib/settings';
 import { Input, Spinner } from './ui/core';
 import { Dialog } from './ui/dialog';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 export interface PickedProduct {
   productId: string;
@@ -14,7 +16,7 @@ export interface PickedProduct {
 }
 
 /** Search the catalog and pick a product (and variant) — used by stock documents and promotions. */
-export function ProductPicker({ open, onClose, onPick, onlyTracked, title = 'เลือกสินค้า' }: { open: boolean; onClose: () => void; onPick: (p: PickedProduct) => void; onlyTracked?: boolean; title?: string }) {
+export function ProductPicker({ open, onClose, onPick, onlyTracked, title = t('เลือกสินค้า') }: { open: boolean; onClose: () => void; onPick: (p: PickedProduct) => void; onlyTracked?: boolean; title?: string }) {
   const { index, isLoading } = useCatalog();
   const [q, setQ] = useState('');
   const rows = useMemo((): (PickedProduct & { price: number; stock: number | null })[] => {
@@ -37,7 +39,7 @@ export function ProductPicker({ open, onClose, onPick, onlyTracked, title = 'เ
             className="pl-9"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ค้นหาหรือสแกนบาร์โค้ด"
+            placeholder={t('ค้นหาหรือสแกนบาร์โค้ด')}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && rows.length === 1) {
                 onPick(rows[0]!);
@@ -50,7 +52,7 @@ export function ProductPicker({ open, onClose, onPick, onlyTracked, title = 'เ
           {isLoading ? (
             <Spinner className="mx-auto my-8" />
           ) : rows.length === 0 ? (
-            <p className="py-8 text-center text-[14px] text-muted">ไม่พบสินค้า{onlyTracked ? ' (เฉพาะสินค้าที่ติดตามสต็อก)' : ''}</p>
+            <p className="py-8 text-center text-[14px] text-muted">{tn('ไม่พบสินค้า{0}', onlyTracked ? t(' (เฉพาะสินค้าที่ติดตามสต็อก)') : '')}</p>
           ) : (
             rows.map((r) => (
               <button
@@ -65,7 +67,7 @@ export function ProductPicker({ open, onClose, onPick, onlyTracked, title = 'เ
                   <span className="font-medium">{r.name}</span>
                   <span className="font-mono text-[12px] text-muted">{r.sku}</span>
                 </span>
-                {r.stock !== null && <span className="num text-[13px] text-muted">คงเหลือ {r.stock}</span>}
+                {r.stock !== null && <span className="num text-[13px] text-muted">{tn('คงเหลือ {0}', r.stock)}</span>}
                 <span className="num text-[14px]">{money(r.price)}</span>
               </button>
             ))

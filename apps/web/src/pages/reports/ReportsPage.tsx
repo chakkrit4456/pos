@@ -10,28 +10,30 @@ import { printInBrowser } from '@/lib/print';
 import { addDays, cn, qtyText, todayStr } from '@/lib/utils';
 import { Page } from '@/components/layout/AppShell';
 import { Button, EmptyState, ErrorState, Input, PageHeader, Select, SkeletonRows } from '@/components/ui/core';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 type Kind = 'day' | 'hour' | 'product' | 'category' | 'staff' | 'method' | 'branch' | 'vat' | 'adjustments';
-const KINDS: { value: Kind; label: string }[] = [
-  { value: 'day', label: 'ยอดขายรายวัน' },
-  { value: 'hour', label: 'ยอดขายรายชั่วโมง' },
-  { value: 'product', label: 'ตามสินค้า' },
-  { value: 'category', label: 'ตามหมวดหมู่' },
-  { value: 'staff', label: 'ตามพนักงาน' },
-  { value: 'method', label: 'ตามวิธีชำระเงิน' },
-  { value: 'branch', label: 'ตามสาขา' },
-  { value: 'vat', label: 'รายงานภาษีขาย' },
-  { value: 'adjustments', label: 'การยกเลิก / คืนสินค้า' },
+const KINDS: { value: Kind; label: string; column?: string }[] = [
+  { value: 'day', label: t('ยอดขายรายวัน'), column: t('วันที่') },
+  { value: 'hour', label: t('ยอดขายรายชั่วโมง'), column: t('เวลา') },
+  { value: 'product', label: t('ตามสินค้า'), column: t('สินค้า') },
+  { value: 'category', label: t('ตามหมวดหมู่'), column: t('หมวดหมู่') },
+  { value: 'staff', label: t('ตามพนักงาน'), column: t('พนักงาน') },
+  { value: 'method', label: t('ตามวิธีชำระเงิน'), column: t('วิธีชำระเงิน') },
+  { value: 'branch', label: t('ตามสาขา'), column: t('สาขา') },
+  { value: 'vat', label: t('รายงานภาษีขาย') },
+  { value: 'adjustments', label: t('การยกเลิก / คืนสินค้า') },
 ];
 
 interface SalesRow { key: string; label: string; qty: number; bills: number; gross: number; discount: number; net: number; vat: number; cost: number | null; profit: number | null }
 
 const PRESETS = [
-  { label: 'วันนี้', from: () => todayStr(), to: () => todayStr() },
-  { label: 'เมื่อวาน', from: () => addDays(todayStr(), -1), to: () => addDays(todayStr(), -1) },
-  { label: '7 วัน', from: () => addDays(todayStr(), -6), to: () => todayStr() },
-  { label: 'เดือนนี้', from: () => todayStr().slice(0, 8) + '01', to: () => todayStr() },
-  { label: 'เดือนก่อน', from: () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return todayStr(d); }, to: () => { const d = new Date(); d.setDate(0); return todayStr(d); } },
+  { label: t('วันนี้'), from: () => todayStr(), to: () => todayStr() },
+  { label: t('เมื่อวาน'), from: () => addDays(todayStr(), -1), to: () => addDays(todayStr(), -1) },
+  { label: t('7 วัน'), from: () => addDays(todayStr(), -6), to: () => todayStr() },
+  { label: t('เดือนนี้'), from: () => todayStr().slice(0, 8) + '01', to: () => todayStr() },
+  { label: t('เดือนก่อน'), from: () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return todayStr(d); }, to: () => { const d = new Date(); d.setDate(0); return todayStr(d); } },
 ];
 
 export default function ReportsPage() {
@@ -60,17 +62,17 @@ export default function ReportsPage() {
     const blocks: PrintDoc['blocks'] = [
       { t: 'text', text: settings.store.name, bold: true, size: 2 },
       { t: 'text', text: `${title} · ${f.date(from)} – ${f.date(to)}` },
-      ...(kind === 'vat' && settings.store.taxId ? [{ t: 'text' as const, text: `เลขประจำตัวผู้เสียภาษี ${settings.store.taxId}` }] : []),
+      ...(kind === 'vat' && settings.store.taxId ? [{ t: 'text' as const, text: t('เลขประจำตัวผู้เสียภาษี {0}', settings.store.taxId) }] : []),
       { t: 'line' },
     ];
     if (kind === 'vat' && vat.data) {
       for (const i of vat.data.items) blocks.push({ t: 'row', left: `${i.date} ${i.docNo} ${i.customer}${i.taxId ? ' ' + i.taxId : ''}${i.status ? ' (' + i.status + ')' : ''}`, right: `${money(i.base)} | VAT ${money(i.vat)}` });
-      blocks.push({ t: 'line' }, { t: 'row', left: 'รวม', right: `${money(vat.data.total.base)} | VAT ${money(vat.data.total.vat)}`, bold: true });
+      blocks.push({ t: 'line' }, { t: 'row', left: t('รวม'), right: `${money(vat.data.total.base)} | VAT ${money(vat.data.total.vat)}`, bold: true });
     } else if (kind === 'adjustments' && adj.data) {
       for (const i of adj.data.items) blocks.push({ t: 'row', left: `${f.dateTime(i.at)} ${i.docNo} ${i.kind} · ${i.reason ?? ''}`, right: money(i.total) });
     } else if (sales.data) {
       for (const r of sales.data.rows) blocks.push({ t: 'row', left: `${r.label}${r.qty ? ` (${qtyText(r.qty)})` : ''}`, right: money(r.net) });
-      blocks.push({ t: 'line' }, { t: 'row', left: 'รวม', right: money(sales.data.total.net), bold: true });
+      blocks.push({ t: 'line' }, { t: 'row', left: t('รวม'), right: money(sales.data.total.net), bold: true });
     }
     void printInBrowser({ paper: 'A4', blocks });
   };
@@ -78,38 +80,38 @@ export default function ReportsPage() {
   return (
     <Page>
       <PageHeader
-        title="รายงาน"
+        title={t('รายงาน')}
         actions={
           <>
-            <Button icon={<Printer className="h-4 w-4" />} onClick={printPdf}>พิมพ์ / PDF</Button>
+            <Button icon={<Printer className="h-4 w-4" />} onClick={printPdf}>{t('พิมพ์ / PDF')}</Button>
             <Button icon={<Download className="h-4 w-4" />} onClick={() => exportAs('xlsx')}>Excel</Button>
             <Button onClick={() => exportAs('csv')}>CSV</Button>
           </>
         }
       />
       <div className="flex flex-wrap items-center gap-2">
-        <Select className="w-auto min-w-[200px]" value={kind} onChange={(e) => setKind(e.target.value as Kind)} aria-label="ประเภทรายงาน">
+        <Select className="w-auto min-w-[200px]" value={kind} onChange={(e) => setKind(e.target.value as Kind)} aria-label={t('ประเภทรายงาน')}>
           {KINDS.filter((k) => k.value !== 'branch' || settings.modules.multiBranch).map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
         </Select>
-        <Input type="date" className="w-auto" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="ตั้งแต่" />
+        <Input type="date" className="w-auto" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={t('ตั้งแต่')} />
         <span className="text-muted">–</span>
-        <Input type="date" className="w-auto" value={to} onChange={(e) => setTo(e.target.value)} aria-label="ถึง" />
+        <Input type="date" className="w-auto" value={to} onChange={(e) => setTo(e.target.value)} aria-label={t('ถึง')} />
         {PRESETS.map((p) => (
           <button key={p.label} onClick={() => (setFrom(p.from()), setTo(p.to()))} className={cn('h-10 rounded-full border px-3 text-[13px]', from === p.from() && to === p.to() ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-surface')}>{p.label}</button>
         ))}
         {branches.data && branches.data.length > 1 && (
-          <Select className="w-auto" value={branchId} onChange={(e) => setBranchId(e.target.value)} aria-label="สาขา">
-            <option value="">สาขาปัจจุบัน</option>
-            <option value="all">ทุกสาขา</option>
+          <Select className="w-auto" value={branchId} onChange={(e) => setBranchId(e.target.value)} aria-label={t('สาขา')}>
+            <option value="">{t('สาขาปัจจุบัน')}</option>
+            <option value="all">{t('ทุกสาขา')}</option>
             {branches.data.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </Select>
         )}
       </div>
       <div className="card overflow-x-auto">
         {active.isLoading ? <SkeletonRows /> : active.isError ? <ErrorState error={active.error} onRetry={() => void active.refetch()} /> : kind === 'vat' ? (
-          !vat.data?.items.length ? <EmptyState title="ไม่มีเอกสารในช่วงนี้" /> : (
+          !vat.data?.items.length ? <EmptyState title={t('ไม่มีเอกสารในช่วงนี้')} /> : (
             <table className="num w-full min-w-[900px] text-[14px]">
-              <thead className="bg-sunken text-left text-[12px] text-muted"><tr>{['วันที่', 'เลขที่', 'ประเภท', 'ผู้ซื้อ', 'เลขผู้เสียภาษี', 'มูลค่า', 'VAT', 'ยกเว้น', 'รวม'].map((h, i) => <th key={h} className={cn('px-4 py-3', i >= 5 && 'text-right')}>{h}</th>)}</tr></thead>
+              <thead className="bg-sunken text-left text-[12px] text-muted"><tr>{[t('วันที่'), t('เลขที่'), t('ประเภท'), t('ผู้ซื้อ'), t('เลขผู้เสียภาษี'), t('มูลค่า'), 'VAT', t('ยกเว้น'), t('รวม')].map((h, i) => <th key={h} className={cn('px-4 py-3', i >= 5 && 'text-right')}>{h}</th>)}</tr></thead>
               <tbody>
                 {vat.data.items.map((i, n) => (
                   <tr key={n} className={cn('border-t border-line-soft', i.status && 'text-faint line-through')}>
@@ -118,28 +120,28 @@ export default function ReportsPage() {
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="border-t-2 border-line font-semibold"><tr><td className="px-4 py-3" colSpan={5}>รวม {vat.data.items.length} เอกสาร</td><td className="px-4 py-3 text-right">{money(vat.data.total.base)}</td><td className="px-4 py-3 text-right">{money(vat.data.total.vat)}</td><td className="px-4 py-3 text-right">{money(vat.data.total.exempt)}</td><td className="px-4 py-3 text-right">{money(vat.data.total.total)}</td></tr></tfoot>
+              <tfoot className="border-t-2 border-line font-semibold"><tr><td className="px-4 py-3" colSpan={5}>{tn('รวม {0} เอกสาร', vat.data.items.length)}</td><td className="px-4 py-3 text-right">{money(vat.data.total.base)}</td><td className="px-4 py-3 text-right">{money(vat.data.total.vat)}</td><td className="px-4 py-3 text-right">{money(vat.data.total.exempt)}</td><td className="px-4 py-3 text-right">{money(vat.data.total.total)}</td></tr></tfoot>
             </table>
           )
         ) : kind === 'adjustments' ? (
-          !adj.data?.items.length ? <EmptyState title="ไม่มีการยกเลิกหรือคืนสินค้าในช่วงนี้" /> : adj.data.items.map((i) => (
+          !adj.data?.items.length ? <EmptyState title={t('ไม่มีการยกเลิกหรือคืนสินค้าในช่วงนี้')} /> : adj.data.items.map((i) => (
             <div key={i.id} className="flex items-center gap-3 border-b border-line-soft px-5 py-3 text-[14px]">
               <span className="w-[140px] text-muted">{f.dateTime(i.at)}</span><span className="w-[130px] font-mono">{i.docNo}</span><span className="w-[90px]">{i.kind}</span>
               <span className="flex-1 text-ink-2">{i.reason} {i.by && <span className="text-muted">· {i.by}</span>}</span>
               <span className="num font-semibold">{money(i.total)}</span>
             </div>
           ))
-        ) : !sales.data?.rows.length ? <EmptyState title="ยังไม่มียอดขายในช่วงนี้" /> : (
+        ) : !sales.data?.rows.length ? <EmptyState title={t('ยังไม่มียอดขายในช่วงนี้')} /> : (
           <table className="num w-full min-w-[720px] text-[14px]">
             <thead className="bg-sunken text-left text-[12px] text-muted">
               <tr>
-                <th className="px-4 py-3">{KINDS.find((k) => k.value === kind)!.label.replace('ยอดขาย', '').replace('ตาม', '') || 'รายการ'}</th>
-                {(kind === 'product' || kind === 'category') && <th className="px-4 py-3 text-right">จำนวน</th>}
-                <th className="px-4 py-3 text-right">บิล</th>
-                {kind !== 'method' && <th className="px-4 py-3 text-right">ส่วนลด</th>}
-                <th className="px-4 py-3 text-right">ยอดขายสุทธิ</th>
+                <th className="px-4 py-3">{KINDS.find((k) => k.value === kind)!.column ?? t('รายการ')}</th>
+                {(kind === 'product' || kind === 'category') && <th className="px-4 py-3 text-right">{t('จำนวน')}</th>}
+                <th className="px-4 py-3 text-right">{t('บิล')}</th>
+                {kind !== 'method' && <th className="px-4 py-3 text-right">{t('ส่วนลด')}</th>}
+                <th className="px-4 py-3 text-right">{t('ยอดขายสุทธิ')}</th>
                 {kind !== 'method' && <th className="px-4 py-3 text-right">VAT</th>}
-                {profit && kind !== 'method' && <><th className="px-4 py-3 text-right">ต้นทุน</th><th className="px-4 py-3 text-right">กำไรขั้นต้น</th></>}
+                {profit && kind !== 'method' && <><th className="px-4 py-3 text-right">{t('ต้นทุน')}</th><th className="px-4 py-3 text-right">{t('กำไรขั้นต้น')}</th></>}
               </tr>
             </thead>
             <tbody>
@@ -157,7 +159,7 @@ export default function ReportsPage() {
             </tbody>
             <tfoot className="border-t-2 border-line font-semibold">
               <tr>
-                <td className="px-4 py-3">รวม</td>
+                <td className="px-4 py-3">{t('รวม')}</td>
                 {(kind === 'product' || kind === 'category') && <td className="px-4 py-3 text-right">{qtyText(sales.data.total.qty)}</td>}
                 <td className="px-4 py-3 text-right">{kind === 'product' || kind === 'category' || kind === 'method' ? '' : sales.data.total.bills.toLocaleString()}</td>
                 {kind !== 'method' && <td className="px-4 py-3 text-right">{money(sales.data.total.discount)}</td>}

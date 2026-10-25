@@ -7,6 +7,8 @@ import { money } from '@/lib/settings';
 import { Button, Field, Select, Spinner } from '@/components/ui/core';
 import { Dialog } from '@/components/ui/dialog';
 import { NumberInput } from '@/components/ui/inputs';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 interface Detail {
   id: string;
@@ -71,34 +73,32 @@ export function LabelsDialog({ open, ids, onClose }: { open: boolean; ids: strin
     <Dialog
       open={open}
       onOpenChange={(v) => !v && onClose()}
-      title="พิมพ์สติกเกอร์บาร์โค้ด"
+      title={t('พิมพ์สติกเกอร์บาร์โค้ด')}
       size="lg"
       footer={
         <>
-          <Button onClick={onClose}>ปิด</Button>
-          <Button variant="primary" icon={<Printer className="h-4 w-4" />} disabled={!labels.length} onClick={print}>
-            พิมพ์ {labels.length * copies} ดวง
-          </Button>
+          <Button onClick={onClose}>{t('ปิด')}</Button>
+          <Button variant="primary" icon={<Printer className="h-4 w-4" />} disabled={!labels.length} onClick={print}>{tn('พิมพ์ {0} ดวง', labels.length * copies)}</Button>
         </>
       }
     >
       <div className="flex flex-col gap-4 pb-3">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="ขนาดสติกเกอร์">
+          <Field label={t('ขนาดสติกเกอร์')}>
             <Select value={size} onChange={(e) => setSize(e.target.value as typeof size)}>
-              <option value="40x30">40 × 30 มม. (เครื่องพิมพ์สติกเกอร์)</option>
-              <option value="50x30">50 × 30 มม.</option>
-              <option value="a4">กระดาษ A4 (3 × 8 ดวง)</option>
+              <option value="40x30">{t('40 × 30 มม. (เครื่องพิมพ์สติกเกอร์)')}</option>
+              <option value="50x30">{t('50 × 30 มม.')}</option>
+              <option value="a4">{t('กระดาษ A4 (3 × 8 ดวง)')}</option>
             </Select>
           </Field>
-          <Field label="จำนวนต่อรายการ">
+          <Field label={t('จำนวนต่อรายการ')}>
             <NumberInput value={copies} onValue={(v) => setCopies(Math.max(1, Math.min(100, v)))} />
           </Field>
         </div>
         {details.isLoading ? (
           <Spinner className="mx-auto my-8" />
         ) : missing ? (
-          <p className="text-[14px] text-muted">สินค้าที่เลือกยังไม่มีบาร์โค้ดหรือ SKU — กด “สร้างบาร์โค้ด” ในหน้าแก้ไขสินค้าก่อน</p>
+          <p className="text-[14px] text-muted">{t('สินค้าที่เลือกยังไม่มีบาร์โค้ดหรือ SKU — กด “สร้างบาร์โค้ด” ในหน้าแก้ไขสินค้าก่อน')}</p>
         ) : (
           <div id="label-sheet" className="flex max-h-[360px] flex-wrap gap-2 overflow-auto rounded-xl bg-sunken p-3">
             {labels.flatMap((l) =>

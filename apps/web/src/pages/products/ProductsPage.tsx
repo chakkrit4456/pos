@@ -17,6 +17,8 @@ import { MoneyInput, NumberInput } from '@/components/ui/inputs';
 import { ImportDialog } from './ImportDialog';
 import { CategoriesTab, ModifiersTab, TiersTab } from './CatalogTabs';
 import { LabelsDialog } from './LabelsDialog';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 export interface ProductRow {
   id: string;
@@ -60,10 +62,10 @@ export default function ProductsPage() {
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'products', label: 'สินค้า' },
-          { value: 'categories', label: 'หมวดหมู่' },
-          { value: 'modifiers', label: 'ตัวเลือกเสริม' },
-          { value: 'tiers', label: 'ระดับราคา' },
+          { value: 'products', label: t('สินค้า') },
+          { value: 'categories', label: t('หมวดหมู่') },
+          { value: 'modifiers', label: t('ตัวเลือกเสริม') },
+          { value: 'tiers', label: t('ระดับราคา') },
         ]}
       />
       {tab === 'products' && <ProductsTab />}
@@ -128,21 +130,15 @@ function ProductsTab() {
   return (
     <>
       <PageHeader
-        title="สินค้า"
-        sub={list.data ? `${list.data.total.toLocaleString()} รายการ` : ' '}
+        title={t('สินค้า')}
+        sub={list.data ? t('{0} รายการ', list.data.total.toLocaleString()) : ' '}
         actions={
           <>
-            <Button icon={<Download className="h-4 w-4" />} onClick={() => api.download('/api/products/export', { format: 'xlsx' }, 'products.xlsx').catch((e) => toast.error(errorMessage(e)))}>
-              ส่งออก
-            </Button>
+            <Button icon={<Download className="h-4 w-4" />} onClick={() => api.download('/api/products/export', { format: 'xlsx' }, 'products.xlsx').catch((e) => toast.error(errorMessage(e)))}>{t('ส่งออก')}</Button>
             {manage && (
               <>
-                <Button icon={<Upload className="h-4 w-4" />} onClick={() => setImportOpen(true)}>
-                  นำเข้า Excel/CSV
-                </Button>
-                <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => nav('/products/new')}>
-                  เพิ่มสินค้า
-                </Button>
+                <Button icon={<Upload className="h-4 w-4" />} onClick={() => setImportOpen(true)}>{t('นำเข้า Excel/CSV')}</Button>
+                <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => nav('/products/new')}>{t('เพิ่มสินค้า')}</Button>
               </>
             )}
           </>
@@ -151,10 +147,10 @@ function ProductsTab() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[220px] flex-1 md:max-w-[360px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
-          <Input className="pl-9" value={q} onChange={(e) => (setQ(e.target.value), setPage(1))} placeholder="ค้นหาชื่อ SKU หรือบาร์โค้ด" />
+          <Input className="pl-9" value={q} onChange={(e) => (setQ(e.target.value), setPage(1))} placeholder={t('ค้นหาชื่อ SKU หรือบาร์โค้ด')} />
         </div>
-        <Select className="w-auto min-w-[160px]" value={categoryId} onChange={(e) => (setCategoryId(e.target.value), setPage(1))} aria-label="หมวดหมู่">
-          <option value="">ทุกหมวด</option>
+        <Select className="w-auto min-w-[160px]" value={categoryId} onChange={(e) => (setCategoryId(e.target.value), setPage(1))} aria-label={t('หมวดหมู่')}>
+          <option value="">{t('ทุกหมวด')}</option>
           {cats.data?.map((c) => (
             <option key={c.id} value={c.id}>
               {c.parentId ? '— ' : ''}
@@ -165,39 +161,33 @@ function ProductsTab() {
         {settings.modules.stock &&
           (['all', 'low', 'out'] as const).map((s) => (
             <button key={s} onClick={() => (setStock(s), setPage(1))} className={cn('h-10 whitespace-nowrap rounded-full border px-3.5 text-[14px] font-medium', stock === s ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-surface')}>
-              {{ all: 'ทั้งหมด', low: 'ใกล้หมด', out: 'หมดสต็อก' }[s]}
+              {{ all: t('ทั้งหมด'), low: t('ใกล้หมด'), out: t('หมดสต็อก') }[s]}
             </button>
           ))}
         {manage && (
           <Button className="ml-auto" variant={sortMode ? 'primary' : 'ghost'} icon={<GripVertical className="h-4 w-4" />} onClick={() => setSortMode(!sortMode)}>
-            {sortMode ? 'เสร็จสิ้นการจัดเรียง' : 'จัดเรียงหน้าขาย'}
+            {sortMode ? t('เสร็จสิ้นการจัดเรียง') : t('จัดเรียงหน้าขาย')}
           </Button>
         )}
       </div>
       {sel.size > 0 && manage && (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-ink px-4 py-2.5 text-surface">
-          <span className="text-[14px] font-medium">เลือก {sel.size} รายการ</span>
+          <span className="text-[14px] font-medium">{tn('เลือก {0} รายการ', sel.size)}</span>
           <div className="flex-1" />
-          <Button size="sm" onClick={() => setBulkOpen(true)}>
-            แก้ไขหลายรายการ
-          </Button>
-          <Button size="sm" icon={<Barcode className="h-4 w-4" />} onClick={() => setLabelsOpen(true)}>
-            พิมพ์สติกเกอร์บาร์โค้ด
-          </Button>
-          <Button size="sm" variant="ghost" className="text-surface hover:bg-rail-2" onClick={() => setSel(new Set())}>
-            ยกเลิก
-          </Button>
+          <Button size="sm" onClick={() => setBulkOpen(true)}>{t('แก้ไขหลายรายการ')}</Button>
+          <Button size="sm" icon={<Barcode className="h-4 w-4" />} onClick={() => setLabelsOpen(true)}>{t('พิมพ์สติกเกอร์บาร์โค้ด')}</Button>
+          <Button size="sm" variant="ghost" className="text-surface hover:bg-rail-2" onClick={() => setSel(new Set())}>{t('ยกเลิก')}</Button>
         </div>
       )}
       <div className="card overflow-hidden">
         <div className="hidden md:grid-cols-[32px_minmax(0,2fr)_minmax(0,1fr)_110px_80px] lg:grid-cols-[32px_96px_minmax(0,2fr)_minmax(0,1fr)_110px_150px_80px] items-center gap-3 border-b border-line-soft bg-sunken px-5 py-3 text-[13px] font-medium text-muted md:grid">
-          {sortMode ? <span /> : <Checkbox checked={allSel} onChange={(v) => setSel(v ? new Set(items.map((i) => i.id)) : new Set())} label={<span className="sr-only">เลือกทั้งหมด</span>} />}
+          {sortMode ? <span /> : <Checkbox checked={allSel} onChange={(v) => setSel(v ? new Set(items.map((i) => i.id)) : new Set())} label={<span className="sr-only">{t('เลือกทั้งหมด')}</span>} />}
           <span className="hidden lg:block">SKU</span>
-          <span>ชื่อสินค้า</span>
-          <span>หมวด</span>
-          <span className="text-right">ราคา</span>
-          <span className="hidden lg:block">สต็อก</span>
-          <span className="text-right">ขายอยู่</span>
+          <span>{t('ชื่อสินค้า')}</span>
+          <span>{t('หมวด')}</span>
+          <span className="text-right">{t('ราคา')}</span>
+          <span className="hidden lg:block">{t('สต็อก')}</span>
+          <span className="text-right">{t('ขายอยู่')}</span>
         </div>
         {list.isLoading ? (
           <SkeletonRows rows={8} />
@@ -205,9 +195,9 @@ function ProductsTab() {
           <ErrorState error={list.error} onRetry={() => void list.refetch()} />
         ) : items.length === 0 ? (
           <EmptyState
-            title={q || categoryId || stock !== 'all' ? 'ไม่พบสินค้าตามเงื่อนไข' : 'ยังไม่มีสินค้า'}
-            body={q ? `ไม่พบ “${q}”` : 'เพิ่มสินค้าทีละรายการ หรือนำเข้าจากไฟล์ Excel/CSV ได้ทีเดียวหลายพันรายการ'}
-            action={manage && !q ? <Button variant="primary" onClick={() => setImportOpen(true)}>นำเข้าจาก Excel</Button> : undefined}
+            title={q || categoryId || stock !== 'all' ? t('ไม่พบสินค้าตามเงื่อนไข') : t('ยังไม่มีสินค้า')}
+            body={q ? t('ไม่พบ “{0}”', q) : t('เพิ่มสินค้าทีละรายการ หรือนำเข้าจากไฟล์ Excel/CSV ได้ทีเดียวหลายพันรายการ')}
+            action={manage && !q ? <Button variant="primary" onClick={() => setImportOpen(true)}>{t('นำเข้าจาก Excel')}</Button> : undefined}
           />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void onDragEnd(e)}>
@@ -239,7 +229,7 @@ function ProductsTab() {
 
 function ProductLine({ r, tint, sortMode, selected, onSelect, onOpen, onToggle, showStock }: { r: ProductRow; tint: string; sortMode: boolean; selected: boolean; onSelect: (v: boolean) => void; onOpen: () => void; onToggle?: (v: boolean) => void; showStock: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id });
-  const badge = r.stock === null ? null : r.stock <= 0 ? <Badge tone="danger">หมด</Badge> : r.stock <= r.lowStock ? <Badge tone="warn">ใกล้หมด</Badge> : <Badge tone="success">ปกติ</Badge>;
+  const badge = r.stock === null ? null : r.stock <= 0 ? <Badge tone="danger">{t('หมด')}</Badge> : r.stock <= r.lowStock ? <Badge tone="warn">{t('ใกล้หมด')}</Badge> : <Badge tone="success">{t('ปกติ')}</Badge>;
   return (
     <div
       ref={setNodeRef}
@@ -247,11 +237,11 @@ function ProductLine({ r, tint, sortMode, selected, onSelect, onOpen, onToggle, 
       className={cn('grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 border-b border-line-soft px-5 py-2.5 text-[15px] hover:bg-sunken md:h-[60px] md:grid-cols-[32px_minmax(0,2fr)_minmax(0,1fr)_110px_80px] lg:grid-cols-[32px_96px_minmax(0,2fr)_minmax(0,1fr)_110px_150px_80px] md:py-0', isDragging && 'relative z-10 bg-surface shadow-pop', !r.active && 'opacity-60')}
     >
       {sortMode ? (
-        <button {...attributes} {...listeners} className="grid h-9 w-8 cursor-grab place-items-center text-faint" aria-label={`ลากเพื่อจัดเรียง ${r.name}`}>
+        <button {...attributes} {...listeners} className="grid h-9 w-8 cursor-grab place-items-center text-faint" aria-label={t('ลากเพื่อจัดเรียง {0}', r.name)}>
           <GripVertical className="h-4 w-4" />
         </button>
       ) : (
-        <Checkbox checked={selected} onChange={onSelect} label={<span className="sr-only">เลือก {r.name}</span>} />
+        <Checkbox checked={selected} onChange={onSelect} label={<span className="sr-only">{tn('เลือก {0}', r.name)}</span>} />
       )}
       <span className="hidden font-mono text-[13px] font-medium text-muted lg:block">{r.sku || '—'}</span>
       <button onClick={onOpen} className="flex min-w-0 items-center gap-3 text-left">
@@ -261,7 +251,7 @@ function ProductLine({ r, tint, sortMode, selected, onSelect, onOpen, onToggle, 
           <span className="truncate text-[12px] text-muted md:hidden">
             {r.sku} · {money(r.price)}
           </span>
-          {r.variantCount > 0 && <span className="text-[12px] text-muted">{r.variantCount} ตัวเลือก</span>}
+          {r.variantCount > 0 && <span className="text-[12px] text-muted">{tn('{0} ตัวเลือก', r.variantCount)}</span>}
         </span>
       </button>
       <span className="hidden truncate text-ink-2 md:block">{r.categoryName ?? '—'}</span>
@@ -273,10 +263,10 @@ function ProductLine({ r, tint, sortMode, selected, onSelect, onOpen, onToggle, 
             {badge}
           </>
         ) : (
-          <span className="text-[13px] text-faint">ไม่ตัดสต็อก</span>
+          <span className="text-[13px] text-faint">{t('ไม่ตัดสต็อก')}</span>
         )}
       </span>
-      <span className="flex justify-end">{onToggle ? <Switch size="sm" checked={r.active} onChange={onToggle} label={`เปิดขาย ${r.name}`} /> : r.active ? 'เปิด' : 'ปิด'}</span>
+      <span className="flex justify-end">{onToggle ? <Switch size="sm" checked={r.active} onChange={onToggle} label={t('เปิดขาย {0}', r.name)} /> : r.active ? t('เปิด') : t('ปิด')}</span>
     </div>
   );
 }
@@ -303,11 +293,11 @@ function BulkDialog({ open, ids, categories, onClose }: { open: boolean; ids: st
     <Dialog
       open={open}
       onOpenChange={(v) => !v && onClose(false)}
-      title={`แก้ไข ${ids.length} รายการพร้อมกัน`}
-      description="เว้นไว้เป็น “ไม่เปลี่ยน” สำหรับค่าที่ไม่ต้องการแก้"
+      title={t('แก้ไข {0} รายการพร้อมกัน', ids.length)}
+      description={t('เว้นไว้เป็น “ไม่เปลี่ยน” สำหรับค่าที่ไม่ต้องการแก้')}
       footer={
         <>
-          <Button onClick={() => onClose(false)}>ยกเลิก</Button>
+          <Button onClick={() => onClose(false)}>{t('ยกเลิก')}</Button>
           <Button
             variant="primary"
             loading={busy}
@@ -315,7 +305,7 @@ function BulkDialog({ open, ids, categories, onClose }: { open: boolean; ids: st
               setBusy(true);
               try {
                 await api.post('/api/products/bulk', { ids, patch });
-                toast.success(`อัปเดต ${ids.length} รายการแล้ว`);
+                toast.success(t('อัปเดต {0} รายการแล้ว', ids.length));
                 qc.invalidateQueries({ queryKey: ['products'] });
                 onClose(true);
               } catch (e) {
@@ -324,18 +314,14 @@ function BulkDialog({ open, ids, categories, onClose }: { open: boolean; ids: st
                 setBusy(false);
               }
             }}
-          >
-            บันทึก
-          </Button>
+          >{t('บันทึก')}</Button>
         </>
       }
     >
       <div className="grid gap-4 pb-2">
-        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-muted">
-          หมวดหมู่
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="__keep">ไม่เปลี่ยน</option>
-            <option value="">ไม่มีหมวด</option>
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-muted">{t('หมวดหมู่')}<Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="__keep">{t('ไม่เปลี่ยน')}</option>
+            <option value="">{t('ไม่มีหมวด')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -343,16 +329,14 @@ function BulkDialog({ open, ids, categories, onClose }: { open: boolean; ids: st
             ))}
           </Select>
         </label>
-        <TriSelect label="เปิดขาย" value={active} onChange={setActive} />
-        <TriSelect label="แสดงในหน้าขาย" value={showInPos} onChange={setShowInPos} />
-        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-muted">
-          ปรับราคา
-          <div className="flex gap-2">
+        <TriSelect label={t('เปิดขาย')} value={active} onChange={setActive} />
+        <TriSelect label={t('แสดงในหน้าขาย')} value={showInPos} onChange={setShowInPos} />
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-muted">{t('ปรับราคา')}<div className="flex gap-2">
             <Select className="w-[180px]" value={priceMode} onChange={(e) => setPriceMode(e.target.value as typeof priceMode)}>
-              <option value="keep">ไม่เปลี่ยน</option>
-              <option value="set">ตั้งราคาเป็น</option>
-              <option value="percent">ขึ้น/ลด %</option>
-              <option value="amount">ขึ้น/ลด บาท</option>
+              <option value="keep">{t('ไม่เปลี่ยน')}</option>
+              <option value="set">{t('ตั้งราคาเป็น')}</option>
+              <option value="percent">{t('ขึ้น/ลด %')}</option>
+              <option value="amount">{t('ขึ้น/ลด บาท')}</option>
             </Select>
             {priceMode === 'percent' ? <NumberInput decimals={2} value={priceValue} onValue={setPriceValue} className="flex-1" /> : priceMode !== 'keep' ? <div className="flex-1"><MoneyInput allowNegative={priceMode === 'amount'} value={priceValue} onValue={setPriceValue} /></div> : null}
           </div>
@@ -366,7 +350,7 @@ function TriSelect({ label, value, onChange }: { label: string; value: 'keep' | 
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-[15px]">{label}</span>
-      <Segmented value={value} onChange={onChange} options={[{ value: 'keep', label: 'ไม่เปลี่ยน' }, { value: 'on', label: 'เปิด' }, { value: 'off', label: 'ปิด' }]} />
+      <Segmented value={value} onChange={onChange} options={[{ value: 'keep', label: t('ไม่เปลี่ยน') }, { value: 'on', label: t('เปิด') }, { value: 'off', label: t('ปิด') }]} />
     </div>
   );
 }

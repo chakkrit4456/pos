@@ -13,6 +13,7 @@ import {
   saleSchema,
   taxInvoiceSchema,
   voidSchema,
+  t,
 } from '@flexpos/shared';
 import type { AppContext } from '../context.js';
 import { audit, authorizeWithPin, branchOf, currentUser, hasPerm, nextSeq, requireAuth } from '../auth.js';
@@ -106,12 +107,12 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const { id } = req.params as { id: string };
     const b = z.object({ printerId: z.string().optional(), reprint: z.boolean().default(false), openDrawer: z.boolean().default(false) }).parse(req.body ?? {});
     const user = currentUser(req);
-    if (b.reprint && !hasPerm(user, 'pos.reprint')) throw badRequest('ไม่มีสิทธิ์พิมพ์ซ้ำ');
+    if (b.reprint && !hasPerm(user, 'pos.reprint')) throw badRequest(t('ไม่มีสิทธิ์พิมพ์ซ้ำ'));
     const branchId = branchOf(ctx, req);
     let pq = ctx.db.selectFrom('printers').selectAll().where('active', '=', 1).where('role', '=', 'receipt').where('kind', '=', 'network').where('branch_id', '=', branchId);
     if (b.printerId) pq = pq.where('id', '=', b.printerId);
     const p = await pq.executeTakeFirst();
-    if (!p) throw badRequest('ยังไม่ได้ตั้งค่าเครื่องพิมพ์ใบเสร็จแบบเครือข่าย');
+    if (!p) throw badRequest(t('ยังไม่ได้ตั้งค่าเครื่องพิมพ์ใบเสร็จแบบเครือข่าย'));
     const sale = await getSaleView(ctx, id);
     const doc = buildReceiptDoc(sale, ctx.settings, { reprint: b.reprint, paper: p.paper === '58' ? '58' : '80' });
     doc.openDrawer = b.openDrawer || (p.open_drawer === 1 && sale.payments.some((x) => x.kind === 'cash') && ctx.settings.receipt.openDrawerOnCash && !b.reprint);
@@ -125,7 +126,7 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const { managerPin } = z.object({ managerPin: z.string().optional() }).parse(req.body ?? {});
     const by = await authorizeWithPin(ctx, user, 'pos.open_drawer', managerPin);
     const p = await ctx.db.selectFrom('printers').selectAll().where('active', '=', 1).where('role', '=', 'receipt').where('kind', '=', 'network').where('branch_id', '=', branchOf(ctx, req)).executeTakeFirst();
-    if (!p) throw badRequest('ต้องมีเครื่องพิมพ์ใบเสร็จแบบเครือข่ายที่ต่อกับลิ้นชัก');
+    if (!p) throw badRequest(t('ต้องมีเครื่องพิมพ์ใบเสร็จแบบเครือข่ายที่ต่อกับลิ้นชัก'));
     await printer.send(p, { paper: '80', blocks: [], cut: false, openDrawer: true });
     await audit(ctx, ctx.db, req, 'drawer.open', 'printer', p.id, { approvedBy: by.name });
     return { ok: true };
@@ -146,12 +147,12 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
   app.post('/api/sales/:id/tax-invoice', auth('pos.sell'), async (req) => {
     const { id } = req.params as { id: string };
     const ti = taxInvoiceSchema.parse(req.body);
-    if (!ctx.settings.tax.vatEnabled) throw badRequest('ร้านยังไม่ได้เปิดใช้ VAT');
+    if (!ctx.settings.tax.vatEnabled) throw badRequest(t('ร้านยังไม่ได้เปิดใช้ VAT'));
     await ctx.db.transaction().execute(async (tx) => {
       const s = await tx.selectFrom('sales').selectAll().where('id', '=', id).executeTakeFirst();
-      if (!s) throw notFound('บิล');
-      if (s.status === 'voided') throw badRequest('บิลถูกยกเลิกแล้ว');
-      if (s.tax_invoice_no) throw badRequest(`ออกใบกำกับภาษีเต็มรูปแล้ว เลขที่ ${s.tax_invoice_no}`);
+      if (!s) throw notFound(t('บิล'));
+      if (s.status === 'voided') throw badRequest(t('บิลถูกยกเลิกแล้ว'));
+      if (s.tax_invoice_no) throw badRequest(t('ออกใบกำกับภาษีเต็มรูปแล้ว เลขที่ {0}', s.tax_invoice_no));
       const created = new Date();
       const branch = await tx.selectFrom('branches').select('code').where('id', '=', s.branch_id).executeTakeFirstOrThrow();
       const r = ctx.settings.receipt;
@@ -168,11 +169,11 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
   app.get('/api/promptpay', auth(), async (req) => {
     const { amount, accountId } = z.object({ amount: z.coerce.number().int().min(0), accountId: z.string().optional() }).parse(req.query);
     const pp = promptPayAccount(ctx.settings, accountId);
-    if (!pp) throw badRequest('ยังไม่ได้ตั้งค่าบัญชีรับเงิน PromptPay (ตั้งค่า → บัญชีรับเงิน)');
+    if (!pp) throw badRequest(t('ยังไม่ได้ตั้งค่าบัญชีรับเงิน PromptPay (ตั้งค่า → บัญชีรับเงิน)'));
     try {
       return { payload: promptPayPayload(pp.promptPayId, amount), account: pp.account, amount };
     } catch (e) {
-      throw badRequest(e instanceof Error ? e.message : 'หมายเลข PromptPay ไม่ถูกต้อง');
+      throw badRequest(e instanceof Error ? e.message : t('หมายเลข PromptPay ไม่ถูกต้อง'));
     }
   });
 
@@ -197,7 +198,7 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
   /* ---------- Shifts ---------- */
   const shiftSummary = async (shiftId: string) => {
     const s = await ctx.db.selectFrom('shifts').selectAll().where('id', '=', shiftId).executeTakeFirst();
-    if (!s) throw notFound('กะ');
+    if (!s) throw notFound(t('กะ'));
     const pays = await ctx.db
       .selectFrom('sale_payments')
       .innerJoin('sales', 'sales.id', 'sale_payments.sale_id')
@@ -281,7 +282,7 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const user = currentUser(req);
     const id = await ctx.db.transaction().execute(async (tx) => {
       const open = await tx.selectFrom('shifts').select('id').where('branch_id', '=', branchId).where('register', '=', register).where('status', '=', 'open').executeTakeFirst();
-      if (open) throw badRequest('เครื่องนี้มีกะที่เปิดอยู่แล้ว');
+      if (open) throw badRequest(t('เครื่องนี้มีกะที่เปิดอยู่แล้ว'));
       const n = await nextSeq(tx, `shift:${branchId}`);
       const id = uuid();
       await tx.insertInto('shifts').values({ id, number: n, branch_id: branchId, register, opened_by: user.id, opened_at: nowIso(), opening_cash: b.openingCash, closed_by: null, closed_at: null, counted_cash: null, expected_cash: null, status: 'open', note: '' }).execute();
@@ -295,7 +296,7 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const { id } = req.params as { id: string };
     const b = cashMoveSchema.parse(req.body);
     const s = await ctx.db.selectFrom('shifts').select('status').where('id', '=', id).executeTakeFirst();
-    if (!s || s.status !== 'open') throw badRequest('กะนี้ปิดแล้ว');
+    if (!s || s.status !== 'open') throw badRequest(t('กะนี้ปิดแล้ว'));
     await ctx.db.insertInto('cash_moves').values({ id: uuid(), shift_id: id, type: b.type, amount: b.amount, reason: b.reason, user_id: currentUser(req).id, created_at: nowIso() }).execute();
     await audit(ctx, ctx.db, req, b.type === 'in' ? 'shift.cash_in' : 'shift.cash_out', 'shift', id, { amount: b.amount, reason: b.reason });
     return shiftSummary(id);
@@ -305,7 +306,7 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const { id } = req.params as { id: string };
     const b = closeShiftSchema.parse(req.body);
     const sum = await shiftSummary(id);
-    if (sum.status !== 'open') throw badRequest('กะนี้ปิดไปแล้ว');
+    if (sum.status !== 'open') throw badRequest(t('กะนี้ปิดไปแล้ว'));
     await ctx.db.transaction().execute(async (tx) => {
       await tx.updateTable('shifts').set({ status: 'closed', closed_at: nowIso(), closed_by: currentUser(req).id, counted_cash: b.countedCash, expected_cash: sum.expectedCash, note: b.note }).where('id', '=', id).execute();
       await audit(ctx, tx, req, 'shift.close', 'shift', id, { expected: sum.expectedCash, counted: b.countedCash, diff: b.countedCash - (sum.expectedCash ?? 0) });
@@ -324,28 +325,28 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
       cut: true,
       blocks: [
         { t: 'text', text: ctx.settings.store.name, align: 'center', bold: true, size: 2 },
-        { t: 'text', text: s.status === 'closed' ? 'Z REPORT · สรุปปิดกะ' : 'X REPORT · สรุประหว่างกะ', align: 'center', bold: true },
-        { t: 'text', text: `กะ #${s.number} · ${s.register}`, align: 'center' },
-        { t: 'text', text: `เปิด ${formatDateTime(s.openedAt, era)} โดย ${s.openedBy}` },
-        ...(s.closedAt ? [{ t: 'text' as const, text: `ปิด ${formatDateTime(s.closedAt, era)} โดย ${s.closedBy ?? ''}` }] : []),
+        { t: 'text', text: s.status === 'closed' ? t('Z REPORT · สรุปปิดกะ') : t('X REPORT · สรุประหว่างกะ'), align: 'center', bold: true },
+        { t: 'text', text: t('กะ #{0} · {1}', s.number, s.register), align: 'center' },
+        { t: 'text', text: t('เปิด {0} โดย {1}', formatDateTime(s.openedAt, era), s.openedBy) },
+        ...(s.closedAt ? [{ t: 'text' as const, text: t('ปิด {0} โดย {1}', formatDateTime(s.closedAt, era), s.closedBy ?? '') }] : []),
         { t: 'line', dashed: true },
-        row(`ยอดขาย (${s.salesCount} บิล)`, s.salesTotal),
-        row('ส่วนลด', s.discountTotal),
-        row('ภาษีขาย', s.vatTotal),
-        row('คืนสินค้า', s.refundTotal),
-        row(`ยกเลิก (${s.voidCount} บิล)`, s.voidTotal),
+        row(t('ยอดขาย ({0} บิล)', s.salesCount), s.salesTotal),
+        row(t('ส่วนลด'), s.discountTotal),
+        row(t('ภาษีขาย'), s.vatTotal),
+        row(t('คืนสินค้า'), s.refundTotal),
+        row(t('ยกเลิก ({0} บิล)', s.voidCount), s.voidTotal),
         { t: 'line', dashed: true },
         ...s.methods.map((m) => row(`${m.name} (${m.count})`, m.sales - m.refunds)),
         { t: 'line', dashed: true },
-        row('เงินทอนตั้งต้น', s.openingCash),
-        row('รับเงินสด', s.cashSales),
-        row('คืนเงินสด', -s.cashRefunds),
-        row('นำเงินเข้า', s.cashIn),
-        row('นำเงินออก', -s.cashOut),
-        { t: 'row', left: 'เงินสดที่ควรมี', right: formatAmount(s.expectedCash ?? 0), bold: true },
-        ...(s.countedCash !== null ? [row('นับได้จริง', s.countedCash), { t: 'row' as const, left: 'ส่วนต่าง', right: formatAmount(s.difference ?? 0), bold: true }] : []),
+        row(t('เงินทอนตั้งต้น'), s.openingCash),
+        row(t('รับเงินสด'), s.cashSales),
+        row(t('คืนเงินสด'), -s.cashRefunds),
+        row(t('นำเงินเข้า'), s.cashIn),
+        row(t('นำเงินออก'), -s.cashOut),
+        { t: 'row', left: t('เงินสดที่ควรมี'), right: formatAmount(s.expectedCash ?? 0), bold: true },
+        ...(s.countedCash !== null ? [row(t('นับได้จริง'), s.countedCash), { t: 'row' as const, left: t('ส่วนต่าง'), right: formatAmount(s.difference ?? 0), bold: true }] : []),
         { t: 'feed', lines: 1 },
-        { t: 'text', text: `พิมพ์เมื่อ ${formatDateTime(new Date(), era)}`, align: 'center' },
+        { t: 'text', text: t('พิมพ์เมื่อ {0}', formatDateTime(new Date(), era)), align: 'center' },
       ],
     };
   });
@@ -358,15 +359,15 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const branchId = branchOf(ctx, req);
     await ctx.db.transaction().execute(async (tx) => {
       const c = await tx.selectFrom('customers').select(['credit_balance', 'name']).where('id', '=', id).executeTakeFirst();
-      if (!c) throw notFound('ลูกค้า');
-      if (b.amount > c.credit_balance) throw badRequest(`ยอดชำระเกินยอดค้าง (${(c.credit_balance / 100).toFixed(2)} บาท)`);
+      if (!c) throw notFound(t('ลูกค้า'));
+      if (b.amount > c.credit_balance) throw badRequest(t('ยอดชำระเกินยอดค้าง ({0} บาท)', (c.credit_balance / 100).toFixed(2)));
       const m = await tx.selectFrom('payment_methods').selectAll().where('code', '=', b.methodCode).executeTakeFirst();
-      if (!m || m.kind === 'credit') throw badRequest('วิธีชำระไม่ถูกต้อง');
+      if (!m || m.kind === 'credit') throw badRequest(t('วิธีชำระไม่ถูกต้อง'));
       const shift = await tx.selectFrom('shifts').select('id').where('branch_id', '=', branchId).where('register', '=', registerOf(req)).where('status', '=', 'open').executeTakeFirst();
       await tx.updateTable('customers').set((eb) => ({ credit_balance: eb('credit_balance', '-', b.amount) })).where('id', '=', id).execute();
       await tx.insertInto('credit_moves').values({ id: uuid(), customer_id: id, sale_id: null, amount: -b.amount, type: 'payment', method: m.code, note: b.note, user_id: user.id, created_at: nowIso() }).execute();
       if (m.kind === 'cash' && shift)
-        await tx.insertInto('cash_moves').values({ id: uuid(), shift_id: shift.id, type: 'in', amount: b.amount, reason: `รับชำระหนี้ ${c.name}`, user_id: user.id, created_at: nowIso() }).execute();
+        await tx.insertInto('cash_moves').values({ id: uuid(), shift_id: shift.id, type: 'in', amount: b.amount, reason: t('รับชำระหนี้ {0}', c.name), user_id: user.id, created_at: nowIso() }).execute();
       await audit(ctx, tx, req, 'customer.credit_payment', 'customer', id, { amount: b.amount, method: m.code });
     });
     return { ok: true };

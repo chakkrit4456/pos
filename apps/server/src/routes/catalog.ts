@@ -14,6 +14,8 @@ import {
   productSchema,
   toCsv,
   type ProductInput,
+  t,
+  translate,
 } from '@flexpos/shared';
 import { ilike } from '@flexpos/db';
 import type { AppContext } from '../context.js';
@@ -24,18 +26,18 @@ import { buildCatalog, bumpCatalog, getProductDetail, saveProduct } from '../ser
 
 const IMPORT_COLUMNS = ['sku', 'name', 'category', 'price', 'cost', 'unit', 'barcode', 'stock', 'taxable', 'track_stock', 'low_stock', 'active'] as const;
 const IMPORT_HEADERS_TH: Record<(typeof IMPORT_COLUMNS)[number], string> = {
-  sku: 'รหัสสินค้า (SKU)',
-  name: 'ชื่อสินค้า*',
-  category: 'หมวดหมู่',
-  price: 'ราคาขาย*',
-  cost: 'ต้นทุน',
-  unit: 'หน่วย',
-  barcode: 'บาร์โค้ด (คั่นด้วย |)',
-  stock: 'สต็อกเริ่มต้น',
-  taxable: 'มี VAT (Y/N)',
-  track_stock: 'ตัดสต็อก (Y/N)',
-  low_stock: 'แจ้งเตือนเมื่อต่ำกว่า',
-  active: 'เปิดขาย (Y/N)',
+  sku: t('รหัสสินค้า (SKU)'),
+  name: t('ชื่อสินค้า*'),
+  category: t('หมวดหมู่'),
+  price: t('ราคาขาย*'),
+  cost: t('ต้นทุน'),
+  unit: t('หน่วย'),
+  barcode: t('บาร์โค้ด (คั่นด้วย |)'),
+  stock: t('สต็อกเริ่มต้น'),
+  taxable: t('มี VAT (Y/N)'),
+  track_stock: t('ตัดสต็อก (Y/N)'),
+  low_stock: t('แจ้งเตือนเมื่อต่ำกว่า'),
+  active: t('เปิดขาย (Y/N)'),
 };
 
 interface ImportRow {
@@ -74,9 +76,11 @@ async function readTable(buf: Buffer, filename: string): Promise<string[][]> {
 function mapHeaders(header: string[]): Record<number, string> {
   const map: Record<number, string> = {};
   header.forEach((h, i) => {
-    const t = h.trim().toLowerCase();
+    const v = h.trim().toLowerCase();
     for (const c of IMPORT_COLUMNS) {
-      if (t === c || t === IMPORT_HEADERS_TH[c].toLowerCase() || t === IMPORT_HEADERS_TH[c].replace('*', '').toLowerCase()) map[i] = c;
+      // Thai or English header, with or without the required-field star
+      const names = [IMPORT_HEADERS_TH[c], translate(IMPORT_HEADERS_TH[c], 'en')].flatMap((n) => [n.toLowerCase(), n.replace('*', '').toLowerCase()]);
+      if (v === c || names.includes(v)) map[i] = c;
     }
   });
   return map;
@@ -111,7 +115,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
   app.put('/api/categories/:id', auth('products.manage'), async (req) => {
     const { id } = req.params as { id: string };
     const b = categorySchema.parse(req.body);
-    if (b.parentId === id) throw badRequest('หมวดหมู่เป็นหมวดแม่ของตัวเองไม่ได้');
+    if (b.parentId === id) throw badRequest(t('หมวดหมู่เป็นหมวดแม่ของตัวเองไม่ได้'));
     await ctx.db.updateTable('categories').set({ parent_id: b.parentId ?? null, name: b.name, color: b.color, sort: b.sort, station: b.station ?? null, active: bool(b.active) }).where('id', '=', id).execute();
     bumpCatalog(ctx);
     return { id };
@@ -125,13 +129,13 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
     const { id } = req.params as { id: string };
     const { moveTo } = z.object({ moveTo: z.string().optional() }).parse(req.query);
     const cat = await ctx.db.selectFrom('categories').selectAll().where('id', '=', id).executeTakeFirst();
-    if (!cat) throw notFound('หมวดหมู่');
+    if (!cat) throw notFound(t('หมวดหมู่'));
     const count = Number((await ctx.db.selectFrom('products').select((eb) => eb.fn.countAll<number>().as('n')).where('category_id', '=', id).where('deleted_at', 'is', null).executeTakeFirst())?.n ?? 0);
-    if (count > 0 && !moveTo) throw new AppError(409, 'has_products', `หมวดนี้มีสินค้า ${count} รายการ เลือกว่าจะย้ายสินค้าไปหมวดไหน`, { count });
+    if (count > 0 && !moveTo) throw new AppError(409, 'has_products', t('หมวดนี้มีสินค้า {0} รายการ เลือกว่าจะย้ายสินค้าไปหมวดไหน', count), { count });
     if (moveTo && moveTo !== 'none') {
-      if (moveTo === id) throw badRequest('เลือกหมวดอื่นที่ไม่ใช่หมวดที่จะลบ');
+      if (moveTo === id) throw badRequest(t('เลือกหมวดอื่นที่ไม่ใช่หมวดที่จะลบ'));
       const target = await ctx.db.selectFrom('categories').select('id').where('id', '=', moveTo).executeTakeFirst();
-      if (!target) throw badRequest('ไม่พบหมวดปลายทาง');
+      if (!target) throw badRequest(t('ไม่พบหมวดปลายทาง'));
     }
     await ctx.db.transaction().execute(async (tx) => {
       await tx.updateTable('products').set({ category_id: moveTo && moveTo !== 'none' ? moveTo : null, updated_at: nowIso() }).where('category_id', '=', id).execute();
@@ -261,7 +265,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
     const { id } = req.params as { id: string };
     const input = productSchema.parse(req.body);
     const before = await ctx.db.selectFrom('products').select(['price', 'cost', 'name']).where('id', '=', id).executeTakeFirst();
-    if (!before) throw notFound('สินค้า');
+    if (!before) throw notFound(t('สินค้า'));
     await ctx.db.transaction().execute(async (tx) => {
       await saveProduct(ctx, tx, input, id);
       if (before.price !== input.price || before.cost !== input.cost)
@@ -277,7 +281,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
     // Soft delete keeps sales history intact; barcodes are released for reuse.
     await ctx.db.transaction().execute(async (tx) => {
       const p = await tx.selectFrom('products').select('name').where('id', '=', id).executeTakeFirst();
-      if (!p) throw notFound('สินค้า');
+      if (!p) throw notFound(t('สินค้า'));
       await tx.updateTable('products').set({ deleted_at: nowIso(), active: 0, sku: '' }).where('id', '=', id).execute();
       await tx.deleteFrom('product_barcodes').where('product_id', '=', id).execute();
       await audit(ctx, tx, req, 'product.delete', 'product', id, { name: p.name });
@@ -319,7 +323,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
         for (const r of rows) {
           const pc = patch.priceChange;
           const price = pc.mode === 'set' ? pc.value : pc.mode === 'percent' ? Math.round(r.price * (1 + pc.value / 100)) : r.price + pc.value;
-          if (price < 0) throw badRequest('ราคาใหม่ติดลบ ตรวจสอบค่าที่กรอก');
+          if (price < 0) throw badRequest(t('ราคาใหม่ติดลบ ตรวจสอบค่าที่กรอก'));
           await tx.updateTable('products').set({ price }).where('id', '=', r.id).execute();
         }
       }
@@ -336,33 +340,33 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
       const used = await ctx.db.selectFrom('product_barcodes').select('id').where('code', '=', code).executeTakeFirst();
       if (!used) return { code };
     }
-    throw conflict('สร้างบาร์โค้ดไม่สำเร็จ กรุณาลองใหม่');
+    throw conflict(t('สร้างบาร์โค้ดไม่สำเร็จ กรุณาลองใหม่'));
   });
 
   /* ---------- Import / export ---------- */
   app.get('/api/products/import-template', auth('products.view'), async (req, reply) => {
     const { format } = z.object({ format: z.enum(['csv', 'xlsx']).default('xlsx') }).parse(req.query);
-    const header = IMPORT_COLUMNS.map((c) => IMPORT_HEADERS_TH[c]);
-    const sample = [['C001', 'อเมริกาโน่เย็น', 'กาแฟ', '65', '18', 'แก้ว', '', '', 'Y', 'N', '', 'Y'], ['R001', 'น้ำดื่ม 600 มล.', 'เครื่องดื่ม', '7', '4.5', 'ขวด', '8850999320014', '120', 'Y', 'Y', '10', 'Y']];
+    const header = IMPORT_COLUMNS.map((c) => translate(IMPORT_HEADERS_TH[c]));
+    const sample = [['C001', t('อเมริกาโน่เย็น'), t('กาแฟ'), '65', '18', t('แก้ว'), '', '', 'Y', 'N', '', 'Y'], ['R001', t('น้ำดื่ม 600 มล.'), t('เครื่องดื่ม'), '7', '4.5', t('ขวด'), '8850999320014', '120', 'Y', 'Y', '10', 'Y']];
     if (format === 'csv') {
       reply.header('content-type', 'text/csv; charset=utf-8').header('content-disposition', 'attachment; filename="flexpos-products-template.csv"');
       return toCsv([header, ...sample]);
     }
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('สินค้า');
+    const ws = wb.addWorksheet(t('สินค้า'));
     ws.addRow(header);
     sample.forEach((r) => ws.addRow(r));
     ws.getRow(1).font = { bold: true };
     ws.columns.forEach((c) => (c.width = 20));
-    const help = wb.addWorksheet('คำอธิบาย');
+    const help = wb.addWorksheet(t('คำอธิบาย'));
     help.addRows([
-      ['คอลัมน์', 'คำอธิบาย'],
-      ['ชื่อสินค้า*', 'จำเป็นต้องกรอก'],
-      ['ราคาขาย*', 'หน่วยเป็นบาท เช่น 65 หรือ 65.50'],
-      ['รหัสสินค้า (SKU)', 'ถ้าตรงกับสินค้าเดิม ระบบจะอัปเดตสินค้านั้นแทนการสร้างใหม่'],
-      ['หมวดหมู่', 'ถ้ายังไม่มี ระบบจะสร้างให้อัตโนมัติ'],
-      ['บาร์โค้ด', 'ใส่ได้หลายรหัส คั่นด้วย |'],
-      ['สต็อกเริ่มต้น', 'ใช้เฉพาะสินค้าใหม่ที่ตัดสต็อก'],
+      [t('คอลัมน์'), t('คำอธิบาย')],
+      [t('ชื่อสินค้า*'), t('จำเป็นต้องกรอก')],
+      [t('ราคาขาย*'), t('หน่วยเป็นบาท เช่น 65 หรือ 65.50')],
+      [t('รหัสสินค้า (SKU)'), t('ถ้าตรงกับสินค้าเดิม ระบบจะอัปเดตสินค้านั้นแทนการสร้างใหม่')],
+      [t('หมวดหมู่'), t('ถ้ายังไม่มี ระบบจะสร้างให้อัตโนมัติ')],
+      [t('บาร์โค้ด'), t('ใส่ได้หลายรหัส คั่นด้วย |')],
+      [t('สต็อกเริ่มต้น'), t('ใช้เฉพาะสินค้าใหม่ที่ตัดสต็อก')],
     ]);
     reply.header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('content-disposition', 'attachment; filename="flexpos-products-template.xlsx"');
     return Buffer.from(await wb.xlsx.writeBuffer());
@@ -387,13 +391,13 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
       bcs.filter((b) => b.product_id === r.id).map((b) => b.code).join('|'), r.track_stock ? String(lm.get(r.id) ?? 0) : '',
       yn(r.taxable), yn(r.track_stock), String(r.low_stock), yn(r.active),
     ]);
-    const header = IMPORT_COLUMNS.map((c) => IMPORT_HEADERS_TH[c]);
+    const header = IMPORT_COLUMNS.map((c) => translate(IMPORT_HEADERS_TH[c]));
     if (format === 'csv') {
       reply.header('content-type', 'text/csv; charset=utf-8').header('content-disposition', 'attachment; filename="flexpos-products.csv"');
       return toCsv([header, ...data]);
     }
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('สินค้า');
+    const ws = wb.addWorksheet(t('สินค้า'));
     ws.addRow(header);
     data.forEach((r) => ws.addRow(r));
     ws.getRow(1).font = { bold: true };
@@ -406,13 +410,13 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
   app.post('/api/products/import', auth('products.manage'), async (req) => {
     const { commit } = z.object({ commit: z.coerce.number().default(0) }).parse(req.query);
     const file = await req.file();
-    if (!file) throw badRequest('กรุณาเลือกไฟล์ .xlsx หรือ .csv');
+    if (!file) throw badRequest(t('กรุณาเลือกไฟล์ .xlsx หรือ .csv'));
     const buf = await file.toBuffer();
     const table = await readTable(buf, file.filename);
-    if (table.length < 2) throw badRequest('ไฟล์ไม่มีข้อมูล (ต้องมีหัวตารางและอย่างน้อย 1 แถว)');
+    if (table.length < 2) throw badRequest(t('ไฟล์ไม่มีข้อมูล (ต้องมีหัวตารางและอย่างน้อย 1 แถว)'));
     const map = mapHeaders(table[0]!);
     if (!Object.values(map).includes('name') || !Object.values(map).includes('price'))
-      throw badRequest('ไม่พบคอลัมน์ “ชื่อสินค้า” หรือ “ราคาขาย” กรุณาใช้ไฟล์ template');
+      throw badRequest(t('ไม่พบคอลัมน์ “ชื่อสินค้า” หรือ “ราคาขาย” กรุณาใช้ไฟล์ template'));
     const existing = await ctx.db.selectFrom('products').select(['id', 'sku']).where('deleted_at', 'is', null).where('sku', '!=', '').execute();
     const bySku = new Map(existing.map((e) => [e.sku.toLowerCase(), e.id]));
     const allCodes = new Map((await ctx.db.selectFrom('product_barcodes').select(['code', 'product_id']).execute()).map((b) => [b.code, b.product_id]));
@@ -425,30 +429,30 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
         if (k) data[k] = v.trim();
       });
       const errors: string[] = [];
-      if (!data.name) errors.push('ไม่มีชื่อสินค้า');
+      if (!data.name) errors.push(t('ไม่มีชื่อสินค้า'));
       try {
-        if (!data.price) errors.push('ไม่มีราคาขาย');
-        else if (bahtToSatang(data.price) < 0) errors.push('ราคาติดลบ');
+        if (!data.price) errors.push(t('ไม่มีราคาขาย'));
+        else if (bahtToSatang(data.price) < 0) errors.push(t('ราคาติดลบ'));
       } catch {
-        errors.push(`ราคา “${data.price}” ไม่ใช่ตัวเลข`);
+        errors.push(t('ราคา “{0}” ไม่ใช่ตัวเลข', data.price));
       }
       try {
         if (data.cost) bahtToSatang(data.cost);
       } catch {
-        errors.push(`ต้นทุน “${data.cost}” ไม่ใช่ตัวเลข`);
+        errors.push(t('ต้นทุน “{0}” ไม่ใช่ตัวเลข', data.cost));
       }
-      if (data.stock && !Number.isFinite(Number(data.stock))) errors.push(`สต็อก “${data.stock}” ไม่ใช่ตัวเลข`);
+      if (data.stock && !Number.isFinite(Number(data.stock))) errors.push(t('สต็อก “{0}” ไม่ใช่ตัวเลข', data.stock));
       const sku = (data.sku ?? '').toLowerCase();
       if (sku) {
-        if (seenSku.has(sku)) errors.push(`SKU ${data.sku} ซ้ำในไฟล์`);
+        if (seenSku.has(sku)) errors.push(t('SKU {0} ซ้ำในไฟล์', data.sku));
         seenSku.add(sku);
       }
       const targetId = sku ? bySku.get(sku) : undefined;
       for (const code of (data.barcode ?? '').split('|').map((c) => c.trim()).filter(Boolean)) {
-        if (seenCode.has(code)) errors.push(`บาร์โค้ด ${code} ซ้ำในไฟล์`);
+        if (seenCode.has(code)) errors.push(t('บาร์โค้ด {0} ซ้ำในไฟล์', code));
         seenCode.add(code);
         const owner = allCodes.get(code);
-        if (owner && owner !== targetId) errors.push(`บาร์โค้ด ${code} ถูกใช้กับสินค้าอื่นแล้ว`);
+        if (owner && owner !== targetId) errors.push(t('บาร์โค้ด {0} ถูกใช้กับสินค้าอื่นแล้ว', code));
       }
       return { row: i + 2, data, errors, action: targetId ? 'update' : 'create' };
     });
@@ -493,7 +497,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
         };
         const id = await saveProduct(ctx, tx, input, targetId);
         if (!targetId && d.stock && Number(d.stock) !== 0 && input.trackStock) {
-          await applyMove(ctx, tx, { productId: id, branchId, qty: Number(d.stock), type: 'adjust', unitCost: input.cost, refType: 'import', refId: '', note: 'ยอดยกมาจากการนำเข้า', userId: user.id, allowNegative: true });
+          await applyMove(ctx, tx, { productId: id, branchId, qty: Number(d.stock), type: 'adjust', unitCost: input.cost, refType: 'import', refId: '', note: t('ยอดยกมาจากการนำเข้า'), userId: user.id, allowNegative: true });
         }
       }
       await audit(ctx, tx, req, 'product.import', 'product', '', summary);
@@ -516,7 +520,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
   });
 
   const saveGroup = async (id: string, b: z.infer<typeof modifierGroupSchema>, isNew: boolean) => {
-    if (b.maxSelect > 0 && b.minSelect > b.maxSelect) throw badRequest('จำนวนขั้นต่ำต้องไม่มากกว่าจำนวนสูงสุด');
+    if (b.maxSelect > 0 && b.minSelect > b.maxSelect) throw badRequest(t('จำนวนขั้นต่ำต้องไม่มากกว่าจำนวนสูงสุด'));
     await ctx.db.transaction().execute(async (tx) => {
       if (isNew) await tx.insertInto('modifier_groups').values({ id, name: b.name, min_select: b.minSelect, max_select: b.maxSelect }).execute();
       else await tx.updateTable('modifier_groups').set({ name: b.name, min_select: b.minSelect, max_select: b.maxSelect }).where('id', '=', id).execute();
@@ -602,9 +606,9 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
   });
   app.post('/api/custom-fields', auth('settings.manage'), async (req) => {
     const b = customFieldSchema.parse(req.body);
-    if (b.type === 'select' && b.options.length === 0) throw badRequest('ฟิลด์แบบตัวเลือกต้องมีตัวเลือกอย่างน้อย 1 รายการ');
+    if (b.type === 'select' && b.options.length === 0) throw badRequest(t('ฟิลด์แบบตัวเลือกต้องมีตัวเลือกอย่างน้อย 1 รายการ'));
     const dup = await ctx.db.selectFrom('custom_fields').select('id').where('entity', '=', b.entity).where('field_key', '=', b.key).executeTakeFirst();
-    if (dup) throw conflict(`มีฟิลด์รหัส ${b.key} อยู่แล้ว`);
+    if (dup) throw conflict(t('มีฟิลด์รหัส {0} อยู่แล้ว', b.key));
     const id = uuid();
     await ctx.db.insertInto('custom_fields').values({ id, ...fieldRow(b) }).execute();
     await audit(ctx, ctx.db, req, 'settings.custom_field', 'custom_field', id, { label: b.label });

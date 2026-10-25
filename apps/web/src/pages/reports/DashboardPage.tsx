@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { initials } from '@flexpos/shared';
+import { initials, t } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { money, moneyShort, useFormatters, useSettings } from '@/lib/settings';
 import { cn, qtyText } from '@/lib/utils';
 import { Page } from '@/components/layout/AppShell';
 import { Button, Card, ErrorState, PageHeader, Segmented, Skeleton } from '@/components/ui/core';
+import { tn } from '@/lib/i18n';
 
 interface Totals { net: number; vat: number; discount: number; cost: number; bills: number; avg: number; refunds: number }
 interface Dash {
@@ -24,10 +25,10 @@ interface Dash {
 }
 
 const CAT_COLORS = ['#1d7a57', '#7cc4a4', '#c9b98f', '#9fb7d0', '#d6a39a', '#b6a6d6'];
-const RANGE_LABEL = { today: 'วันนี้', '7d': '7 วัน', '30d': '30 วัน' } as const;
+const RANGE_LABEL = { today: t('วันนี้'), '7d': t('7 วัน'), '30d': t('30 วัน') } as const;
 
 function delta(cur: number, prev: number) {
-  if (!prev) return { text: cur ? 'ใหม่' : '—', up: cur >= 0 };
+  if (!prev) return { text: cur ? t('ใหม่') : '—', up: cur >= 0 };
   const d = ((cur - prev) / Math.abs(prev)) * 100;
   return { text: `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`, up: d >= 0 };
 }
@@ -45,7 +46,7 @@ export default function DashboardPage() {
   const [range, setRange] = useState<'today' | '7d' | '30d'>('today');
   const q = useQuery({ queryKey: ['dashboard', range], queryFn: () => api.get<Dash>('/api/reports/dashboard', { range }), refetchInterval: 60_000 });
   const d = q.data;
-  const prevLabel = range === 'today' ? 'เมื่อวาน' : `${RANGE_LABEL[range]}ก่อนหน้า`;
+  const prevLabel = range === 'today' ? t('เมื่อวาน') : t('{0}ก่อนหน้า', RANGE_LABEL[range]);
 
   const exportCsv = () => d && api.download('/api/reports/sales', { from: d.range.from, to: d.range.to, groupBy: range === 'today' ? 'hour' : 'day', format: 'csv' }).catch((e) => toast.error(errorMessage(e)));
 
@@ -53,12 +54,12 @@ export default function DashboardPage() {
 
   const kpis = d
     ? [
-        { label: 'ยอดขายสุทธิ', value: money(d.kpis.cur.net), ...delta(d.kpis.cur.net, d.kpis.prev.net), sub: `${prevLabel} ${moneyShort(d.kpis.prev.net)}` },
-        { label: 'จำนวนบิล', value: d.kpis.cur.bills.toLocaleString(), ...delta(d.kpis.cur.bills, d.kpis.prev.bills), sub: `${prevLabel} ${d.kpis.prev.bills.toLocaleString()} บิล` },
-        { label: 'เฉลี่ยต่อบิล', value: money(d.kpis.cur.avg), ...delta(d.kpis.cur.avg, d.kpis.prev.avg), sub: `${prevLabel} ${moneyShort(d.kpis.prev.avg)}` },
+        { label: t('ยอดขายสุทธิ'), value: money(d.kpis.cur.net), ...delta(d.kpis.cur.net, d.kpis.prev.net), sub: `${prevLabel} ${moneyShort(d.kpis.prev.net)}` },
+        { label: t('จำนวนบิล'), value: d.kpis.cur.bills.toLocaleString(), ...delta(d.kpis.cur.bills, d.kpis.prev.bills), sub: t('{0} {1} บิล', prevLabel, d.kpis.prev.bills.toLocaleString()) },
+        { label: t('เฉลี่ยต่อบิล'), value: money(d.kpis.cur.avg), ...delta(d.kpis.cur.avg, d.kpis.prev.avg), sub: `${prevLabel} ${moneyShort(d.kpis.prev.avg)}` },
         d.profit
-          ? { label: 'กำไรขั้นต้น', value: money(d.profit.cur), ...delta(d.profit.cur, d.profit.prev), sub: d.kpis.cur.net ? `มาร์จิ้น ${((d.profit.cur / Math.max(1, d.kpis.cur.net - d.kpis.cur.vat)) * 100).toFixed(1)}%` : '—' }
-          : { label: 'ส่วนลดที่ให้', value: money(d.kpis.cur.discount), ...delta(d.kpis.cur.discount, d.kpis.prev.discount), sub: `${prevLabel} ${moneyShort(d.kpis.prev.discount)}` },
+          ? { label: t('กำไรขั้นต้น'), value: money(d.profit.cur), ...delta(d.profit.cur, d.profit.prev), sub: d.kpis.cur.net ? t('มาร์จิ้น {0}%', ((d.profit.cur / Math.max(1, d.kpis.cur.net - d.kpis.cur.vat)) * 100).toFixed(1)) : '—' }
+          : { label: t('ส่วนลดที่ให้'), value: money(d.kpis.cur.discount), ...delta(d.kpis.cur.discount, d.kpis.prev.discount), sub: `${prevLabel} ${moneyShort(d.kpis.prev.discount)}` },
       ]
     : [];
   const maxV = niceMax(Math.max(1, ...(d?.bars ?? []).flatMap((b) => [b.cur, b.prev])));
@@ -67,12 +68,12 @@ export default function DashboardPage() {
   return (
     <Page>
       <PageHeader
-        title="ภาพรวม"
+        title={t('ภาพรวม')}
         sub={d ? (range === 'today' ? f.date(d.range.to) : `${f.date(d.range.from)} – ${f.date(d.range.to)}`) : ' '}
         actions={
           <>
             <Segmented value={range} onChange={setRange} options={(Object.keys(RANGE_LABEL) as (keyof typeof RANGE_LABEL)[]).map((k) => ({ value: k, label: RANGE_LABEL[k] }))} />
-            <Button onClick={() => void exportCsv()}>ส่งออก CSV</Button>
+            <Button onClick={() => void exportCsv()}>{t('ส่งออก CSV')}</Button>
           </>
         }
       />
@@ -95,15 +96,15 @@ export default function DashboardPage() {
         <Card>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex flex-col gap-0.5">
-              <span className="font-semibold">{range === 'today' ? 'ยอดขายรายชั่วโมง' : 'ยอดขายรายวัน'}</span>
-              <span className="text-[13px] text-muted">{peak && peak.cur > 0 ? `สูงสุด ${peak.label}${range === 'today' ? ':00' : ''} · ${money(peak.cur)}` : 'ยังไม่มียอดขาย'}</span>
+              <span className="font-semibold">{range === 'today' ? t('ยอดขายรายชั่วโมง') : t('ยอดขายรายวัน')}</span>
+              <span className="text-[13px] text-muted">{peak && peak.cur > 0 ? t('สูงสุด {0}{1} · {2}', peak.label, range === 'today' ? ':00' : '', money(peak.cur)) : t('ยังไม่มียอดขาย')}</span>
             </div>
             <div className="flex gap-3.5 text-[12px] text-muted">
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-primary" />{RANGE_LABEL[range]}</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-line-strong" />{prevLabel}</span>
             </div>
           </div>
-          <div className="relative flex h-[220px] items-end pl-11" style={{ gap: (d?.bars.length ?? 0) > 16 ? 3 : 8 }} role="img" aria-label="กราฟยอดขาย">
+          <div className="relative flex h-[220px] items-end pl-11" style={{ gap: (d?.bars.length ?? 0) > 16 ? 3 : 8 }} role="img" aria-label={t('กราฟยอดขาย')}>
             {[0, 0.25, 0.5, 0.75, 1].map((g) => (
               <div key={g} className="absolute left-11 right-0 border-t border-dashed border-line-soft" style={{ bottom: `${g * 100}%` }}>
                 <span className="num absolute -left-11 -top-[9px] text-[11px] text-faint">{moneyShort(Math.round(maxV * g)).replace('฿', '')}</span>
@@ -124,10 +125,10 @@ export default function DashboardPage() {
         </Card>
         {settings.modules.restaurant && (
           <Card>
-            <div className="flex items-center justify-between"><span className="flex items-center gap-2 font-semibold"><span className="h-2 w-2 rounded-full bg-accent" />ตอนนี้</span><span className="text-[13px] text-muted">อัปเดตสด</span></div>
+            <div className="flex items-center justify-between"><span className="flex items-center gap-2 font-semibold"><span className="h-2 w-2 rounded-full bg-accent" />{t('ตอนนี้')}</span><span className="text-[13px] text-muted">{t('อัปเดตสด')}</span></div>
             <div className="num grid grid-cols-2 gap-2.5">
-              <div className="rounded-xl bg-canvas p-3"><div className="text-[12px] text-muted">โต๊ะที่ยังไม่เก็บเงิน</div><div className="text-[22px] font-semibold">{d?.open.count ?? 0}</div></div>
-              <div className="rounded-xl bg-canvas p-3"><div className="text-[12px] text-muted">ยอดรอเก็บ</div><div className="text-[22px] font-semibold">{money(d?.open.total ?? 0)}</div></div>
+              <div className="rounded-xl bg-canvas p-3"><div className="text-[12px] text-muted">{t('โต๊ะที่ยังไม่เก็บเงิน')}</div><div className="text-[22px] font-semibold">{d?.open.count ?? 0}</div></div>
+              <div className="rounded-xl bg-canvas p-3"><div className="text-[12px] text-muted">{t('ยอดรอเก็บ')}</div><div className="text-[22px] font-semibold">{money(d?.open.total ?? 0)}</div></div>
             </div>
             <div className="flex flex-col">
               {d?.open.list.map((o) => (
@@ -136,7 +137,7 @@ export default function DashboardPage() {
                   <span className="num font-semibold">{money(o.total)}</span><span className="text-faint">›</span>
                 </button>
               ))}
-              {d && !d.open.count && <span className="py-3 text-[14px] text-muted">ไม่มีโต๊ะค้างเก็บเงิน</span>}
+              {d && !d.open.count && <span className="py-3 text-[14px] text-muted">{t('ไม่มีโต๊ะค้างเก็บเงิน')}</span>}
             </div>
           </Card>
         )}
@@ -144,9 +145,9 @@ export default function DashboardPage() {
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <Card>
-          <div className="flex justify-between"><span className="font-semibold">สินค้าขายดี</span><span className="text-[13px] text-muted">ตามยอดขาย</span></div>
+          <div className="flex justify-between"><span className="font-semibold">{t('สินค้าขายดี')}</span><span className="text-[13px] text-muted">{t('ตามยอดขาย')}</span></div>
           <div className="flex flex-col">
-            <div className="grid grid-cols-[22px_minmax(0,1fr)_56px_84px] gap-2.5 border-b border-line-soft pb-1.5 text-[12px] text-muted"><span /><span>สินค้า</span><span className="text-right">จำนวน</span><span className="text-right">ยอดขาย</span></div>
+            <div className="grid grid-cols-[22px_minmax(0,1fr)_56px_84px] gap-2.5 border-b border-line-soft pb-1.5 text-[12px] text-muted"><span /><span>{t('สินค้า')}</span><span className="text-right">{t('จำนวน')}</span><span className="text-right">{t('ยอดขาย')}</span></div>
             {d?.top.map((t, i) => (
               <div key={t.id} className="num grid grid-cols-[22px_minmax(0,1fr)_56px_84px] items-center gap-2.5 border-b border-line-soft py-2.5">
                 <span className="font-mono text-[12px] font-semibold text-faint">{i + 1}</span>
@@ -155,11 +156,11 @@ export default function DashboardPage() {
                 <span className="text-right text-[14px] font-semibold">{moneyShort(t.rev)}</span>
               </div>
             ))}
-            {d && !d.top.length && <span className="py-6 text-center text-[14px] text-muted">ยังไม่มียอดขายในช่วงนี้</span>}
+            {d && !d.top.length && <span className="py-6 text-center text-[14px] text-muted">{t('ยังไม่มียอดขายในช่วงนี้')}</span>}
           </div>
         </Card>
         <Card>
-          <span className="font-semibold">ยอดขายตามหมวด</span>
+          <span className="font-semibold">{t('ยอดขายตามหมวด')}</span>
           <div className="flex h-3 gap-0.5 overflow-hidden rounded-md">
             {d?.categories.map((c, i) => <div key={c.name} style={{ width: `${c.share * 100}%`, background: CAT_COLORS[i % CAT_COLORS.length] }} />)}
           </div>
@@ -175,12 +176,12 @@ export default function DashboardPage() {
           </div>
         </Card>
         <Card>
-          <span className="font-semibold">พนักงาน</span>
+          <span className="font-semibold">{t('พนักงาน')}</span>
           <div className="flex flex-col">
             {d?.staff.map((p) => (
               <div key={p.id} className="num flex items-center gap-2.5 border-b border-line-soft py-2.5">
                 <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-soft text-[12px] font-semibold text-soft-fg">{initials(p.name)}</span>
-                <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[14px]">{p.name}</span><span className="text-[12px] text-muted">{p.bills} บิล</span></span>
+                <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[14px]">{p.name}</span><span className="text-[12px] text-muted">{tn('{0} บิล', p.bills)}</span></span>
                 <span className="text-[14px] font-semibold">{moneyShort(p.rev)}</span>
               </div>
             ))}
@@ -190,7 +191,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-3 lg:grid-cols-2">
         {settings.modules.stock && (
-          <Card title="สต็อกต้องดูแล" action={<button onClick={() => nav('/stock')} className="h-9 text-[14px] font-semibold text-primary">ไปหน้าสต็อก ›</button>}>
+          <Card title={t('สต็อกต้องดูแล')} action={<button onClick={() => nav('/stock')} className="h-9 text-[14px] font-semibold text-primary">{t('ไปหน้าสต็อก ›')}</button>}>
             <div className="flex flex-col">
               {d?.lowStock.map((l) => {
                 const days = l.perDay > 0 ? Math.floor(l.qty / l.perDay) : null;
@@ -198,25 +199,25 @@ export default function DashboardPage() {
                 return (
                   <div key={l.id} className="flex items-center gap-2.5 border-b border-line-soft py-2.5 text-[14px]">
                     <span className="flex-1 truncate">{l.name}</span>
-                    <span className="text-[12px] text-muted">{l.perDay ? `ขาย ~${l.perDay}/วัน` : ''}</span>
+                    <span className="text-[12px] text-muted">{l.perDay ? t('ขาย ~{0}/วัน', l.perDay) : ''}</span>
                     <span className={cn('min-w-[72px] whitespace-nowrap rounded-full px-2.5 py-[3px] text-center text-[12px] font-semibold', out ? 'bg-danger-soft text-danger' : 'bg-warn-soft text-warn')}>
-                      {out ? 'หมดแล้ว' : `เหลือ ${qtyText(l.qty)}${days !== null ? ` (~${days} วัน)` : ''}`}
+                      {out ? t('หมดแล้ว') : t('เหลือ {0}{1}', qtyText(l.qty), days !== null ? t(' (~{0} วัน)', days) : '')}
                     </span>
                   </div>
                 );
               })}
-              {d && !d.lowStock.length && <span className="py-3 text-[14px] text-muted">สต็อกทุกรายการอยู่ในระดับปกติ</span>}
+              {d && !d.lowStock.length && <span className="py-3 text-[14px] text-muted">{t('สต็อกทุกรายการอยู่ในระดับปกติ')}</span>}
             </div>
           </Card>
         )}
-        <Card title="ส่วนลดและการยกเลิก">
+        <Card title={t('ส่วนลดและการยกเลิก')}>
           {d && (
             <div className="num flex flex-col">
               {[
-                { label: 'ส่วนลดที่ให้', meta: `${d.adjustments.discountBills} บิล`, value: `-${money(d.adjustments.discount)}`, tone: 'text-ink' },
-                { label: 'จากโปรโมชั่น', meta: 'รวมในส่วนลด', value: money(d.adjustments.promo), tone: 'text-muted' },
-                { label: 'คืนสินค้า', meta: `${d.adjustments.refundBills} รายการ`, value: money(d.adjustments.refunds), tone: 'text-warn' },
-                { label: 'ยกเลิกบิล', meta: `${d.adjustments.voidBills} บิล`, value: money(d.adjustments.voids), tone: 'text-danger' },
+                { label: t('ส่วนลดที่ให้'), meta: t('{0} บิล', d.adjustments.discountBills), value: `-${money(d.adjustments.discount)}`, tone: 'text-ink' },
+                { label: t('จากโปรโมชั่น'), meta: t('รวมในส่วนลด'), value: money(d.adjustments.promo), tone: 'text-muted' },
+                { label: t('คืนสินค้า'), meta: t('{0} รายการ', d.adjustments.refundBills), value: money(d.adjustments.refunds), tone: 'text-warn' },
+                { label: t('ยกเลิกบิล'), meta: t('{0} บิล', d.adjustments.voidBills), value: money(d.adjustments.voids), tone: 'text-danger' },
               ].map((j) => (
                 <div key={j.label} className="flex items-center gap-2.5 border-b border-line-soft py-2.5 text-[14px]">
                   <span className="flex flex-1 flex-col"><span>{j.label}</span><span className="text-[12px] text-muted">{j.meta}</span></span>

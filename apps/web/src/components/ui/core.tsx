@@ -1,6 +1,8 @@
 import { cloneElement, forwardRef, isValidElement, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline-primary' | 'soft';
 type Size = 'sm' | 'md' | 'lg' | 'xl';
@@ -167,7 +169,7 @@ export function Card({ children, className, title, action, pad = true }: { child
 }
 
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={cn('h-5 w-5 animate-spin text-muted', className)} aria-label="กำลังโหลด" />;
+  return <Loader2 className={cn('h-5 w-5 animate-spin text-muted', className)} aria-label={t('กำลังโหลด')} />;
 }
 
 export function Skeleton({ className }: { className?: string }) {
@@ -176,7 +178,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function SkeletonRows({ rows = 6, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn('flex flex-col gap-3 p-4', className)} aria-busy="true" aria-label="กำลังโหลด">
+    <div className={cn('flex flex-col gap-3 p-4', className)} aria-busy="true" aria-label={t('กำลังโหลด')}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-10" />
       ))}
@@ -196,18 +198,16 @@ export function EmptyState({ icon, title, body, action, className }: { icon?: Re
 }
 
 export function ErrorState({ error, onRetry, className }: { error: unknown; onRetry?: () => void; className?: string }) {
-  const msg = error instanceof Error ? error.message : 'โหลดข้อมูลไม่สำเร็จ';
+  const msg = error instanceof Error ? error.message : t('โหลดข้อมูลไม่สำเร็จ');
   return (
     <div className={cn('flex flex-col items-center gap-2 px-6 py-12 text-center', className)} role="alert">
       <div className="mb-1 grid h-12 w-12 place-items-center rounded-2xl bg-danger-soft text-danger">
         <AlertTriangle className="h-6 w-6" />
       </div>
-      <p className="text-[16px] font-semibold">โหลดข้อมูลไม่สำเร็จ</p>
+      <p className="text-[16px] font-semibold">{t('โหลดข้อมูลไม่สำเร็จ')}</p>
       <p className="max-w-md text-[14px] text-muted">{msg}</p>
       {onRetry && (
-        <Button className="mt-3" icon={<RotateCcw className="h-4 w-4" />} onClick={onRetry}>
-          ลองใหม่
-        </Button>
+        <Button className="mt-3" icon={<RotateCcw className="h-4 w-4" />} onClick={onRetry}>{t('ลองใหม่')}</Button>
       )}
     </div>
   );
@@ -267,16 +267,10 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
   if (total <= pageSize) return null;
   return (
     <div className="flex items-center justify-between gap-3 px-5 py-3 text-[14px] text-muted">
-      <span className="num">
-        {((page - 1) * pageSize + 1).toLocaleString()}–{Math.min(page * pageSize, total).toLocaleString()} จาก {total.toLocaleString()}
-      </span>
+      <span className="num">{tn('{0}–{1} จาก {2}', ((page - 1) * pageSize + 1).toLocaleString(), Math.min(page * pageSize, total).toLocaleString(), total.toLocaleString())}</span>
       <div className="flex gap-2">
-        <Button size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-          ก่อนหน้า
-        </Button>
-        <Button size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
-          ถัดไป
-        </Button>
+        <Button size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>{t('ก่อนหน้า')}</Button>
+        <Button size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{t('ถัดไป')}</Button>
       </div>
     </div>
   );

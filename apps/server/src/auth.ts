@@ -5,6 +5,7 @@ import type { Permission, SessionUser } from '@flexpos/shared';
 import type { AppContext, Tx } from './context.js';
 import { forbidden, unauthorized } from './errors.js';
 import { nowIso, parseJson, uuid } from './util.js';
+import { t } from '@flexpos/shared';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -106,7 +107,7 @@ export function requireAuth(ctx: AppContext, ...perms: Permission[]) {
       throw unauthorized();
     }
     const user = await loadSessionUser(ctx, req.user.sub);
-    if (!user) throw unauthorized('บัญชีนี้ถูกปิดการใช้งาน');
+    if (!user) throw unauthorized(t('บัญชีนี้ถูกปิดการใช้งาน'));
     for (const p of perms) if (!user.permissions.includes(p)) throw forbidden();
     req.sessionUser = user;
   };
@@ -132,7 +133,7 @@ export async function authorizeWithPin(
   managerPin?: string,
 ): Promise<SessionUser> {
   if (hasPerm(user, perm)) return user;
-  if (!managerPin) throw forbidden('ต้องใช้ PIN ผู้จัดการเพื่อทำรายการนี้');
+  if (!managerPin) throw forbidden(t('ต้องใช้ PIN ผู้จัดการเพื่อทำรายการนี้'));
   const mgr = await ctx.db
     .selectFrom('users')
     .select('id')
@@ -140,7 +141,7 @@ export async function authorizeWithPin(
     .where('active', '=', 1)
     .executeTakeFirst();
   const m = mgr ? await loadSessionUser(ctx, mgr.id) : null;
-  if (!m || !hasPerm(m, perm)) throw forbidden('PIN ผู้จัดการไม่ถูกต้อง หรือไม่มีสิทธิ์');
+  if (!m || !hasPerm(m, perm)) throw forbidden(t('PIN ผู้จัดการไม่ถูกต้อง หรือไม่มีสิทธิ์'));
   return m;
 }
 
@@ -149,7 +150,7 @@ export function branchOf(ctx: AppContext, req: FastifyRequest): string {
   if (user.branchId) return user.branchId;
   const h = req.headers['x-branch-id'];
   if (typeof h === 'string' && h) return h;
-  if (!ctx.defaultBranchId) throw unauthorized('ยังไม่มีสาขา');
+  if (!ctx.defaultBranchId) throw unauthorized(t('ยังไม่มีสาขา'));
   return ctx.defaultBranchId;
 }
 

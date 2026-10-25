@@ -10,6 +10,7 @@ import {
   roleSchema,
   userSchema,
   type SaleView,
+  t,
 } from '@flexpos/shared';
 import type { AppContext } from '../context.js';
 import { audit, hashPassword, invalidateUserCache, pinHash, requireAuth } from '../auth.js';
@@ -36,11 +37,11 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     try {
       next = mergeSettings(ctx.settings, patch);
     } catch (e) {
-      throw badRequest(e instanceof z.ZodError ? `ค่าตั้งค่าไม่ถูกต้อง: ${e.issues[0]?.path.join('.')} ${e.issues[0]?.message}` : 'ค่าตั้งค่าไม่ถูกต้อง');
+      throw badRequest(e instanceof z.ZodError ? t('ค่าตั้งค่าไม่ถูกต้อง: {0} {1}', e.issues[0]?.path.join('.'), e.issues[0]?.message) : t('ค่าตั้งค่าไม่ถูกต้อง'));
     }
     const branchCount = num((await ctx.db.selectFrom('branches').select((eb) => eb.fn.countAll<number>().as('n')).where('active', '=', 1).executeTakeFirst())?.n);
     if (next.modules.multiBranch && branchCount > license.status().maxBranches && license.status().state !== 'active')
-      throw badRequest('แพ็กเกจปัจจุบันไม่รองรับหลายสาขา');
+      throw badRequest(t('แพ็กเกจปัจจุบันไม่รองรับหลายสาขา'));
     await ctx.saveSettings(next);
     await audit(ctx, ctx.db, req, 'settings.update', 'settings', 'app', { keys: Object.keys(patch) });
     bumpCatalog(ctx);
@@ -52,14 +53,14 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     const patch = z.record(z.string(), z.unknown()).parse(req.body ?? {});
     const s = mergeSettings(ctx.settings, patch);
     const sample: SaleView = {
-      id: 'preview', docNo: 'R2510-00481', taxInvoiceNo: null, type: 'sale', status: 'completed', createdAt: new Date().toISOString(), userName: 'นภัส', branchName: '', tableName: s.modules.restaurant ? 'A2' : null,
-      customer: s.modules.members ? { name: 'คุณสมใจ ใจดี', phone: '0812345678', points: 132 } : null,
+      id: 'preview', docNo: 'R2510-00481', taxInvoiceNo: null, type: 'sale', status: 'completed', createdAt: new Date().toISOString(), userName: t('นภัส'), branchName: '', tableName: s.modules.restaurant ? 'A2' : null,
+      customer: s.modules.members ? { name: t('คุณสมใจ ใจดี'), phone: '0812345678', points: 132 } : null,
       lines: [
-        { id: '1', name: 'อเมริกาโน่เย็น', qty: 2, unitPrice: 6500, gross: 13000, lineDiscount: 0, promoDiscount: 0, net: 13000, modifiers: [{ name: 'หวานน้อย', priceDelta: 0 }], note: '' },
-        { id: '2', name: 'มัทฉะลาเต้', qty: 1, unitPrice: 8500, gross: 8500, lineDiscount: 0, promoDiscount: 0, net: 8500, modifiers: [], note: 'ไม่ใส่น้ำแข็ง' },
+        { id: '1', name: t('อเมริกาโน่เย็น'), qty: 2, unitPrice: 6500, gross: 13000, lineDiscount: 0, promoDiscount: 0, net: 13000, modifiers: [{ name: t('หวานน้อย'), priceDelta: 0 }], note: '' },
+        { id: '2', name: t('มัทฉะลาเต้'), qty: 1, unitPrice: 8500, gross: 8500, lineDiscount: 0, promoDiscount: 0, net: 8500, modifiers: [], note: t('ไม่ใส่น้ำแข็ง') },
       ],
       subtotal: 21500, discountTotal: 0, billDiscount: 0, promoDiscount: 0, serviceCharge: 0, vatableBase: s.tax.vatEnabled ? 20093 : 0, vat: s.tax.vatEnabled ? 1407 : 0, exemptAmount: 0, rounding: 0, total: 21500, paid: 50000, change: 28500,
-      payments: [{ name: 'เงินสด', amount: 21500, kind: 'cash' }], pointsEarned: s.points.enabled ? 8 : 0, pointsRedeemed: 0, promotions: [], taxInvoice: null,
+      payments: [{ name: t('เงินสด'), amount: 21500, kind: 'cash' }], pointsEarned: s.points.enabled ? 8 : 0, pointsRedeemed: 0, promotions: [], taxInvoice: null,
       pricesIncludeVat: s.tax.pricesIncludeVat, vatRate: s.tax.vatRate, vatEnabled: s.tax.vatEnabled, serviceChargeRate: s.tax.serviceChargeRate, voidReason: null,
     };
     return buildReceiptDoc(sample, s);
@@ -82,7 +83,7 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     const { id } = req.params as { id: string };
     const b = roleSchema.parse(req.body);
     const r = await ctx.db.selectFrom('roles').selectAll().where('id', '=', id).executeTakeFirst();
-    if (!r) throw notFound('บทบาท');
+    if (!r) throw notFound(t('บทบาท'));
     // The owner role always keeps every permission so the shop cannot lock itself out.
     const perms = r.code === 'owner' ? ALL_PERMISSIONS : b.permissions;
     await ctx.db.updateTable('roles').set({ name: b.name, permissions: JSON.stringify(perms) }).where('id', '=', id).execute();
@@ -93,10 +94,10 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
   app.delete('/api/roles/:id', auth('users.manage'), async (req) => {
     const { id } = req.params as { id: string };
     const r = await ctx.db.selectFrom('roles').select(['system', 'code']).where('id', '=', id).executeTakeFirst();
-    if (!r) throw notFound('บทบาท');
-    if (r.system === 1 || ['owner', 'manager', 'cashier', 'kitchen'].includes(r.code)) throw conflict('ลบบทบาทเริ่มต้นไม่ได้');
+    if (!r) throw notFound(t('บทบาท'));
+    if (r.system === 1 || ['owner', 'manager', 'cashier', 'kitchen'].includes(r.code)) throw conflict(t('ลบบทบาทเริ่มต้นไม่ได้'));
     const used = await ctx.db.selectFrom('users').select('id').where('role_id', '=', id).where('active', '=', 1).executeTakeFirst();
-    if (used) throw conflict('ยังมีพนักงานใช้บทบาทนี้อยู่');
+    if (used) throw conflict(t('ยังมีพนักงานใช้บทบาทนี้อยู่'));
     await ctx.db.deleteFrom('roles').where('id', '=', id).execute();
     return { ok: true };
   });
@@ -110,11 +111,11 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
   const assertUnique = async (username: string, pin: string | undefined, id: string | null) => {
     let q = ctx.db.selectFrom('users').select('id').where('username', '=', username.toLowerCase());
     if (id) q = q.where('id', '!=', id);
-    if (await q.executeTakeFirst()) throw conflict('ชื่อผู้ใช้นี้ถูกใช้แล้ว');
+    if (await q.executeTakeFirst()) throw conflict(t('ชื่อผู้ใช้นี้ถูกใช้แล้ว'));
     if (pin) {
       let pq = ctx.db.selectFrom('users').select('id').where('pin_hash', '=', pinHash(ctx.config.secret, pin)).where('active', '=', 1);
       if (id) pq = pq.where('id', '!=', id);
-      if (await pq.executeTakeFirst()) throw conflict('PIN นี้ถูกใช้แล้ว กรุณาเลือก PIN อื่น');
+      if (await pq.executeTakeFirst()) throw conflict(t('PIN นี้ถูกใช้แล้ว กรุณาเลือก PIN อื่น'));
     }
   };
 
@@ -124,12 +125,12 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     const cur = await ctx.db.selectFrom('users').select(['role_id']).where('id', '=', id).executeTakeFirst();
     if (cur?.role_id !== owner.id || (nextRoleId === owner.id && active)) return;
     const others = await ctx.db.selectFrom('users').select('id').where('role_id', '=', owner.id).where('active', '=', 1).where('id', '!=', id).executeTakeFirst();
-    if (!others) throw conflict('ต้องมีเจ้าของร้านที่ใช้งานอยู่อย่างน้อย 1 คน');
+    if (!others) throw conflict(t('ต้องมีเจ้าของร้านที่ใช้งานอยู่อย่างน้อย 1 คน'));
   };
 
   app.post('/api/users', auth('users.manage'), async (req) => {
     const b = userSchema.parse(req.body);
-    if (!b.password) throw badRequest('กรุณาตั้งรหัสผ่าน (อย่างน้อย 8 ตัวอักษร)');
+    if (!b.password) throw badRequest(t('กรุณาตั้งรหัสผ่าน (อย่างน้อย 8 ตัวอักษร)'));
     await assertUnique(b.username, b.pin || undefined, null);
     const id = uuid();
     await ctx.db.insertInto('users').values({ id, username: b.username.toLowerCase(), name: b.name, password_hash: await hashPassword(b.password), pin_hash: b.pin ? pinHash(ctx.config.secret, b.pin) : null, role_id: b.roleId, branch_id: b.branchId ?? null, active: bool(b.active), created_at: nowIso(), last_login_at: null }).execute();
@@ -158,9 +159,9 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     const b = branchSchema.parse(req.body);
     const count = num((await ctx.db.selectFrom('branches').select((eb) => eb.fn.countAll<number>().as('n')).where('active', '=', 1).executeTakeFirst())?.n);
     const lic = license.status();
-    if (count >= lic.maxBranches) throw badRequest(`แพ็กเกจ ${lic.plan} ใช้ได้สูงสุด ${lic.maxBranches} สาขา`);
+    if (count >= lic.maxBranches) throw badRequest(t('แพ็กเกจ {0} ใช้ได้สูงสุด {1} สาขา', lic.plan, lic.maxBranches));
     const dup = await ctx.db.selectFrom('branches').select('id').where('code', '=', b.code).executeTakeFirst();
-    if (dup) throw conflict('รหัสสาขาซ้ำ');
+    if (dup) throw conflict(t('รหัสสาขาซ้ำ'));
     const id = uuid();
     await ctx.db.insertInto('branches').values({ id, code: b.code, name: b.name, address: b.address, phone: b.phone, tax_branch_no: b.taxBranchNo, active: bool(b.active), created_at: nowIso() }).execute();
     await audit(ctx, ctx.db, req, 'branch.create', 'branch', id, b);
@@ -170,8 +171,8 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     const b = branchSchema.parse(req.body);
     const { id } = req.params as { id: string };
     const dup = await ctx.db.selectFrom('branches').select('id').where('code', '=', b.code).where('id', '!=', id).executeTakeFirst();
-    if (dup) throw conflict('รหัสสาขาซ้ำ');
-    if (!b.active && id === ctx.defaultBranchId) throw conflict('ปิดสาขาหลักไม่ได้');
+    if (dup) throw conflict(t('รหัสสาขาซ้ำ'));
+    if (!b.active && id === ctx.defaultBranchId) throw conflict(t('ปิดสาขาหลักไม่ได้'));
     await ctx.db.updateTable('branches').set({ code: b.code, name: b.name, address: b.address, phone: b.phone, tax_branch_no: b.taxBranchNo, active: bool(b.active) }).where('id', '=', id).execute();
     return { ok: true };
   });
@@ -180,7 +181,7 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
   app.get('/api/payment-methods', auth(), async () => (await ctx.db.selectFrom('payment_methods').selectAll().orderBy('sort').execute()).map((m) => ({ ...m, active: m.active === 1 })));
   app.post('/api/payment-methods', auth('settings.manage'), async (req) => {
     const b = paymentMethodSchema.parse(req.body);
-    if (await ctx.db.selectFrom('payment_methods').select('id').where('code', '=', b.code).executeTakeFirst()) throw conflict('รหัสวิธีชำระซ้ำ');
+    if (await ctx.db.selectFrom('payment_methods').select('id').where('code', '=', b.code).executeTakeFirst()) throw conflict(t('รหัสวิธีชำระซ้ำ'));
     const id = uuid();
     await ctx.db.insertInto('payment_methods').values({ id, code: b.code, name: b.name, kind: b.kind, active: bool(b.active), sort: b.sort }).execute();
     bumpCatalog(ctx);
@@ -190,8 +191,8 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     const b = paymentMethodSchema.parse(req.body);
     const { id } = req.params as { id: string };
     const cur = await ctx.db.selectFrom('payment_methods').select('code').where('id', '=', id).executeTakeFirst();
-    if (!cur) throw notFound('วิธีชำระเงิน');
-    if (cur.code === 'cash' && !b.active) throw conflict('ปิดการรับเงินสดไม่ได้');
+    if (!cur) throw notFound(t('วิธีชำระเงิน'));
+    if (cur.code === 'cash' && !b.active) throw conflict(t('ปิดการรับเงินสดไม่ได้'));
     await ctx.db.updateTable('payment_methods').set({ name: b.name, kind: cur.code === 'cash' ? 'cash' : b.kind, active: bool(b.active), sort: b.sort }).where('id', '=', id).execute();
     bumpCatalog(ctx);
     return { ok: true };
@@ -204,8 +205,8 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     return rows.map((p) => ({ id: p.id, branchId: p.branch_id, name: p.name, kind: p.kind, address: p.address, port: p.port, paper: p.paper, role: p.role, categoryIds: parseJson<string[]>(p.category_ids, []), textMode: p.text_mode, openDrawer: p.open_drawer === 1, active: p.active === 1, online: p.online === 1, lastError: p.last_error, queued: num(q.find((x) => x.printer_id === p.id)?.n) }));
   });
   const printerRow = (b: z.infer<typeof printerSchema>) => {
-    if (b.kind === 'network' && !b.address) throw badRequest('กรุณากรอก IP ของเครื่องพิมพ์');
-    if (b.kind === 'system' && b.role !== 'receipt' && b.role !== 'label') throw badRequest('เครื่องพิมพ์ครัว/บาร์ต้องเป็นเครื่องพิมพ์เครือข่าย (LAN/Wi-Fi) เพื่อพิมพ์อัตโนมัติจากทุกเครื่อง');
+    if (b.kind === 'network' && !b.address) throw badRequest(t('กรุณากรอก IP ของเครื่องพิมพ์'));
+    if (b.kind === 'system' && b.role !== 'receipt' && b.role !== 'label') throw badRequest(t('เครื่องพิมพ์ครัว/บาร์ต้องเป็นเครื่องพิมพ์เครือข่าย (LAN/Wi-Fi) เพื่อพิมพ์อัตโนมัติจากทุกเครื่อง'));
     return { name: b.name, kind: b.kind, address: b.address, port: b.port, paper: b.paper, role: b.role, category_ids: JSON.stringify(b.categoryIds), text_mode: b.textMode, open_drawer: bool(b.openDrawer), active: bool(b.active) };
   };
   app.post('/api/printers', auth('settings.manage'), async (req) => {
@@ -223,25 +224,25 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
   });
   app.delete('/api/printers/:id', auth('settings.manage'), async (req) => {
     const { id } = req.params as { id: string };
-    await ctx.db.updateTable('print_jobs').set({ status: 'failed', error: 'ลบเครื่องพิมพ์' }).where('printer_id', '=', id).where('status', '=', 'queued').execute();
+    await ctx.db.updateTable('print_jobs').set({ status: 'failed', error: t('ลบเครื่องพิมพ์') }).where('printer_id', '=', id).where('status', '=', 'queued').execute();
     await ctx.db.deleteFrom('printers').where('id', '=', id).execute();
     return { ok: true };
   });
   app.post('/api/printers/:id/test', auth('settings.manage'), async (req) => {
     const p = await ctx.db.selectFrom('printers').selectAll().where('id', '=', (req.params as { id: string }).id).executeTakeFirst();
-    if (!p) throw notFound('เครื่องพิมพ์');
-    if (p.kind !== 'network') throw badRequest('ทดสอบเครื่องพิมพ์ระบบได้จากปุ่มพิมพ์ในเบราว์เซอร์');
+    if (!p) throw notFound(t('เครื่องพิมพ์'));
+    if (p.kind !== 'network') throw badRequest(t('ทดสอบเครื่องพิมพ์ระบบได้จากปุ่มพิมพ์ในเบราว์เซอร์'));
     try {
       await printer.send(p, {
         paper: p.paper === '58' ? '58' : '80',
         cut: true,
         blocks: [
-          { t: 'text', text: 'ทดสอบพิมพ์ FlexPOS', align: 'center', size: 2, bold: true },
+          { t: 'text', text: t('ทดสอบพิมพ์ FlexPOS'), align: 'center', size: 2, bold: true },
           { t: 'text', text: `${p.name} · ${p.address}:${p.port}`, align: 'center' },
           { t: 'line', dashed: true },
-          { t: 'row', left: '2× อเมริกาโน่เย็น', right: '130.00' },
-          { t: 'row', left: 'ภาษาไทย ก ข ค ง ญ ฎ ฏ ฐ ปู่ ป้า', right: '฿' },
-          { t: 'row', left: 'รวม', right: '130.00', bold: true, size: 2 },
+          { t: 'row', left: t('2× อเมริกาโน่เย็น'), right: '130.00' },
+          { t: 'row', left: t('ภาษาไทย ก ข ค ง ญ ฎ ฏ ฐ ปู่ ป้า'), right: t('฿') },
+          { t: 'row', left: t('รวม'), right: '130.00', bold: true, size: 2 },
           { t: 'qr', data: 'https://flexpos.app', size: 160 },
         ],
       });
@@ -305,7 +306,7 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
       reply.header('content-type', 'application/gzip').header('content-disposition', `attachment; filename="${name}"`);
       return buf;
     } catch (e) {
-      throw badRequest(e instanceof Error ? e.message : 'อ่านไฟล์ไม่ได้');
+      throw badRequest(e instanceof Error ? e.message : t('อ่านไฟล์ไม่ได้'));
     }
   });
   app.post('/api/backups/restore', auth('backup.manage'), async (req) => {
@@ -314,7 +315,7 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     if (name) buf = backup.read(name);
     else {
       const f = await req.file();
-      if (!f) throw badRequest('กรุณาเลือกไฟล์สำรอง (.json.gz)');
+      if (!f) throw badRequest(t('กรุณาเลือกไฟล์สำรอง (.json.gz)'));
       buf = await f.toBuffer();
     }
     try {
@@ -322,7 +323,7 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
       await audit(ctx, ctx.db, req, 'backup.restore', 'backup', name ?? 'upload', r);
       return r;
     } catch (e) {
-      throw badRequest(e instanceof Error ? e.message : 'กู้คืนไม่สำเร็จ');
+      throw badRequest(e instanceof Error ? e.message : t('กู้คืนไม่สำเร็จ'));
     }
   });
 
@@ -348,7 +349,7 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     try {
       entries = await readdir(dir, { withFileTypes: true });
     } catch {
-      throw badRequest('เปิดโฟลเดอร์นี้ไม่ได้ (ไม่มีสิทธิ์หรือไม่พบโฟลเดอร์)');
+      throw badRequest(t('เปิดโฟลเดอร์นี้ไม่ได้ (ไม่มีสิทธิ์หรือไม่พบโฟลเดอร์)'));
     }
     const folders = entries
       .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !e.name.startsWith('$') && e.name !== 'System Volume Information')
@@ -359,12 +360,12 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
     return { path: dir, parent, drives: [], folders, ...(await space(dir)) };
   });
   app.post('/api/system/folders', auth('backup.manage'), async (req) => {
-    const b = z.object({ path: z.string().min(1).max(1000), name: z.string().trim().min(1).max(100).regex(/^[^\\/:*?"<>|]+$/, 'ชื่อโฟลเดอร์มีอักขระที่ใช้ไม่ได้') }).parse(req.body);
+    const b = z.object({ path: z.string().min(1).max(1000), name: z.string().trim().min(1).max(100).regex(/^[^\\/:*?"<>|]+$/, t('ชื่อโฟลเดอร์มีอักขระที่ใช้ไม่ได้')) }).parse(req.body);
     const dir = joinPath(resolvePath(b.path), b.name);
     try {
       mkdirSync(dir, { recursive: true });
     } catch {
-      throw badRequest('สร้างโฟลเดอร์ไม่ได้ ตรวจสอบสิทธิ์การเขียนของไดรฟ์นี้');
+      throw badRequest(t('สร้างโฟลเดอร์ไม่ได้ ตรวจสอบสิทธิ์การเขียนของไดรฟ์นี้'));
     }
     return { path: dir };
   });
@@ -377,7 +378,7 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
       writeFileSync(probe, 'ok');
       unlinkSync(probe);
     } catch {
-      throw badRequest('บันทึกไฟล์ลงโฟลเดอร์นี้ไม่ได้ (ไดรฟ์อาจถูกถอด เป็นแบบอ่านอย่างเดียว หรือไม่มีสิทธิ์)');
+      throw badRequest(t('บันทึกไฟล์ลงโฟลเดอร์นี้ไม่ได้ (ไดรฟ์อาจถูกถอด เป็นแบบอ่านอย่างเดียว หรือไม่มีสิทธิ์)'));
     }
     return { ok: true, path: dir, ...(await space(dir)) };
   });

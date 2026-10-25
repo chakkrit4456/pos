@@ -6,6 +6,7 @@ import { errorMessage } from '@/lib/api';
 import { Button, Field, Input, Segmented } from '@/components/ui/core';
 import { PinPad } from '@/components/ui/inputs';
 import { BrandMark } from '@/components/BrandMark';
+import { t } from '@flexpos/shared';
 
 export function LoginPage({ status }: { status: SetupStatus }) {
   const { login, loginPin } = useSession();
@@ -38,7 +39,7 @@ export function LoginPage({ status }: { status: SetupStatus }) {
           <div>
             <div className="text-[18px] font-semibold">{status.brand?.loginTitle || status.brand?.storeName || status.brand?.appName || 'FlexPOS'}</div>
             {status.brand?.loginSubtitle && <div className="text-[13px] text-[#c9ccd1]">{status.brand.loginSubtitle}</div>}
-            <div className="text-[13px] text-[#a5a8ad]">v{status.version}{status.dbKind ? ` · ${status.dbKind === 'sqlite' ? 'ฐานข้อมูลในเครื่อง' : status.dbKind}` : ''}</div>
+            <div className="text-[13px] text-[#a5a8ad]">v{status.version}{status.dbKind ? ` · ${status.dbKind === 'sqlite' ? t('ฐานข้อมูลในเครื่อง') : status.dbKind}` : ''}</div>
           </div>
         </div>
         <Segmented
@@ -46,13 +47,13 @@ export function LoginPage({ status }: { status: SetupStatus }) {
           onChange={setMode}
           className="self-start border-[#3a3d42] bg-[#24272b] [&_button[aria-selected=false]]:text-[#a5a8ad] [&_button[aria-selected=false]:hover]:bg-[#3a3d42]"
           options={[
-            { value: 'pin', label: 'PIN พนักงาน' },
-            { value: 'password', label: 'ชื่อผู้ใช้ / รหัสผ่าน' },
+            { value: 'pin', label: t('PIN พนักงาน') },
+            { value: 'password', label: t('ชื่อผู้ใช้ / รหัสผ่าน') },
           ]}
         />
         {mode === 'pin' ? (
           <div className="flex flex-col items-center gap-3">
-            <span className="text-[20px] font-semibold">ใส่ PIN พนักงาน</span>
+            <span className="text-[20px] font-semibold">{t('ใส่ PIN พนักงาน')}</span>
             <PinPad dark onComplete={onPin} error={pinError} busy={busy} />
           </div>
         ) : (
@@ -70,16 +71,14 @@ export function LoginPage({ status }: { status: SetupStatus }) {
               }
             }}
           >
-            <Field label="ชื่อผู้ใช้" htmlFor="u">
+            <Field label={t('ชื่อผู้ใช้')} htmlFor="u">
               <Input id="u" autoComplete="username" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
             </Field>
-            <Field label="รหัสผ่าน" htmlFor="p">
+            <Field label={t('รหัสผ่าน')} htmlFor="p">
               <Input id="p" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </Field>
-            <Button type="submit" variant="primary" size="lg" loading={busy} disabled={!username || !password}>
-              เข้าสู่ระบบ
-            </Button>
-            <p className="text-[12px] text-muted">ลืมรหัสผ่าน? ให้เจ้าของร้านตั้งรหัสใหม่ที่ ตั้งค่า → พนักงาน</p>
+            <Button type="submit" variant="primary" size="lg" loading={busy} disabled={!username || !password}>{t('เข้าสู่ระบบ')}</Button>
+            <p className="text-[12px] text-muted">{t('ลืมรหัสผ่าน? ให้เจ้าของร้านตั้งรหัสใหม่ที่ ตั้งค่า → พนักงาน')}</p>
           </form>
         )}
       </div>

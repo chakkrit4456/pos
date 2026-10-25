@@ -28,6 +28,8 @@ export interface SetupStatus {
   license: LicenseStatus;
   /** public branding for the login screen */
   brand: PublicBrand;
+  /** UI language of the store */
+  language: 'th' | 'en';
 }
 
 export interface PublicBrand {

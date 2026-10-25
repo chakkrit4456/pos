@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 /** All money values are integers in satang (1 baht = 100 satang). Never use floats for stored amounts. */
 
 /** Round half away from zero to an integer. */
@@ -30,7 +31,7 @@ export interface MoneyFormatOptions {
 
 /** ฿1,234.50 */
 export function formatMoney(satang: number, opts: MoneyFormatOptions = {}): string {
-  const { symbol = '฿', decimals = true } = opts;
+  const { symbol = t('฿'), decimals = true } = opts;
   const neg = satang < 0;
   const abs = Math.abs(satang);
   const baht = Math.floor(abs / 100);

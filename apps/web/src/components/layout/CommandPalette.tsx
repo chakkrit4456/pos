@@ -9,6 +9,8 @@ import { useSession } from '@/lib/session';
 import { money } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 import { useNavItems } from './AppShell';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 interface Item {
   id: string;
@@ -45,14 +47,14 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       nav(to);
     };
     const pages: Item[] = [
-      ...navItems.map((n) => ({ id: n.to, label: n.label, sub: 'เมนู', icon: n.icon, run: go(n.to) })),
-      ...(can('products.manage') ? [{ id: 'new-product', label: 'เพิ่มสินค้าใหม่', sub: 'คำสั่ง', icon: <Package />, run: go('/products/new') }] : []),
+      ...navItems.map((n) => ({ id: n.to, label: n.label, sub: t('เมนู'), icon: n.icon, run: go(n.to) })),
+      ...(can('products.manage') ? [{ id: 'new-product', label: t('เพิ่มสินค้าใหม่'), sub: t('คำสั่ง'), icon: <Package />, run: go('/products/new') }] : []),
       ...(can('settings.manage')
         ? [
-            { id: 'set-receipt', label: 'ออกแบบใบเสร็จ', sub: 'ตั้งค่า', icon: <Receipt />, run: go('/settings/receipt') },
-            { id: 'set-printers', label: 'เครื่องพิมพ์', sub: 'ตั้งค่า', icon: <Receipt />, run: go('/settings/printers') },
-            { id: 'set-staff', label: 'พนักงานและสิทธิ์', sub: 'ตั้งค่า', icon: <Receipt />, run: go('/settings/staff') },
-            { id: 'set-backup', label: 'สำรองข้อมูล', sub: 'ตั้งค่า', icon: <Receipt />, run: go('/settings/backup') },
+            { id: 'set-receipt', label: t('ออกแบบใบเสร็จ'), sub: t('ตั้งค่า'), icon: <Receipt />, run: go('/settings/receipt') },
+            { id: 'set-printers', label: t('เครื่องพิมพ์'), sub: t('ตั้งค่า'), icon: <Receipt />, run: go('/settings/printers') },
+            { id: 'set-staff', label: t('พนักงานและสิทธิ์'), sub: t('ตั้งค่า'), icon: <Receipt />, run: go('/settings/staff') },
+            { id: 'set-backup', label: t('สำรองข้อมูล'), sub: t('ตั้งค่า'), icon: <Receipt />, run: go('/settings/backup') },
           ]
         : []),
     ];
@@ -63,7 +65,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           .slice(0, 6)
           .map((p) => ({ id: 'p' + p.id, label: p.name, sub: `${p.sku} · ${money(p.price)}`, icon: <Package />, run: go(can('products.manage') ? `/products/${p.id}` : '/pos') }))
       : [];
-    const billItems = (bills.data?.items ?? []).map((b) => ({ id: 'b' + b.id, label: b.doc_no, sub: `บิล · ${money(b.total)}`, icon: <Receipt />, run: go(`/sales?open=${b.id}`) }));
+    const billItems = (bills.data?.items ?? []).map((b) => ({ id: 'b' + b.id, label: b.doc_no, sub: t('บิล · {0}', money(b.total)), icon: <Receipt />, run: go(`/sales?open=${b.id}`) }));
     return [...matchPages, ...products, ...billItems];
   }, [navItems, term, catalog.data, bills.data, can, nav, onOpenChange]);
 
@@ -74,8 +76,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       <RD.Portal>
         <RD.Overlay className="fixed inset-0 z-40 bg-[rgb(23_25_28/0.35)]" />
         <RD.Content className="fixed left-1/2 top-[12vh] z-50 w-[calc(100vw-24px)] max-w-[600px] -translate-x-1/2 animate-pop-in overflow-hidden rounded-[18px] bg-surface shadow-pop">
-          <RD.Title className="sr-only">ค้นหา</RD.Title>
-          <RD.Description className="sr-only">ค้นหาเมนู สินค้า หรือบิล</RD.Description>
+          <RD.Title className="sr-only">{t('ค้นหา')}</RD.Title>
+          <RD.Description className="sr-only">{t('ค้นหาเมนู สินค้า หรือบิล')}</RD.Description>
           <div className="flex items-center gap-3 border-b border-line-soft px-4">
             <Search className="h-5 w-5 text-faint" />
             <input
@@ -91,12 +93,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                   setIdx((i) => Math.max(i - 1, 0));
                 } else if (e.key === 'Enter') items[idx]?.run();
               }}
-              placeholder="ค้นหาเมนู สินค้า หรือเลขที่บิล"
+              placeholder={t('ค้นหาเมนู สินค้า หรือเลขที่บิล')}
               className="h-14 flex-1 bg-transparent text-[16px] outline-none"
             />
           </div>
           <ul className="scroll-thin max-h-[56vh] overflow-y-auto p-2" role="listbox">
-            {items.length === 0 && <li className="px-4 py-8 text-center text-[14px] text-muted">ไม่พบ “{q}”</li>}
+            {items.length === 0 && <li className="px-4 py-8 text-center text-[14px] text-muted">{tn('ไม่พบ “{0}”', q)}</li>}
             {items.map((it, i) => (
               <li key={it.id} role="option" aria-selected={i === idx}>
                 <button

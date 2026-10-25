@@ -2,6 +2,7 @@ import { formatAmount } from './money.js';
 import { formatDateTime } from './format.js';
 import { maskAccount } from './banks.js';
 import type { ReceiptSection, Settings } from './settings.js';
+import { t } from './i18n.js';
 
 /** A printer-agnostic document: rendered to HTML in the browser and to a bitmap for ESC/POS. */
 export type DocBlock =
@@ -100,44 +101,44 @@ export function buildReceiptDoc(
         break;
       case 'taxId':
         if (s.taxId && settings.tax.vatEnabled)
-          blocks.push({ t: 'text', text: `เลขประจำตัวผู้เสียภาษี ${s.taxId}`, align: 'center' });
+          blocks.push({ t: 'text', text: t('เลขประจำตัวผู้เสียภาษี {0}', s.taxId), align: 'center' });
         break;
       case 'phone':
-        if (s.phone) blocks.push({ t: 'text', text: `โทร ${s.phone}`, align: 'center' });
+        if (s.phone) blocks.push({ t: 'text', text: t('โทร {0}', s.phone), align: 'center' });
         break;
       case 'header': {
         const title =
           sale.type === 'refund'
-            ? 'ใบลดหนี้ / ใบคืนสินค้า'
+            ? t('ใบลดหนี้ / ใบคืนสินค้า')
             : isFull
-              ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี'
+              ? t('ใบเสร็จรับเงิน/ใบกำกับภาษี')
               : settings.tax.vatEnabled
-                ? 'ใบเสร็จรับเงิน/ใบกำกับภาษีอย่างย่อ'
-                : 'ใบเสร็จรับเงิน';
+                ? t('ใบเสร็จรับเงิน/ใบกำกับภาษีอย่างย่อ')
+                : t('ใบเสร็จรับเงิน');
         blocks.push({ t: 'text', text: title, align: 'center', bold: true });
         if (r.header) blocks.push({ t: 'text', text: r.header, align: 'center' });
-        if (opts.reprint) blocks.push({ t: 'text', text: '** สำเนา **', align: 'center', bold: true });
-        if (sale.status === 'voided') blocks.push({ t: 'text', text: '** ยกเลิกแล้ว **', align: 'center', bold: true });
+        if (opts.reprint) blocks.push({ t: 'text', text: t('** สำเนา **'), align: 'center', bold: true });
+        if (sale.status === 'voided') blocks.push({ t: 'text', text: t('** ยกเลิกแล้ว **'), align: 'center', bold: true });
         break;
       }
       case 'docInfo':
         blocks.push({ t: 'line', dashed: true });
-        blocks.push({ t: 'row', left: `เลขที่ ${sale.taxInvoiceNo ?? sale.docNo}`, right: formatDateTime(sale.createdAt, era, { shortYear: true }) });
-        if (sale.refOfDocNo) blocks.push({ t: 'text', text: `อ้างอิงบิล ${sale.refOfDocNo}` });
+        blocks.push({ t: 'row', left: t('เลขที่ {0}', sale.taxInvoiceNo ?? sale.docNo), right: formatDateTime(sale.createdAt, era, { shortYear: true }) });
+        if (sale.refOfDocNo) blocks.push({ t: 'text', text: t('อ้างอิงบิล {0}', sale.refOfDocNo) });
         blocks.push({
           t: 'row',
-          left: `พนักงาน ${sale.userName}`,
-          right: sale.tableName ? `โต๊ะ ${sale.tableName}` : '',
+          left: t('พนักงาน {0}', sale.userName),
+          right: sale.tableName ? t('โต๊ะ {0}', sale.tableName) : '',
         });
         break;
       case 'customer':
         if (sale.taxInvoice) {
           blocks.push({ t: 'line', dashed: true });
-          blocks.push({ t: 'text', text: `ลูกค้า: ${sale.taxInvoice.name}` });
-          blocks.push({ t: 'text', text: `เลขผู้เสียภาษี ${sale.taxInvoice.taxId} (${sale.taxInvoice.branch})` });
+          blocks.push({ t: 'text', text: t('ลูกค้า: {0}', sale.taxInvoice.name) });
+          blocks.push({ t: 'text', text: t('เลขผู้เสียภาษี {0} ({1})', sale.taxInvoice.taxId, sale.taxInvoice.branch) });
           if (sale.taxInvoice.address) blocks.push({ t: 'text', text: sale.taxInvoice.address });
         } else if (sale.customer) {
-          blocks.push({ t: 'text', text: `สมาชิก: ${sale.customer.name}${sale.customer.phone ? ' · ' + sale.customer.phone : ''}` });
+          blocks.push({ t: 'text', text: t('สมาชิก: {0}{1}', sale.customer.name, sale.customer.phone ? ' · ' + sale.customer.phone : '') });
         }
         break;
       case 'items':
@@ -150,49 +151,49 @@ export function buildReceiptDoc(
           if (l.qty !== 1) blocks.push({ t: 'text', text: `   @ ${formatAmount(l.unitPrice)}` });
           if (l.note) blocks.push({ t: 'text', text: `   * ${l.note}` });
           if (l.custom) for (const [k, v] of Object.entries(l.custom)) if (v) blocks.push({ t: 'text', text: `   ${k}: ${v}` });
-          if (l.lineDiscount > 0) blocks.push({ t: 'row', left: '   ส่วนลด', right: `-${formatAmount(l.lineDiscount)}` });
+          if (l.lineDiscount > 0) blocks.push({ t: 'row', left: t('   ส่วนลด'), right: `-${formatAmount(l.lineDiscount)}` });
         }
         break;
       case 'totals':
         blocks.push({ t: 'line', dashed: true });
-        blocks.push({ t: 'row', left: 'รวม', right: formatAmount(sale.subtotal) });
+        blocks.push({ t: 'row', left: t('รวม'), right: formatAmount(sale.subtotal) });
         for (const p of sale.promotions) blocks.push({ t: 'row', left: p.name, right: `-${formatAmount(p.amount)}` });
-        if (sale.billDiscount > 0) blocks.push({ t: 'row', left: 'ส่วนลดท้ายบิล', right: `-${formatAmount(sale.billDiscount)}` });
-        if (sale.pointsRedeemed > 0) blocks.push({ t: 'row', left: `ใช้แต้ม ${sale.pointsRedeemed}`, right: '' });
+        if (sale.billDiscount > 0) blocks.push({ t: 'row', left: t('ส่วนลดท้ายบิล'), right: `-${formatAmount(sale.billDiscount)}` });
+        if (sale.pointsRedeemed > 0) blocks.push({ t: 'row', left: t('ใช้แต้ม {0}', sale.pointsRedeemed), right: '' });
         if (sale.serviceCharge > 0)
-          blocks.push({ t: 'row', left: `ค่าบริการ ${sale.serviceChargeRate}%`, right: formatAmount(sale.serviceCharge) });
+          blocks.push({ t: 'row', left: t('ค่าบริการ {0}%', sale.serviceChargeRate), right: formatAmount(sale.serviceCharge) });
         if (sale.vatEnabled) {
           if (sale.pricesIncludeVat) {
-            blocks.push({ t: 'row', left: 'มูลค่าก่อนภาษี', right: formatAmount(sale.vatableBase) });
+            blocks.push({ t: 'row', left: t('มูลค่าก่อนภาษี'), right: formatAmount(sale.vatableBase) });
             blocks.push({ t: 'row', left: `VAT ${sale.vatRate}%`, right: formatAmount(sale.vat) });
           } else {
             blocks.push({ t: 'row', left: `VAT ${sale.vatRate}%`, right: formatAmount(sale.vat) });
           }
-          if (sale.exemptAmount > 0) blocks.push({ t: 'row', left: 'สินค้ายกเว้นภาษี', right: formatAmount(sale.exemptAmount) });
+          if (sale.exemptAmount > 0) blocks.push({ t: 'row', left: t('สินค้ายกเว้นภาษี'), right: formatAmount(sale.exemptAmount) });
         }
-        if (sale.rounding !== 0) blocks.push({ t: 'row', left: 'ปัดเศษ', right: formatAmount(sale.rounding) });
-        blocks.push({ t: 'row', left: sale.type === 'refund' ? 'ยอดคืน' : 'ยอดสุทธิ', right: formatAmount(sale.total), bold: true, size: 2 });
+        if (sale.rounding !== 0) blocks.push({ t: 'row', left: t('ปัดเศษ'), right: formatAmount(sale.rounding) });
+        blocks.push({ t: 'row', left: sale.type === 'refund' ? t('ยอดคืน') : t('ยอดสุทธิ'), right: formatAmount(sale.total), bold: true, size: 2 });
         break;
       case 'payments':
         for (const p of sale.payments) blocks.push({ t: 'row', left: p.name, right: formatAmount(p.amount) });
-        if (sale.change > 0) blocks.push({ t: 'row', left: 'เงินทอน', right: formatAmount(sale.change), bold: true });
+        if (sale.change > 0) blocks.push({ t: 'row', left: t('เงินทอน'), right: formatAmount(sale.change), bold: true });
         break;
       case 'points':
         if (sale.customer && (sale.pointsEarned > 0 || sale.pointsRedeemed > 0)) {
           blocks.push({ t: 'line', dashed: true });
-          if (sale.pointsEarned > 0) blocks.push({ t: 'row', left: 'แต้มที่ได้รับ', right: String(sale.pointsEarned) });
-          blocks.push({ t: 'row', left: 'แต้มคงเหลือ', right: String(sale.customer.points) });
+          if (sale.pointsEarned > 0) blocks.push({ t: 'row', left: t('แต้มที่ได้รับ'), right: String(sale.pointsEarned) });
+          blocks.push({ t: 'row', left: t('แต้มคงเหลือ'), right: String(sale.customer.points) });
         }
         break;
       case 'promptpay':
-        if (opts.promptPayPayload) blocks.push({ t: 'qr', data: opts.promptPayPayload, size: 200, caption: 'สแกนเพื่อชำระผ่าน PromptPay' });
+        if (opts.promptPayPayload) blocks.push({ t: 'qr', data: opts.promptPayPayload, size: 200, caption: t('สแกนเพื่อชำระผ่าน PromptPay') });
         break;
       case 'footer':
         if (r.footer) {
           blocks.push({ t: 'feed', lines: 1 });
           blocks.push({ t: 'text', text: r.footer, align: 'center' });
         }
-        if (settings.brand.poweredBy) blocks.push({ t: 'text', text: `ระบบโดย ${settings.brand.appName || 'FlexPOS'}`, align: 'center' });
+        if (settings.brand.poweredBy) blocks.push({ t: 'text', text: t('ระบบโดย {0}', settings.brand.appName || 'FlexPOS'), align: 'center' });
         break;
     }
   }
@@ -242,45 +243,45 @@ export function buildBillDoc(
   const blocks: DocBlock[] = [];
   if (s.logo) blocks.push({ t: 'image', src: s.logo, width: 140 });
   blocks.push({ t: 'text', text: s.name, align: 'center', size: 2, bold: true });
-  if (s.phone) blocks.push({ t: 'text', text: `โทร ${s.phone}`, align: 'center' });
-  blocks.push({ t: 'text', text: 'ใบแจ้งยอด / CHECK BILL', align: 'center', bold: true });
+  if (s.phone) blocks.push({ t: 'text', text: t('โทร {0}', s.phone), align: 'center' });
+  blocks.push({ t: 'text', text: t('ใบแจ้งยอด / CHECK BILL'), align: 'center', bold: true });
   blocks.push({ t: 'text', text: b.title, align: 'center', size: 3, bold: true });
   blocks.push({ t: 'line', dashed: true });
-  blocks.push({ t: 'row', left: `เลขที่ ${b.orderNo}`, right: formatDateTime(new Date(), era, { shortYear: true }) });
-  blocks.push({ t: 'row', left: `เปิดโต๊ะ ${formatDateTime(b.openedAt, era, { shortYear: true })}`, right: b.guests ? `${b.guests} ท่าน` : '' });
-  if (b.customerName) blocks.push({ t: 'text', text: `สมาชิก: ${b.customerName}` });
+  blocks.push({ t: 'row', left: t('เลขที่ {0}', b.orderNo), right: formatDateTime(new Date(), era, { shortYear: true }) });
+  blocks.push({ t: 'row', left: t('เปิดโต๊ะ {0}', formatDateTime(b.openedAt, era, { shortYear: true })), right: b.guests ? t('{0} ท่าน', b.guests) : '' });
+  if (b.customerName) blocks.push({ t: 'text', text: t('สมาชิก: {0}', b.customerName) });
   blocks.push({ t: 'line', dashed: true });
   for (const l of b.lines) {
     blocks.push({ t: 'row', left: `${qtyText(l.qty)}× ${l.name}`, right: formatAmount(l.total) });
     if (l.modifiers.length) blocks.push({ t: 'text', text: `   ${l.modifiers.join(' · ')}` });
   }
   blocks.push({ t: 'line', dashed: true });
-  blocks.push({ t: 'row', left: 'รวม', right: formatAmount(b.subtotal) });
+  blocks.push({ t: 'row', left: t('รวม'), right: formatAmount(b.subtotal) });
   for (const p of b.promotions) blocks.push({ t: 'row', left: p.name, right: `-${formatAmount(p.amount)}` });
   const other = b.discount - b.promotions.reduce((a, p) => a + p.amount, 0);
-  if (other > 0) blocks.push({ t: 'row', left: 'ส่วนลด', right: `-${formatAmount(other)}` });
-  if (b.serviceCharge > 0) blocks.push({ t: 'row', left: `ค่าบริการ ${b.serviceChargeRate}%`, right: formatAmount(b.serviceCharge) });
-  if (b.vatEnabled) blocks.push({ t: 'row', left: `VAT ${b.vatRate}%${b.pricesIncludeVat ? ' (รวมแล้ว)' : ''}`, right: formatAmount(b.vat) });
-  blocks.push({ t: 'row', left: 'ยอดชำระ', right: formatAmount(b.total), bold: true, size: 2 });
+  if (other > 0) blocks.push({ t: 'row', left: t('ส่วนลด'), right: `-${formatAmount(other)}` });
+  if (b.serviceCharge > 0) blocks.push({ t: 'row', left: t('ค่าบริการ {0}%', b.serviceChargeRate), right: formatAmount(b.serviceCharge) });
+  if (b.vatEnabled) blocks.push({ t: 'row', left: `VAT ${b.vatRate}%${b.pricesIncludeVat ? t(' (รวมแล้ว)') : ''}`, right: formatAmount(b.vat) });
+  blocks.push({ t: 'row', left: t('ยอดชำระ'), right: formatAmount(b.total), bold: true, size: 2 });
   if (opts.qrPayload) {
     blocks.push({ t: 'line', dashed: true });
-    blocks.push({ t: 'text', text: 'สแกนจ่ายด้วยแอปธนาคารใดก็ได้', align: 'center', bold: true });
-    blocks.push({ t: 'qr', data: opts.qrPayload, size: 220, caption: `PromptPay · ยอด ${formatAmount(b.total)} บาท (ระบุยอดแล้ว)` });
-    if (opts.qrAccount) blocks.push({ t: 'text', text: `ชื่อบัญชี ${opts.qrAccount.accountName}`, align: 'center' });
+    blocks.push({ t: 'text', text: t('สแกนจ่ายด้วยแอปธนาคารใดก็ได้'), align: 'center', bold: true });
+    blocks.push({ t: 'qr', data: opts.qrPayload, size: 220, caption: t('PromptPay · ยอด {0} บาท (ระบุยอดแล้ว)', formatAmount(b.total)) });
+    if (opts.qrAccount) blocks.push({ t: 'text', text: t('ชื่อบัญชี {0}', opts.qrAccount.accountName), align: 'center' });
   }
   const transfer = (opts.accounts ?? []).filter((a) => a.accountNumber || a.iban);
   if (transfer.length) {
     blocks.push({ t: 'line', dashed: true });
-    blocks.push({ t: 'text', text: 'หรือโอนเข้าบัญชี', bold: true });
+    blocks.push({ t: 'text', text: t('หรือโอนเข้าบัญชี'), bold: true });
     for (const a of transfer) {
-      blocks.push({ t: 'text', text: `${a.bankName}${a.branch ? ` สาขา${a.branch}` : ''}` });
+      blocks.push({ t: 'text', text: `${a.bankName}${a.branch ? t(' สาขา{0}', a.branch) : ''}` });
       blocks.push({ t: 'text', text: `${a.accountName}${a.accountNumber ? ` · ${maskAccount(a.accountNumber)}` : ''}` });
       if (a.swift || a.iban) blocks.push({ t: 'text', text: [a.swift && `SWIFT ${a.swift}`, a.iban && `IBAN ${a.iban}`].filter(Boolean).join(' · ') });
     }
   }
   blocks.push({ t: 'feed', lines: 1 });
-  blocks.push({ t: 'text', text: 'เอกสารนี้ไม่ใช่ใบเสร็จรับเงิน', align: 'center' });
-  if (settings.brand.poweredBy) blocks.push({ t: 'text', text: `ระบบโดย ${settings.brand.appName || 'FlexPOS'}`, align: 'center' });
+  blocks.push({ t: 'text', text: t('เอกสารนี้ไม่ใช่ใบเสร็จรับเงิน'), align: 'center' });
+  if (settings.brand.poweredBy) blocks.push({ t: 'text', text: t('ระบบโดย {0}', settings.brand.appName || 'FlexPOS'), align: 'center' });
   return { paper: opts.paper ?? (settings.receipt.paper === 'A4' ? '80' : settings.receipt.paper), blocks, cut: true };
 }
 
@@ -291,7 +292,7 @@ export interface KitchenTicketItem {
   note: string;
 }
 
-export function buildKitchenTicket(t: {
+export function buildKitchenTicket(tk: {
   title: string;
   ticketNo: string;
   createdAt: string;
@@ -303,18 +304,18 @@ export function buildKitchenTicket(t: {
   reprint?: boolean;
 }): PrintDoc {
   const blocks: DocBlock[] = [
-    { t: 'text', text: t.title, align: 'center', size: 3, bold: true },
-    { t: 'text', text: `#${t.ticketNo} · ${formatDateTime(t.createdAt, t.era ?? 'BE', { shortYear: true })}`, align: 'center' },
-    { t: 'text', text: `รับโดย ${t.by}${t.station ? ' · ' + t.station : ''}`, align: 'center' },
+    { t: 'text', text: tk.title, align: 'center', size: 3, bold: true },
+    { t: 'text', text: `#${tk.ticketNo} · ${formatDateTime(tk.createdAt, tk.era ?? 'BE', { shortYear: true })}`, align: 'center' },
+    { t: 'text', text: t('รับโดย {0}{1}', tk.by, tk.station ? ' · ' + tk.station : ''), align: 'center' },
   ];
-  if (t.reprint) blocks.push({ t: 'text', text: '** พิมพ์ซ้ำ **', align: 'center', bold: true });
+  if (tk.reprint) blocks.push({ t: 'text', text: t('** พิมพ์ซ้ำ **'), align: 'center', bold: true });
   blocks.push({ t: 'line', dashed: true });
-  for (const i of t.items) {
+  for (const i of tk.items) {
     blocks.push({ t: 'text', text: `${qtyText(i.qty)} × ${i.name}`, size: 2, bold: true });
     if (i.modifiers.length) blocks.push({ t: 'text', text: `    ${i.modifiers.join(' · ')}` });
     if (i.note) blocks.push({ t: 'text', text: `    * ${i.note}` });
   }
   blocks.push({ t: 'line', dashed: true });
-  blocks.push({ t: 'text', text: `รวม ${t.items.reduce((a, i) => a + i.qty, 0)} รายการ`, align: 'center' });
-  return { paper: t.paper ?? '80', blocks, cut: true };
+  blocks.push({ t: 'text', text: t('รวม {0} รายการ', tk.items.reduce((a, i) => a + i.qty, 0)), align: 'center' });
+  return { paper: tk.paper ?? '80', blocks, cut: true };
 }

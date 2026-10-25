@@ -1,15 +1,16 @@
 import { z } from 'zod';
+import { t } from './i18n.js';
 
 export const BUSINESS_TYPES = ['retail', 'restaurant', 'cafe', 'fashion', 'service', 'other'] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
-  retail: 'ร้านค้าปลีก / มินิมาร์ท',
-  restaurant: 'ร้านอาหาร',
-  cafe: 'คาเฟ่ / ร้านเครื่องดื่ม',
-  fashion: 'ร้านเสื้อผ้า / แฟชั่น',
-  service: 'ร้านบริการ',
-  other: 'อื่นๆ',
+  retail: t('ร้านค้าปลีก / มินิมาร์ท'),
+  restaurant: t('ร้านอาหาร'),
+  cafe: t('คาเฟ่ / ร้านเครื่องดื่ม'),
+  fashion: t('ร้านเสื้อผ้า / แฟชั่น'),
+  service: t('ร้านบริการ'),
+  other: t('อื่นๆ'),
 };
 
 export const RECEIPT_SECTIONS = [
@@ -31,20 +32,20 @@ export const RECEIPT_SECTIONS = [
 export type ReceiptSection = (typeof RECEIPT_SECTIONS)[number];
 
 export const RECEIPT_SECTION_LABELS: Record<ReceiptSection, string> = {
-  logo: 'โลโก้',
-  storeName: 'ชื่อร้าน',
-  address: 'ที่อยู่',
-  taxId: 'เลขผู้เสียภาษี',
-  phone: 'เบอร์โทร',
-  header: 'ข้อความหัวใบเสร็จ',
-  docInfo: 'เลขที่/วันที่/พนักงาน',
-  customer: 'ข้อมูลสมาชิก',
-  items: 'รายการสินค้า',
-  totals: 'สรุปยอด',
-  payments: 'การชำระเงิน',
-  points: 'แต้มสะสม',
-  promptpay: 'QR PromptPay (สำหรับบิลค้างชำระ)',
-  footer: 'ข้อความท้ายใบเสร็จ',
+  logo: t('โลโก้'),
+  storeName: t('ชื่อร้าน'),
+  address: t('ที่อยู่'),
+  taxId: t('เลขผู้เสียภาษี'),
+  phone: t('เบอร์โทร'),
+  header: t('ข้อความหัวใบเสร็จ'),
+  docInfo: t('เลขที่/วันที่/พนักงาน'),
+  customer: t('ข้อมูลสมาชิก'),
+  items: t('รายการสินค้า'),
+  totals: t('สรุปยอด'),
+  payments: t('การชำระเงิน'),
+  points: t('แต้มสะสม'),
+  promptpay: t('QR PromptPay (สำหรับบิลค้างชำระ)'),
+  footer: t('ข้อความท้ายใบเสร็จ'),
 };
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/);
@@ -73,7 +74,7 @@ export const settingsSchema = z.object({
   businessType: z.enum(BUSINESS_TYPES).default('retail'),
   store: z
     .object({
-      name: z.string().default('ร้านของฉัน'),
+      name: z.string().default(t('ร้านของฉัน')),
       address: z.string().default(''),
       taxId: z.string().default(''),
       phone: z.string().default(''),
@@ -94,7 +95,7 @@ export const settingsSchema = z.object({
     .object({
       language: z.enum(['th', 'en']).default('th'),
       era: z.enum(['BE', 'CE']).default('BE'),
-      currencySymbol: z.string().default('฿'),
+      currencySymbol: z.string().default(t('฿')),
     })
     .default({}),
   brand: z
@@ -153,7 +154,7 @@ export const settingsSchema = z.object({
       paper: z.enum(['58', '80', 'A4']).default('80'),
       sections: z.array(z.enum(RECEIPT_SECTIONS)).default([...RECEIPT_SECTIONS].filter((s) => s !== 'promptpay')),
       header: z.string().default(''),
-      footer: z.string().default('ขอบคุณที่ใช้บริการ'),
+      footer: z.string().default(t('ขอบคุณที่ใช้บริการ')),
       showProductFields: z.array(z.string()).default([]),
       receiptPattern: z.string().default('{prefix}{yy}{mm}-{seq:5}'),
       receiptPrefix: z.string().default('R'),
@@ -233,11 +234,11 @@ export function templateSettings(type: BusinessType): SettingsPatch {
 }
 
 export const DEFAULT_PAYMENT_METHODS = [
-  { code: 'cash', name: 'เงินสด', kind: 'cash', sort: 0 },
+  { code: 'cash', name: t('เงินสด'), kind: 'cash', sort: 0 },
   { code: 'promptpay', name: 'PromptPay QR', kind: 'promptpay', sort: 1 },
-  { code: 'transfer', name: 'โอนเงิน', kind: 'other', sort: 2 },
-  { code: 'card', name: 'บัตรเครดิต/เดบิต', kind: 'other', sort: 3 },
-  { code: 'credit', name: 'ค้างชำระ (ลูกหนี้)', kind: 'credit', sort: 4 },
+  { code: 'transfer', name: t('โอนเงิน'), kind: 'other', sort: 2 },
+  { code: 'card', name: t('บัตรเครดิต/เดบิต'), kind: 'other', sort: 3 },
+  { code: 'credit', name: t('ค้างชำระ (ลูกหนี้)'), kind: 'credit', sort: 4 },
 ] as const;
 
 export type PaymentKind = 'cash' | 'promptpay' | 'credit' | 'points' | 'other';

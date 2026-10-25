@@ -5,6 +5,8 @@ import { Volume2, VolumeX } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { cn, qtyText } from '@/lib/utils';
 import { Button, EmptyState, ErrorState, Segmented, Spinner } from '@/components/ui/core';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 interface KItem {
   id: string;
@@ -76,28 +78,26 @@ export default function KitchenPage() {
   return (
     <div className="flex h-full flex-col bg-rail text-white">
       <div className="flex flex-none flex-wrap items-center gap-3 px-5 py-3">
-        <h1 className="text-[22px] font-semibold">จอครัว</h1>
-        <Segmented value={station} onChange={setStation} className="border-[#3a3d42] bg-[#24272b] [&_button[aria-selected=false]]:text-[#a5a8ad]" options={[{ value: 'all', label: 'ทั้งหมด' }, { value: 'kitchen', label: 'ครัว' }, { value: 'bar', label: 'บาร์' }]} />
-        <span className="text-[14px] text-[#a5a8ad]">{tickets.length} ใบ · รอ {q.data?.filter((i) => i.status !== 'ready').length ?? 0} รายการ</span>
-        <Button variant="ghost" className="ml-auto text-white hover:bg-[#24272b]" icon={sound ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />} onClick={() => setSound(!sound)}>
-          เสียงแจ้งเตือน
-        </Button>
+        <h1 className="text-[22px] font-semibold">{t('จอครัว')}</h1>
+        <Segmented value={station} onChange={setStation} className="border-[#3a3d42] bg-[#24272b] [&_button[aria-selected=false]]:text-[#a5a8ad]" options={[{ value: 'all', label: t('ทั้งหมด') }, { value: 'kitchen', label: t('ครัว') }, { value: 'bar', label: t('บาร์') }]} />
+        <span className="text-[14px] text-[#a5a8ad]">{tn('{0} ใบ · รอ {1} รายการ', tickets.length, q.data?.filter((i) => i.status !== 'ready').length ?? 0)}</span>
+        <Button variant="ghost" className="ml-auto text-white hover:bg-[#24272b]" icon={sound ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />} onClick={() => setSound(!sound)}>{t('เสียงแจ้งเตือน')}</Button>
       </div>
       {q.isLoading ? <div className="grid flex-1 place-items-center"><Spinner /></div> : q.isError ? <ErrorState error={q.error} onRetry={() => void q.refetch()} /> : tickets.length === 0 ? (
-        <EmptyState className="flex-1 justify-center text-white [&_p]:text-white" title="ไม่มีออเดอร์ค้าง" body="ออเดอร์ใหม่จะแสดงที่นี่ทันที" />
+        <EmptyState className="flex-1 justify-center text-white [&_p]:text-white" title={t('ไม่มีออเดอร์ค้าง')} body={t('ออเดอร์ใหม่จะแสดงที่นี่ทันที')} />
       ) : (
         <div className="scroll-thin grid flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 overflow-y-auto px-5 pb-5">
-          {tickets.map((t) => {
-            const a = age(t.sentAt);
-            const allReady = t.items.every((i) => i.status === 'ready');
+          {tickets.map((tk) => {
+            const a = age(tk.sentAt);
+            const allReady = tk.items.every((i) => i.status === 'ready');
             return (
-              <div key={t.key} className={cn('flex flex-col overflow-hidden rounded-2xl bg-surface text-ink', a >= 20 && !allReady && 'ring-4 ring-danger', a >= 10 && a < 20 && !allReady && 'ring-4 ring-warn')}>
+              <div key={tk.key} className={cn('flex flex-col overflow-hidden rounded-2xl bg-surface text-ink', a >= 20 && !allReady && 'ring-4 ring-danger', a >= 10 && a < 20 && !allReady && 'ring-4 ring-warn')}>
                 <div className={cn('flex items-center justify-between px-4 py-3', allReady ? 'bg-soft' : 'bg-sunken')}>
-                  <span className="flex flex-col"><span className="text-[20px] font-bold">{t.title}</span><span className="text-[12px] text-muted">รอบ {t.round} · {t.by}</span></span>
-                  <span className={cn('num text-[18px] font-semibold', a >= 20 ? 'text-danger' : a >= 10 ? 'text-warn' : 'text-muted')}>{a} นาที</span>
+                  <span className="flex flex-col"><span className="text-[20px] font-bold">{tk.title}</span><span className="text-[12px] text-muted">{tn('รอบ {0} · {1}', tk.round, tk.by)}</span></span>
+                  <span className={cn('num text-[18px] font-semibold', a >= 20 ? 'text-danger' : a >= 10 ? 'text-warn' : 'text-muted')}>{tn('{0} นาที', a)}</span>
                 </div>
                 <div className="flex flex-col">
-                  {t.items.map((i) => (
+                  {tk.items.map((i) => (
                     <button key={i.id} onClick={() => void setStatus([i.id], next(i.status))} className={cn('flex items-start gap-3 border-b border-line-soft px-4 py-3 text-left', i.status === 'ready' && 'bg-soft/60 text-muted line-through', i.status === 'preparing' && 'bg-warn-soft/60')}>
                       <span className="num min-w-[34px] text-[20px] font-bold">{qtyText(i.qty)}×</span>
                       <span className="flex flex-1 flex-col">
@@ -105,15 +105,15 @@ export default function KitchenPage() {
                         {i.modifiers.length > 0 && <span className="text-[14px] text-ink-2">{i.modifiers.join(' · ')}</span>}
                         {i.note && <span className="text-[14px] font-semibold text-danger">* {i.note}</span>}
                       </span>
-                      <span className="text-[12px] text-muted">{{ sent: 'ใหม่', preparing: 'กำลังทำ', ready: 'พร้อม' }[i.status]}</span>
+                      <span className="text-[12px] text-muted">{{ sent: t('ใหม่'), preparing: t('กำลังทำ'), ready: t('พร้อม') }[i.status]}</span>
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-2 p-3">
                   {allReady ? (
-                    <Button className="flex-1" onClick={() => void setStatus(t.items.map((i) => i.id), 'served')}>เสิร์ฟแล้ว · เก็บใบ</Button>
+                    <Button className="flex-1" onClick={() => void setStatus(tk.items.map((i) => i.id), 'served')}>{t('เสิร์ฟแล้ว · เก็บใบ')}</Button>
                   ) : (
-                    <Button variant="primary" className="flex-1" onClick={() => void setStatus(t.items.map((i) => i.id), 'ready')}>พร้อมเสิร์ฟทั้งใบ</Button>
+                    <Button variant="primary" className="flex-1" onClick={() => void setStatus(tk.items.map((i) => i.id), 'ready')}>{t('พร้อมเสิร์ฟทั้งใบ')}</Button>
                   )}
                 </div>
               </div>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Minus, Printer, QrCode, Trash2, X } from 'lucide-react';
-import { priceCart } from '@flexpos/shared';
+import { priceCart, t } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { money, useSettings } from '@/lib/settings';
 import { cn, qtyText } from '@/lib/utils';
@@ -11,6 +11,7 @@ import { Badge, Button, ErrorState, Field, Input, Spinner } from '@/components/u
 import { Dialog } from '@/components/ui/dialog';
 import { useApproval } from '../pos/dialogs';
 import { BillSlipDialog } from '@/components/BillSlipDialog';
+import { tn } from '@/lib/i18n';
 
 interface Item {
   id: string;
@@ -42,11 +43,11 @@ export interface OrderView {
 }
 
 const STATUS: Record<string, { label: string; tone: 'warn' | 'success' | 'neutral' | 'info' | 'danger' }> = {
-  sent: { label: 'ส่งครัวแล้ว', tone: 'info' },
-  preparing: { label: 'กำลังทำ', tone: 'warn' },
-  ready: { label: 'พร้อมเสิร์ฟ', tone: 'success' },
-  served: { label: 'เสิร์ฟแล้ว', tone: 'neutral' },
-  cancelled: { label: 'ยกเลิก', tone: 'danger' },
+  sent: { label: t('ส่งครัวแล้ว'), tone: 'info' },
+  preparing: { label: t('กำลังทำ'), tone: 'warn' },
+  ready: { label: t('พร้อมเสิร์ฟ'), tone: 'success' },
+  served: { label: t('เสิร์ฟแล้ว'), tone: 'neutral' },
+  cancelled: { label: t('ยกเลิก'), tone: 'danger' },
 };
 
 /** Live bill of one table: items by round, totals, and removing/reducing items. */
@@ -107,34 +108,27 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
       <div className="flex items-start gap-3 border-b border-line-soft px-5 py-4">
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="flex items-center gap-2 text-[20px] font-semibold">
-            {o.tableName ? `โต๊ะ ${o.tableName}` : o.name}
-            {o.billRequested && <Badge tone="danger">ขอเช็คบิล</Badge>}
-            {!open && <Badge>{o.status === 'paid' ? 'เก็บเงินแล้ว' : 'ยกเลิก'}</Badge>}
+            {o.tableName ? t('โต๊ะ {0}', o.tableName) : o.name}
+            {o.billRequested && <Badge tone="danger">{t('ขอเช็คบิล')}</Badge>}
+            {!open && <Badge>{o.status === 'paid' ? t('เก็บเงินแล้ว') : t('ยกเลิก')}</Badge>}
           </span>
-          <span className="text-[13px] text-muted">
-            {o.guests ? `${o.guests} คน · ` : ''}เปิด {new Date(o.openedAt).toTimeString().slice(0, 5)} · {mins} นาที · {o.openedBy}
-          </span>
+          <span className="text-[13px] text-muted">{tn('{0}เปิด {1} · {2} นาที · {3}', o.guests ? t('{0} คน · ', o.guests) : '', new Date(o.openedAt).toTimeString().slice(0, 5), mins, o.openedBy)}</span>
         </div>
         <span className="flex items-center gap-1.5 rounded-full bg-soft px-2.5 py-1 text-[12px] font-medium text-soft-fg">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-          อัปเดตสด
-        </span>
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />{t('อัปเดตสด')}</span>
         {onClose && (
-          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-sunken" aria-label="ปิด">
+          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-sunken" aria-label={t('ปิด')}>
             <X className="h-5 w-5" />
           </button>
         )}
       </div>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-5 py-3">
-        {rounds.length === 0 && <p className="py-10 text-center text-[14px] text-muted">ยังไม่มีรายการในบิลนี้</p>}
+        {rounds.length === 0 && <p className="py-10 text-center text-[14px] text-muted">{t('ยังไม่มีรายการในบิลนี้')}</p>}
         {rounds.map(([round, items]) => (
           <div key={round} className="mb-3 overflow-hidden rounded-xl border border-line">
             <div className="flex items-center justify-between bg-sunken px-3.5 py-2 text-[12px] text-muted">
-              <span>
-                รอบ {round} · {new Date(items[0]!.created_at).toTimeString().slice(0, 5)} · {items[0]!.by}
-                {items[0]!.source === 'app' && ' · จากแอป'}
-              </span>
+              <span>{tn('รอบ {0} · {1} · {2}{3}', round, new Date(items[0]!.created_at).toTimeString().slice(0, 5), items[0]!.by, items[0]!.source === 'app' && t(' · จากแอป'))}</span>
             </div>
             {items.map((i) => (
               <div key={i.id} className={cn('flex items-start gap-3 border-t border-line-soft px-3.5 py-2.5 transition-colors first:border-0', flash.has(i.id) && 'bg-soft')}>
@@ -146,7 +140,7 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
                 </span>
                 <span className="num pt-px text-[15px] font-medium">{money(i.total)}</span>
                 {open && (
-                  <Button size="sm" variant="ghost" className="-mr-2 text-danger" aria-label={`ลบ ${i.name}`} title="ลบ/ลดจำนวน" onClick={() => setRemove(i)}>
+                  <Button size="sm" variant="ghost" className="-mr-2 text-danger" aria-label={t('ลบ {0}', i.name)} title={t('ลบ/ลดจำนวน')} onClick={() => setRemove(i)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -156,7 +150,7 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
         ))}
         {cancelled.length > 0 && (
           <details className="mb-2 text-[13px] text-muted">
-            <summary className="cursor-pointer py-1">รายการที่ยกเลิก ({cancelled.length})</summary>
+            <summary className="cursor-pointer py-1">{tn('รายการที่ยกเลิก ({0})', cancelled.length)}</summary>
             {cancelled.map((i) => (
               <div key={i.id} className="flex justify-between py-1 line-through">
                 <span>{qtyText(i.qty)}× {i.name}</span>
@@ -168,29 +162,23 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
       </div>
 
       <div className="num flex flex-col gap-1.5 border-t border-line-soft px-5 pb-5 pt-4">
-        <Row label={`ยอดรวม (${qtyText(live.reduce((a, i) => a + i.qty, 0))} รายการ)`} value={money(pricing.subtotal)} />
-        {pricing.serviceCharge > 0 && <Row label={`ค่าบริการ ${settings.tax.serviceChargeRate}%`} value={money(pricing.serviceCharge)} />}
-        {settings.tax.vatEnabled && <Row label={`VAT ${settings.tax.vatRate}%${settings.tax.pricesIncludeVat ? ' (รวมในราคา)' : ''}`} value={money(pricing.vat)} />}
+        <Row label={t('ยอดรวม ({0} รายการ)', qtyText(live.reduce((a, i) => a + i.qty, 0)))} value={money(pricing.subtotal)} />
+        {pricing.serviceCharge > 0 && <Row label={t('ค่าบริการ {0}%', settings.tax.serviceChargeRate)} value={money(pricing.serviceCharge)} />}
+        {settings.tax.vatEnabled && <Row label={`VAT ${settings.tax.vatRate}%${settings.tax.pricesIncludeVat ? t(' (รวมในราคา)') : ''}`} value={money(pricing.vat)} />}
         <div className="mt-1 flex items-baseline justify-between">
-          <span className="font-semibold">ยอดชำระ</span>
+          <span className="font-semibold">{t('ยอดชำระ')}</span>
           <span className="text-[26px] font-bold">{money(pricing.total)}</span>
         </div>
-        <p className="text-[12px] text-muted">ส่วนลดสมาชิกและโปรโมชั่นจะคำนวณตอนเก็บเงิน</p>
+        <p className="text-[12px] text-muted">{t('ส่วนลดสมาชิกและโปรโมชั่นจะคำนวณตอนเก็บเงิน')}</p>
         {open && live.length > 0 && (
-          <Button className="mt-2" icon={<QrCode className="h-4 w-4" />} onClick={() => setSlip(true)}>
-            ใบแจ้งยอด + QR PromptPay (ระบุยอด)
-          </Button>
+          <Button className="mt-2" icon={<QrCode className="h-4 w-4" />} onClick={() => setSlip(true)}>{t('ใบแจ้งยอด + QR PromptPay (ระบุยอด)')}</Button>
         )}
         {open && (
           <div className="mt-2 flex gap-2">
             {rounds.length > 0 && (
-              <Button icon={<Printer className="h-4 w-4" />} onClick={() => api.post(`/api/orders/${o.id}/reprint`, { round: rounds[rounds.length - 1]![0] }).then(() => toast.success('ส่งพิมพ์ใบออเดอร์รอบล่าสุดแล้ว')).catch((e) => toast.error(errorMessage(e)))}>
-                พิมพ์ซ้ำ
-              </Button>
+              <Button icon={<Printer className="h-4 w-4" />} onClick={() => api.post(`/api/orders/${o.id}/reprint`, { round: rounds[rounds.length - 1]![0] }).then(() => toast.success(t('ส่งพิมพ์ใบออเดอร์รอบล่าสุดแล้ว'))).catch((e) => toast.error(errorMessage(e)))}>{t('พิมพ์ซ้ำ')}</Button>
             )}
-            <Button variant="primary" size="lg" className="flex-1" disabled={!live.length} onClick={() => nav(`/pos?order=${o.id}`)}>
-              เก็บเงิน {money(pricing.total)}
-            </Button>
+            <Button variant="primary" size="lg" className="flex-1" disabled={!live.length} onClick={() => nav(`/pos?order=${o.id}`)}>{tn('เก็บเงิน {0}', money(pricing.total))}</Button>
           </div>
         )}
       </div>
@@ -202,14 +190,14 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
           onClose={() => setRemove(null)}
           onConfirm={async (qty, reason) => {
             const cooking = ['preparing', 'ready', 'served'].includes(remove.status);
-            const pin = cooking ? await approve('pos.void', `ลบ ${remove.name} ที่ครัวทำแล้ว`) : '';
+            const pin = cooking ? await approve('pos.void', t('ลบ {0} ที่ครัวทำแล้ว', remove.name)) : '';
             if (pin === null) return;
             try {
               const next = await api.post<OrderView>(`/api/orders/${o.id}/items/${remove.id}/qty`, { qty, reason, managerPin: pin || undefined });
               qc.setQueryData(['order', o.id], next);
               qc.invalidateQueries({ queryKey: ['orders'] });
               qc.invalidateQueries({ queryKey: ['floor'] });
-              toast.success(qty === 0 ? `ลบ ${remove.name} ออกจากบิลแล้ว` : `ลด ${remove.name} เหลือ ${qtyText(qty)} แล้ว`);
+              toast.success(qty === 0 ? t('ลบ {0} ออกจากบิลแล้ว', remove.name) : t('ลด {0} เหลือ {1} แล้ว', remove.name, qtyText(qty)));
               setRemove(null);
             } catch (e) {
               toast.error(errorMessage(e));
@@ -230,7 +218,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-const REASONS = ['ลูกค้าเปลี่ยนใจ', 'สั่งผิด', 'ของหมด', 'รอนานเกินไป'];
+const REASONS = [t('ลูกค้าเปลี่ยนใจ'), t('สั่งผิด'), t('ของหมด'), t('รอนานเกินไป')];
 
 function RemoveDialog({ item, onClose, onConfirm }: { item: Item; onClose: () => void; onConfirm: (qty: number, reason: string) => Promise<void> }) {
   const [removeQty, setRemoveQty] = useState(item.qty);
@@ -243,31 +231,31 @@ function RemoveDialog({ item, onClose, onConfirm }: { item: Item; onClose: () =>
     <Dialog
       open
       onOpenChange={(v) => !v && onClose()}
-      title={`ลบ “${item.name}” ออกจากบิล`}
-      description={cooking ? 'รายการนี้ครัวเริ่มทำแล้ว ต้องใช้ PIN ผู้จัดการ' : 'ครัวจะเห็นว่ารายการนี้ถูกยกเลิก'}
+      title={t('ลบ “{0}” ออกจากบิล', item.name)}
+      description={cooking ? t('รายการนี้ครัวเริ่มทำแล้ว ต้องใช้ PIN ผู้จัดการ') : t('ครัวจะเห็นว่ารายการนี้ถูกยกเลิก')}
       size="sm"
       footer={
         <>
-          <Button onClick={onClose}>ยกเลิก</Button>
+          <Button onClick={onClose}>{t('ยกเลิก')}</Button>
           <Button variant="danger" loading={busy} disabled={!reason.trim() || removeQty <= 0} onClick={async () => { setBusy(true); await onConfirm(left, reason.trim()); setBusy(false); }}>
-            {left === 0 ? 'ลบทั้งรายการ' : `ลบ ${qtyText(removeQty)} ชิ้น`}
+            {left === 0 ? t('ลบทั้งรายการ') : t('ลบ {0} ชิ้น', qtyText(removeQty))}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4 pb-2">
         {whole && item.qty > 1 && (
-          <Field label={`จำนวนที่จะลบ (มี ${qtyText(item.qty)})`}>
+          <Field label={t('จำนวนที่จะลบ (มี {0})', qtyText(item.qty))}>
             <div className="flex items-center gap-2">
-              <Button aria-label="ลดจำนวนที่ลบ" disabled={removeQty <= 1} onClick={() => setRemoveQty(removeQty - 1)}><Minus className="h-4 w-4" /></Button>
+              <Button aria-label={t('ลดจำนวนที่ลบ')} disabled={removeQty <= 1} onClick={() => setRemoveQty(removeQty - 1)}><Minus className="h-4 w-4" /></Button>
               <span className="num w-12 text-center text-[20px] font-semibold">{removeQty}</span>
-              <Button aria-label="เพิ่มจำนวนที่ลบ" disabled={removeQty >= item.qty} onClick={() => setRemoveQty(removeQty + 1)}>+</Button>
-              <span className="text-[13px] text-muted">เหลือในบิล {qtyText(left)}</span>
+              <Button aria-label={t('เพิ่มจำนวนที่ลบ')} disabled={removeQty >= item.qty} onClick={() => setRemoveQty(removeQty + 1)}>+</Button>
+              <span className="text-[13px] text-muted">{tn('เหลือในบิล {0}', qtyText(left))}</span>
             </div>
           </Field>
         )}
-        <Field label="เหตุผล" required>
-          <Input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="ระบุเหตุผล" />
+        <Field label={t('เหตุผล')} required>
+          <Input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('ระบุเหตุผล')} />
         </Field>
         <div className="flex flex-wrap gap-2">
           {REASONS.map((r) => (

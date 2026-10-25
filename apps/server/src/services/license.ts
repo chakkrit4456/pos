@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus, hostname, networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import type { LicenseStatus } from '@flexpos/shared';
+import { t } from '@flexpos/shared';
 
 /**
  * Offline licensing: a license key is `base64url(payload).base64url(ed25519 signature)`.
@@ -94,9 +95,9 @@ export class LicenseService {
 
   activate(key: string): LicenseStatus {
     const payload = decodeLicense(key, this.publicKeyPem);
-    if (!payload) throw new Error('License key ไม่ถูกต้อง');
+    if (!payload) throw new Error(t('License key ไม่ถูกต้อง'));
     if (payload.machineId !== '*' && payload.machineId !== machineId())
-      throw new Error('License key นี้ออกให้เครื่องอื่น กรุณาส่ง Machine ID ของเครื่องนี้ให้ผู้ขาย');
+      throw new Error(t('License key นี้ออกให้เครื่องอื่น กรุณาส่ง Machine ID ของเครื่องนี้ให้ผู้ขาย'));
     writeFileSync(this.keyFile, key.trim());
     return this.status();
   }

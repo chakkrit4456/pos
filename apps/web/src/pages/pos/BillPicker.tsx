@@ -10,6 +10,8 @@ import { Dialog, useConfirm } from '@/components/ui/dialog';
 import { MoneyInput } from '@/components/ui/inputs';
 import { cart, useCart, type CartState } from './cart';
 import { orderToCart, type OrderDetail } from './PosPage';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 export interface FloorData {
   zones: { id: string; name: string }[];
@@ -50,11 +52,11 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
     try {
       if (merge && state.order) {
         if (!orderId) return;
-        const r = await confirm({ title: 'รวมบิล?', body: 'รายการของบิลที่เลือกจะย้ายมารวมกับบิลนี้', confirmText: 'รวมบิล' });
+        const r = await confirm({ title: t('รวมบิล?'), body: t('รายการของบิลที่เลือกจะย้ายมารวมกับบิลนี้'), confirmText: t('รวมบิล') });
         if (!r.ok) return;
         const o = await api.post<OrderDetail>(`/api/orders/${state.order.id}/merge`, { fromId: orderId });
         cart.patch({ order: orderToCart(o) });
-        toast.success('รวมบิลแล้ว');
+        toast.success(t('รวมบิลแล้ว'));
         onClose();
         return;
       }
@@ -83,7 +85,7 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
   const recall = async (h: Held) => {
     const cur = cart.get();
     if (cur.lines.length && !cur.order) {
-      const r = await confirm({ title: 'มีรายการค้างในตะกร้า', body: 'ต้องการรวมรายการปัจจุบันเข้ากับบิลที่เรียกคืนหรือไม่? (ยกเลิก = ไม่เรียกคืน)', confirmText: 'รวมรายการ' });
+      const r = await confirm({ title: t('มีรายการค้างในตะกร้า'), body: t('ต้องการรวมรายการปัจจุบันเข้ากับบิลที่เรียกคืนหรือไม่? (ยกเลิก = ไม่เรียกคืน)'), confirmText: t('รวมรายการ') });
       if (!r.ok) return;
       cart.replace({ ...h.data, heldId: h.id, heldName: h.name, lines: [...h.data.lines, ...cur.lines], managerPin: null });
     } else cart.replace({ ...h.data, heldId: h.id, heldName: h.name, managerPin: null });
@@ -96,32 +98,28 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
     <Dialog
       open={open}
       onOpenChange={(v) => !v && onClose()}
-      title={merge ? 'เลือกบิลที่จะรวม' : 'เลือกบิล'}
-      description={merge ? `รายการจะย้ายมารวมกับ${state.order?.name}` : 'รายการที่เลือกไว้จะไปรวมกับบิลเดิมของโต๊ะ'}
+      title={merge ? t('เลือกบิลที่จะรวม') : t('เลือกบิล')}
+      description={merge ? t('รายการจะย้ายมารวมกับ{0}', state.order?.name) : t('รายการที่เลือกไว้จะไปรวมกับบิลเดิมของโต๊ะ')}
       size="lg"
       footer={
         <>
           {state.order && restaurant && (
             <Button className="mr-auto" variant={merge ? 'primary' : 'secondary'} onClick={() => setMerge(!merge)}>
-              {merge ? 'ยกเลิกการรวม' : 'รวมโต๊ะเข้าบิลนี้'}
+              {merge ? t('ยกเลิกการรวม') : t('รวมโต๊ะเข้าบิลนี้')}
             </Button>
           )}
           {(state.order || state.heldId) && !merge && (
-            <Button onClick={() => (cart.clear(), onClose())} icon={<Plus className="h-4 w-4" />}>
-              บิลใหม่ (หน้าร้าน)
-            </Button>
+            <Button onClick={() => (cart.clear(), onClose())} icon={<Plus className="h-4 w-4" />}>{t('บิลใหม่ (หน้าร้าน)')}</Button>
           )}
           {restaurant && !merge && (
-            <Button variant="primary" onClick={() => void newTakeaway()} icon={<ShoppingBag className="h-4 w-4" />}>
-              กลับบ้าน / ไม่ระบุโต๊ะ
-            </Button>
+            <Button variant="primary" onClick={() => void newTakeaway()} icon={<ShoppingBag className="h-4 w-4" />}>{t('กลับบ้าน / ไม่ระบุโต๊ะ')}</Button>
           )}
         </>
       }
     >
       <div className="flex flex-col gap-4 pb-3">
         {restaurant && !merge && (
-          <Segmented value={tab} onChange={setTab} options={[{ value: 'tables', label: 'โต๊ะ' }, { value: 'held', label: `บิลที่พักไว้${held.data?.length ? ` (${held.data.length})` : ''}` }]} />
+          <Segmented value={tab} onChange={setTab} options={[{ value: 'tables', label: t('โต๊ะ') }, { value: 'held', label: t('บิลที่พักไว้{0}', held.data?.length ? ` (${held.data.length})` : '') }]} />
         )}
         {tab === 'tables' && restaurant ? (
           floor.isLoading ? (
@@ -130,7 +128,7 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
             <>
               {(floor.data?.zones.length ?? 0) > 1 && (
                 <div className="flex flex-wrap gap-2">
-                  {[{ id: 'all', name: 'ทั้งหมด' }, ...floor.data!.zones].map((z) => (
+                  {[{ id: 'all', name: t('ทั้งหมด') }, ...floor.data!.zones].map((z) => (
                     <button key={z.id} onClick={() => setZone(z.id)} className={cn('h-10 rounded-full border px-3.5 text-[14px] font-medium', zone === z.id ? 'border-ink bg-ink text-surface' : 'border-line-strong')}>
                       {z.name}
                     </button>
@@ -138,22 +136,22 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
                 </div>
               )}
               <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
-                {tables.map((t) => {
-                  const current = state.order?.tableId === t.id;
-                  const busy = !!t.order;
+                {tables.map((tk) => {
+                  const current = state.order?.tableId === tk.id;
+                  const busy = !!tk.order;
                   return (
                     <button
-                      key={t.id}
+                      key={tk.id}
                       disabled={(merge && (!busy || current)) || false}
-                      onClick={() => void openOrder(t.order?.id ?? null, t.id)}
+                      onClick={() => void openOrder(tk.order?.id ?? null, tk.id)}
                       className={cn(
                         'flex h-[88px] flex-col items-start justify-between rounded-[14px] border px-3 py-2.5 text-left transition-colors disabled:opacity-35',
                         current ? 'border-2 border-primary bg-soft' : busy ? 'border-[#c9b98f] bg-[#fbf3df]' : 'border-line bg-surface hover:bg-sunken',
                       )}
                     >
-                      <span className="text-[17px] font-semibold">{zone === 'all' ? (t.label ?? t.name) : t.name}</span>
+                      <span className="text-[17px] font-semibold">{zone === 'all' ? (tk.label ?? tk.name) : tk.name}</span>
                       <span className={cn('num text-[12px]', busy ? 'text-warn' : 'text-muted')}>
-                        {t.order ? `${money(t.order.total)} · ${minutesSince(t.order.openedAt)} นาที${t.order.billRequested ? ' · เช็คบิล' : ''}` : 'ว่าง'}
+                        {tk.order ? t('{0} · {1} นาที{2}', money(tk.order.total), minutesSince(tk.order.openedAt), tk.order.billRequested ? t(' · เช็คบิล') : '') : t('ว่าง')}
                       </span>
                     </button>
                   );
@@ -161,18 +159,16 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
               </div>
               {(floor.data?.takeaway.length ?? 0) > 0 && (
                 <div className="flex flex-col gap-2">
-                  <span className="text-[13px] font-semibold text-muted">กลับบ้าน / ไม่ระบุโต๊ะ</span>
+                  <span className="text-[13px] font-semibold text-muted">{t('กลับบ้าน / ไม่ระบุโต๊ะ')}</span>
                   {floor.data!.takeaway.map((o) => (
                     <button key={o.id} disabled={merge && state.order?.id === o.id} onClick={() => void openOrder(o.id, null)} className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-left hover:bg-sunken disabled:opacity-40">
                       <span className="font-medium">{o.name}</span>
-                      <span className="num text-[14px] text-muted">
-                        {qtyText(o.items)} รายการ · {money(o.total)}
-                      </span>
+                      <span className="num text-[14px] text-muted">{tn('{0} รายการ · {1}', qtyText(o.items), money(o.total))}</span>
                     </button>
                   ))}
                 </div>
               )}
-              {tables.length === 0 && <EmptyState title="ยังไม่มีโต๊ะ" body="เพิ่มโต๊ะได้ที่ ตั้งค่า → โต๊ะและโซน" />}
+              {tables.length === 0 && <EmptyState title={t('ยังไม่มีโต๊ะ')} body={t('เพิ่มโต๊ะได้ที่ ตั้งค่า → โต๊ะและโซน')} />}
             </>
           )
         ) : held.isLoading ? (
@@ -183,31 +179,25 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
               <div key={h.id} className="flex items-center gap-3 border-b border-line-soft py-3">
                 <button className="flex flex-1 flex-col text-left" onClick={() => void recall(h)}>
                   <span className="font-medium">{h.name}</span>
-                  <span className="text-[13px] text-muted">
-                    {h.userName} · {new Date(h.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} · {qtyText(h.data.lines?.reduce((a, l) => a + l.qty, 0) ?? 0)} รายการ
-                  </span>
+                  <span className="text-[13px] text-muted">{tn('{0} · {1} · {2} รายการ', h.userName, new Date(h.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }), qtyText(h.data.lines?.reduce((a, l) => a + l.qty, 0) ?? 0))}</span>
                 </button>
-                <Button size="sm" onClick={() => void recall(h)}>
-                  เรียกคืน
-                </Button>
+                <Button size="sm" onClick={() => void recall(h)}>{t('เรียกคืน')}</Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="text-danger"
                   onClick={async () => {
-                    const r = await confirm({ title: 'ลบบิลที่พักไว้?', body: h.name, danger: true, confirmText: 'ลบ' });
+                    const r = await confirm({ title: t('ลบบิลที่พักไว้?'), body: h.name, danger: true, confirmText: t('ลบ') });
                     if (!r.ok) return;
                     await api.del(`/api/held/${h.id}`);
                     qc.invalidateQueries({ queryKey: ['held'] });
                   }}
-                >
-                  ลบ
-                </Button>
+                >{t('ลบ')}</Button>
               </div>
             ))}
           </div>
         ) : (
-          <EmptyState title="ไม่มีบิลที่พักไว้" body="กด “พักบิล” เพื่อเก็บรายการไว้ก่อน แล้วเรียกคืนได้ที่นี่" />
+          <EmptyState title={t('ไม่มีบิลที่พักไว้')} body={t('กด “พักบิล” เพื่อเก็บรายการไว้ก่อน แล้วเรียกคืนได้ที่นี่')} />
         )}
       </div>
     </Dialog>
@@ -238,17 +228,17 @@ export function SplitDialog({ open, onClose }: { open: boolean; onClose: () => v
         // Continue with the new split bill (and carry selected counter lines into it).
         cart.replace({ order: orderToCart(o), lines: moveLines, customer: state.customer });
         if (state.lines.length - moveLines.length > 0) {
-          await api.post('/api/held', { id: uuid(), name: `${rest.tableName ? 'โต๊ะ ' + rest.tableName : rest.name} (รายการเคาน์เตอร์)`, data: { lines: state.lines.filter((l) => !pick.has(l.id)) } });
+          await api.post('/api/held', { id: uuid(), name: t('{0} (รายการเคาน์เตอร์)', rest.tableName ? t('โต๊ะ ') + rest.tableName : rest.name), data: { lines: state.lines.filter((l) => !pick.has(l.id)) } });
         }
         qc.invalidateQueries({ queryKey: ['floor'] });
-        toast.success('แยกบิลแล้ว กำลังเก็บเงินบิลที่แยก');
+        toast.success(t('แยกบิลแล้ว กำลังเก็บเงินบิลที่แยก'));
       } else {
         // Counter bill: keep the rest as a held bill and pay the selected part now.
         const rest = state.lines.filter((l) => !pick.has(l.id));
-        await api.post('/api/held', { id: uuid(), name: `${state.heldName || 'บิล'} (ส่วนที่เหลือ)`, data: { ...state, lines: rest, saleId: uuid(), managerPin: null } });
+        await api.post('/api/held', { id: uuid(), name: t('{0} (ส่วนที่เหลือ)', state.heldName || t('บิล')), data: { ...state, lines: rest, saleId: uuid(), managerPin: null } });
         cart.patch({ lines: moveLines, saleId: uuid(), heldId: null });
         qc.invalidateQueries({ queryKey: ['held'] });
-        toast.success('แยกบิลแล้ว ส่วนที่เหลือถูกพักไว้');
+        toast.success(t('แยกบิลแล้ว ส่วนที่เหลือถูกพักไว้'));
       }
       onClose();
     } catch (e) {
@@ -263,23 +253,21 @@ export function SplitDialog({ open, onClose }: { open: boolean; onClose: () => v
     <Dialog
       open={open}
       onOpenChange={(v) => !v && onClose()}
-      title="แยกบิล"
-      description="เลือกรายการที่จะชำระแยก ส่วนที่เหลือจะยังอยู่ในบิลเดิม"
+      title={t('แยกบิล')}
+      description={t('เลือกรายการที่จะชำระแยก ส่วนที่เหลือจะยังอยู่ในบิลเดิม')}
       size="md"
       footer={
         <>
-          <span className="num mr-auto text-[15px] font-semibold">บิลที่แยก {money(Math.round(total))}</span>
-          <Button onClick={onClose}>ยกเลิก</Button>
-          <Button variant="primary" loading={busy} disabled={pick.size === 0 || pick.size === allCount} onClick={() => void apply()}>
-            แยกบิล
-          </Button>
+          <span className="num mr-auto text-[15px] font-semibold">{tn('บิลที่แยก {0}', money(Math.round(total)))}</span>
+          <Button onClick={onClose}>{t('ยกเลิก')}</Button>
+          <Button variant="primary" loading={busy} disabled={pick.size === 0 || pick.size === allCount} onClick={() => void apply()}>{t('แยกบิล')}</Button>
         </>
       }
     >
       <div className="flex flex-col pb-3">
         {sent.map((i) => (
           <div key={i.id} className="border-b border-line-soft py-1">
-            <Checkbox checked={pick.has('s' + i.id)} onChange={() => toggle('s' + i.id)} label={<span className="flex flex-1 justify-between gap-3"><span>{qtyText(i.qty)}× {i.name} <span className="text-[12px] text-muted">รอบ {i.round}</span></span><span className="num">{money(Math.round(i.qty * i.unitPrice))}</span></span>} />
+            <Checkbox checked={pick.has('s' + i.id)} onChange={() => toggle('s' + i.id)} label={<span className="flex flex-1 justify-between gap-3"><span>{qtyText(i.qty)}× {i.name} <span className="text-[12px] text-muted">{tn('รอบ {0}', i.round)}</span></span><span className="num">{money(Math.round(i.qty * i.unitPrice))}</span></span>} />
           </div>
         ))}
         {state.lines.map((l) => (
@@ -287,7 +275,7 @@ export function SplitDialog({ open, onClose }: { open: boolean; onClose: () => v
             <Checkbox checked={pick.has(l.id)} onChange={() => toggle(l.id)} label={<span className="flex flex-1 justify-between gap-3"><span>{qtyText(l.qty)}× {l.name}</span><span className="num">{money(Math.round(l.qty * l.unitPrice))}</span></span>} />
           </div>
         ))}
-        {pick.size === allCount && allCount > 0 && <p className="pt-2 text-[13px] text-warn">เลือกทุกรายการแล้ว ไม่ต้องแยกบิล ให้ชำระตามปกติ</p>}
+        {pick.size === allCount && allCount > 0 && <p className="pt-2 text-[13px] text-warn">{t('เลือกทุกรายการแล้ว ไม่ต้องแยกบิล ให้ชำระตามปกติ')}</p>}
       </div>
     </Dialog>
   );
@@ -306,7 +294,7 @@ export function OpenShiftGate({ onOpened }: { onOpened: () => void }) {
           setBusy(true);
           try {
             await api.post('/api/shifts/open', { openingCash: cash, register: registerName() });
-            toast.success('เปิดกะแล้ว พร้อมขาย');
+            toast.success(t('เปิดกะแล้ว พร้อมขาย'));
             onOpened();
           } catch (err) {
             toast.error(errorMessage(err));
@@ -319,13 +307,11 @@ export function OpenShiftGate({ onOpened }: { onOpened: () => void }) {
           <Timer className="h-6 w-6" />
         </div>
         <div>
-          <h2 className="text-[20px] font-semibold">เปิดกะก่อนเริ่มขาย</h2>
-          <p className="mt-1 text-[14px] text-muted">นับเงินทอนในลิ้นชักแล้วกรอกยอดเริ่มต้น · เครื่อง {registerName()}</p>
+          <h2 className="text-[20px] font-semibold">{t('เปิดกะก่อนเริ่มขาย')}</h2>
+          <p className="mt-1 text-[14px] text-muted">{tn('นับเงินทอนในลิ้นชักแล้วกรอกยอดเริ่มต้น · เครื่อง {0}', registerName())}</p>
         </div>
-        <MoneyInput autoFocus value={cash} onValue={setCash} className="h-14 text-[22px] font-semibold" aria-label="เงินทอนเริ่มต้น" />
-        <Button type="submit" variant="primary" size="lg" loading={busy}>
-          เปิดกะ
-        </Button>
+        <MoneyInput autoFocus value={cash} onValue={setCash} className="h-14 text-[22px] font-semibold" aria-label={t('เงินทอนเริ่มต้น')} />
+        <Button type="submit" variant="primary" size="lg" loading={busy}>{t('เปิดกะ')}</Button>
       </form>
     </div>
   );

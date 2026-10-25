@@ -11,7 +11,7 @@ export default defineConfig({
   testDir: '.',
   timeout: 300_000,
   workers: 1,
-  use: { baseURL: 'http://localhost:4400', viewport: { width: 1366, height: 820 }, locale: 'th-TH', deviceScaleFactor: 1, actionTimeout: 15_000 },
+  use: { baseURL: 'http://localhost:4400', viewport: { width: 1366, height: 820 }, locale: process.env.SHOT_LANG === 'en' ? 'en-US' : 'th-TH', deviceScaleFactor: 1, actionTimeout: 15_000 },
   webServer: {
     command: 'node apps/server/dist/main.js',
     cwd: '../..',

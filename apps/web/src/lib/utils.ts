@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { t } from '@flexpos/shared';
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 
@@ -29,7 +30,7 @@ export async function imageToDataUrl(file: File, max = 320): Promise<string> {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
       i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error('อ่านรูปภาพไม่ได้'));
+      i.onerror = () => reject(new Error(t('อ่านรูปภาพไม่ได้')));
       i.src = url;
     });
     const scale = Math.min(1, max / Math.max(img.width, img.height));

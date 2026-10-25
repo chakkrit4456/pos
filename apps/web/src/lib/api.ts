@@ -1,4 +1,5 @@
 import type { AuthResponse } from '@flexpos/shared';
+import { t } from '@flexpos/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -169,13 +170,13 @@ export async function request<T>(path: string, opts: RequestOptions = {}, retrie
     res = await fetch(buildUrl(path, opts.query), { method: opts.method ?? (body ? 'POST' : 'GET'), headers, body, signal: opts.signal });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e;
-    throw new ApiError(0, 'network', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบเครือข่ายหรือว่าเครื่อง Host เปิดอยู่');
+    throw new ApiError(0, 'network', t('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบเครือข่ายหรือว่าเครื่อง Host เปิดอยู่'));
   }
   if (res.status === 401 && !retried && auth.refreshToken && !path.startsWith('/api/auth/')) {
     if (await refresh()) return request<T>(path, opts, true);
   }
   if (!res.ok) {
-    let msg = `เกิดข้อผิดพลาด (${res.status})`;
+    let msg = t('เกิดข้อผิดพลาด ({0})', res.status);
     let code = 'error';
     let details: unknown;
     try {
@@ -226,5 +227,5 @@ export const api = {
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) return e.message;
   if (e instanceof Error) return e.message;
-  return 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+  return t('เกิดข้อผิดพลาด กรุณาลองใหม่');
 }

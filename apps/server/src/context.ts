@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { Kysely, Transaction } from 'kysely';
 import { connect, migrate, type Database, type DB } from '@flexpos/db';
-import { DEFAULT_SETTINGS, mergeSettings, type Settings, type WsEvent } from '@flexpos/shared';
+import { DEFAULT_SETTINGS, mergeSettings, type Settings, type WsEvent, t, setLanguage } from '@flexpos/shared';
 import { ConfigStore, dbFromEnv, type AppConfig, type StoredDbConfig } from './config.js';
 import { AppError } from './errors.js';
 import { nowIso, parseJson } from './util.js';
@@ -33,12 +33,12 @@ export class AppContext {
   }
 
   get db(): Kysely<DB> {
-    if (!this.conn) throw new AppError(503, 'not_configured', 'ยังไม่ได้ตั้งค่าฐานข้อมูล กรุณาทำตัวช่วยตั้งค่าร้านให้เสร็จ');
+    if (!this.conn) throw new AppError(503, 'not_configured', t('ยังไม่ได้ตั้งค่าฐานข้อมูล กรุณาทำตัวช่วยตั้งค่าร้านให้เสร็จ'));
     return this.conn.db;
   }
 
   get dialect() {
-    if (!this.conn) throw new AppError(503, 'not_configured', 'ยังไม่ได้ตั้งค่าฐานข้อมูล');
+    if (!this.conn) throw new AppError(503, 'not_configured', t('ยังไม่ได้ตั้งค่าฐานข้อมูล'));
     return this.conn.dialect;
   }
 
@@ -55,6 +55,7 @@ export class AppContext {
   async reloadSettings(): Promise<Settings> {
     const row = await this.db.selectFrom('settings').select('data').where('id', '=', 'app').executeTakeFirst();
     this.settings = mergeSettings(DEFAULT_SETTINGS, parseJson(row?.data, {}));
+    setLanguage(this.settings.locale.language);
     return this.settings;
   }
 
@@ -64,6 +65,7 @@ export class AppContext {
     if (exists) await tx.updateTable('settings').set({ data, updated_at: nowIso() }).where('id', '=', 'app').execute();
     else await tx.insertInto('settings').values({ id: 'app', data, updated_at: nowIso() }).execute();
     this.settings = next;
+    setLanguage(next.locale.language);
     this.emit({ type: 'settings.changed' });
   }
 

@@ -1,6 +1,7 @@
 import type { AppContext, Tx } from '../context.js';
 import { badRequest } from '../errors.js';
 import { nowIso, roundCost, uuid } from '../util.js';
+import { t } from '@flexpos/shared';
 
 export interface MoveInput {
   productId: string;
@@ -57,7 +58,7 @@ export async function applyMove(ctx: AppContext, tx: Tx, m: MoveInput): Promise<
   const oldQty = level.qty;
   const newQty = Math.round((oldQty + m.qty) * 1000) / 1000;
   if (!m.allowNegative && m.qty < 0 && newQty < 0) {
-    throw badRequest(`สต็อกไม่พอ: ${m.productName ?? 'สินค้า'} คงเหลือ ${oldQty}`);
+    throw badRequest(t('สต็อกไม่พอ: {0} คงเหลือ {1}', m.productName ?? t('สินค้า'), oldQty));
   }
   let avg = level.avg_cost;
   const inbound = m.qty > 0 && (m.type === 'receive' || m.type === 'transfer_in' || m.type === 'adjust' || m.type === 'count');

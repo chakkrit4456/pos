@@ -7,6 +7,7 @@ import { VERSION } from '../context.js';
 import { chunk } from '../util.js';
 import { invalidateUserCache } from '../auth.js';
 import { bumpCatalog } from './catalog.js';
+import { t } from '@flexpos/shared';
 
 interface BackupFile {
   app: 'flexpos';
@@ -83,9 +84,9 @@ export class BackupService {
   }
 
   read(name: string): Buffer {
-    if (!/^flexpos-[\w-]+\.json\.gz$/.test(name)) throw new Error('ชื่อไฟล์สำรองไม่ถูกต้อง');
+    if (!/^flexpos-[\w-]+\.json\.gz$/.test(name)) throw new Error(t('ชื่อไฟล์สำรองไม่ถูกต้อง'));
     const f = join(this.dir(), name);
-    if (!existsSync(f)) throw new Error('ไม่พบไฟล์สำรอง');
+    if (!existsSync(f)) throw new Error(t('ไม่พบไฟล์สำรอง'));
     return readFileSync(f);
   }
 
@@ -100,9 +101,9 @@ export class BackupService {
     try {
       data = JSON.parse(gunzipSync(buf).toString('utf8')) as BackupFile;
     } catch {
-      throw new Error('ไฟล์สำรองเสียหายหรือไม่ใช่ไฟล์ของ FlexPOS');
+      throw new Error(t('ไฟล์สำรองเสียหายหรือไม่ใช่ไฟล์ของ FlexPOS'));
     }
-    if (data.app !== 'flexpos' || !data.tables) throw new Error('ไฟล์นี้ไม่ใช่ไฟล์สำรองของ FlexPOS');
+    if (data.app !== 'flexpos' || !data.tables) throw new Error(t('ไฟล์นี้ไม่ใช่ไฟล์สำรองของ FlexPOS'));
     await this.create('pre-restore');
     let rows = 0;
     const db = this.ctx.db;

@@ -7,6 +7,8 @@ import { money, useSettings, useTheme } from '@/lib/settings';
 import { qtyText } from '@/lib/utils';
 import { PinPad } from '@/components/ui/inputs';
 import { QrImage } from '@/components/PrintDocView';
+import { t } from '@flexpos/shared';
+import { tn } from '@/lib/i18n';
 
 /** Second screen facing the customer: live cart, total, PromptPay QR and change. */
 export default function CustomerDisplay() {
@@ -23,7 +25,7 @@ export default function CustomerDisplay() {
     return (
       <div className="grid min-h-full place-items-center bg-rail px-4 text-white">
         <div className="flex w-full max-w-[340px] flex-col items-center gap-4">
-          <span className="text-[18px] font-semibold">จอลูกค้า · ใส่ PIN พนักงานเพื่อเชื่อมต่อ</span>
+          <span className="text-[18px] font-semibold">{t('จอลูกค้า · ใส่ PIN พนักงานเพื่อเชื่อมต่อ')}</span>
           <PinPad dark onComplete={onPin} error={error} />
         </div>
       </div>
@@ -46,7 +48,7 @@ function Display() {
       <div className="flex min-h-full flex-col items-center justify-center gap-5 bg-canvas p-10 text-center">
         {s.logo ? <img src={s.logo} alt="" className="max-h-[180px] max-w-[320px] object-contain" /> : <div className="grid h-24 w-24 place-items-center rounded-3xl bg-primary text-[42px] font-bold text-primary-fg">{s.name.slice(0, 1)}</div>}
         <h1 className="text-[40px] font-semibold">{s.name}</h1>
-        <p className="text-[20px] text-muted">{p.state === 'done' ? 'ขอบคุณที่ใช้บริการ' : 'ยินดีต้อนรับ'}</p>
+        <p className="text-[20px] text-muted">{p.state === 'done' ? t('ขอบคุณที่ใช้บริการ') : t('ยินดีต้อนรับ')}</p>
       </div>
     );
   }
@@ -63,13 +65,13 @@ function Display() {
         ))}
       </div>
       <div className="flex flex-none flex-col items-center justify-center gap-5 bg-surface p-10 lg:w-[460px]">
-        {p.discount > 0 && <div className="num text-[20px] text-primary">ส่วนลด -{money(p.discount)}</div>}
-        <div className="text-[20px] text-muted">{p.state === 'done' ? 'เงินทอน' : 'ยอดชำระ'}</div>
+        {p.discount > 0 && <div className="num text-[20px] text-primary">{tn('ส่วนลด -{0}', money(p.discount))}</div>}
+        <div className="text-[20px] text-muted">{p.state === 'done' ? t('เงินทอน') : t('ยอดชำระ')}</div>
         <div className="num text-[64px] font-bold leading-none">{money(p.state === 'done' ? p.change : p.total)}</div>
         {p.qr && (
           <div className="flex flex-col items-center gap-2">
             <QrImage data={p.qr} size={260} className="rounded-xl border border-line p-2" />
-            <span className="text-[18px] font-medium">สแกนจ่ายด้วย PromptPay</span>
+            <span className="text-[18px] font-medium">{t('สแกนจ่ายด้วย PromptPay')}</span>
           </div>
         )}
       </div>

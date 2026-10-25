@@ -16,6 +16,7 @@ import {
   type SaleInput,
   type SaleView,
   type SessionUser,
+  t,
 } from '@flexpos/shared';
 import { z } from 'zod';
 import type { quoteSchema, refundSchema } from '@flexpos/shared';
@@ -76,15 +77,15 @@ interface CustomerCtx {
 async function loadCustomer(ctx: AppContext, id: string | null | undefined): Promise<CustomerCtx | null> {
   if (!id) return null;
   const c = await ctx.db.selectFrom('customers').selectAll().where('id', '=', id).where('active', '=', 1).executeTakeFirst();
-  if (!c) throw notFound('สมาชิก');
+  if (!c) throw notFound(t('สมาชิก'));
   const g = c.group_id ? await ctx.db.selectFrom('customer_groups').selectAll().where('id', '=', c.group_id).executeTakeFirst() : undefined;
-  const t = c.tier_id ? await ctx.db.selectFrom('member_tiers').selectAll().where('id', '=', c.tier_id).executeTakeFirst() : undefined;
+  const tk = c.tier_id ? await ctx.db.selectFrom('member_tiers').selectAll().where('id', '=', c.tier_id).executeTakeFirst() : undefined;
   return {
     id: c.id,
     groupId: c.group_id,
     groupPercent: g?.discount_percent ?? 0,
     tierId: g?.price_tier_id ?? null,
-    pointMultiplier: t?.point_multiplier ?? 1,
+    pointMultiplier: tk?.point_multiplier ?? 1,
     points: c.points,
     creditBalance: c.credit_balance,
     creditLimit: c.credit_limit,
@@ -98,15 +99,15 @@ function resolveLines(catalog: Catalog, lines: SaleInput['lines'], allowOverride
   const byId = new Map(catalog.products.map((p) => [p.id, p]));
   return lines.map((l) => {
     const p = byId.get(l.productId);
-    if (!p) throw badRequest(`สินค้า “${l.name}” ถูกปิดการขายหรือถูกลบแล้ว`);
-    if (p.variants.length > 0 && !l.variantId) throw badRequest(`กรุณาเลือกตัวเลือกของ ${p.name}`);
-    if (l.variantId && !p.variants.some((v) => v.id === l.variantId)) throw badRequest(`ตัวเลือกของ ${p.name} ไม่ถูกต้อง`);
+    if (!p) throw badRequest(t('สินค้า “{0}” ถูกปิดการขายหรือถูกลบแล้ว', l.name));
+    if (p.variants.length > 0 && !l.variantId) throw badRequest(t('กรุณาเลือกตัวเลือกของ {0}', p.name));
+    if (l.variantId && !p.variants.some((v) => v.id === l.variantId)) throw badRequest(t('ตัวเลือกของ {0} ไม่ถูกต้อง', p.name));
     const mods = validateModifiers(p, catalog.modifierGroups, l.modifiers);
     if (!mods.ok) throw badRequest(mods.message);
     let unitPrice: number;
     if (p.kind === 'open_price' || (l.priceOverridden && allowOverride)) unitPrice = l.unitPrice;
     else unitPrice = resolveBasePrice(p, { variantId: l.variantId, unitId: l.unitId, tierId: priceTierId }) + mods.priceDelta;
-    if (p.kind !== 'weighted' && !Number.isInteger(l.qty)) throw badRequest(`จำนวนของ ${p.name} ต้องเป็นจำนวนเต็ม`);
+    if (p.kind !== 'weighted' && !Number.isInteger(l.qty)) throw badRequest(t('จำนวนของ {0} ต้องเป็นจำนวนเต็ม', p.name));
     const variant = p.variants.find((v) => v.id === l.variantId);
     const name = variant ? `${p.name} (${variant.name})` : l.unitId ? `${p.name} (${p.units.find((u) => u.id === l.unitId)?.name ?? ''})` : p.name;
     return {
@@ -165,7 +166,7 @@ export async function createSale(
 ): Promise<SaleView> {
   const existing = await ctx.db.selectFrom('sales').select('id').where('id', '=', input.id).executeTakeFirst();
   if (existing) return getSaleView(ctx, input.id); // idempotent retry / offline sync
-  if (!license.canSell()) throw new AppError(402, 'license', 'ระยะทดลองใช้หมดแล้ว กรุณาใส่ License key ที่หน้า ตั้งค่า → License');
+  if (!license.canSell()) throw new AppError(402, 'license', t('ระยะทดลองใช้หมดแล้ว กรุณาใส่ License key ที่หน้า ตั้งค่า → License'));
 
   const settings = ctx.settings;
   const catalog = await cachedCatalog(ctx, branchId);
@@ -192,9 +193,9 @@ export async function createSale(
   // Points redemption is paid as a "points" tender.
   const pointsCfg = settings.points;
   if (input.pointsRedeemed > 0) {
-    if (!customer) throw badRequest('ต้องเลือกสมาชิกก่อนใช้แต้ม');
-    if (!pointsCfg.enabled) throw badRequest('ระบบแต้มสะสมปิดอยู่');
-    if (input.pointsRedeemed > customer.points) throw badRequest(`แต้มไม่พอ (มี ${customer.points} แต้ม)`);
+    if (!customer) throw badRequest(t('ต้องเลือกสมาชิกก่อนใช้แต้ม'));
+    if (!pointsCfg.enabled) throw badRequest(t('ระบบแต้มสะสมปิดอยู่'));
+    if (input.pointsRedeemed > customer.points) throw badRequest(t('แต้มไม่พอ (มี {0} แต้ม)', customer.points));
   }
   const pointsAmount = Math.min(pointsValue(input.pointsRedeemed, pointsCfg), pricing.total);
 
@@ -203,33 +204,33 @@ export async function createSale(
     .filter((p) => p.amount > 0)
     .map((p) => {
       const m = methods.get(p.methodCode);
-      if (!m || !m.active) throw badRequest(`ไม่พบวิธีชำระเงิน ${p.methodCode}`);
+      if (!m || !m.active) throw badRequest(t('ไม่พบวิธีชำระเงิน {0}', p.methodCode));
       return { ...p, name: m.name, kind: m.kind };
     });
-  if (pointsAmount > 0) payments.push({ methodCode: 'points', amount: pointsAmount, ref: '', name: `แต้มสะสม ${input.pointsRedeemed}`, kind: 'points' });
+  if (pointsAmount > 0) payments.push({ methodCode: 'points', amount: pointsAmount, ref: '', name: t('แต้มสะสม {0}', input.pointsRedeemed), kind: 'points' });
   const tender = computeTender(
     pricing.total,
     payments.map((p) => ({ method: p.methodCode, amount: p.amount, allowsChange: p.kind === 'cash' })),
   );
   if (!tender.ok) {
-    if (tender.due > 0) throw badRequest(`ยอดชำระยังขาดอีก ${(tender.due / 100).toFixed(2)} บาท`);
-    throw badRequest('ยอดที่ไม่ใช่เงินสดเกินยอดที่ต้องชำระ');
+    if (tender.due > 0) throw badRequest(t('ยอดชำระยังขาดอีก {0} บาท', (tender.due / 100).toFixed(2)));
+    throw badRequest(t('ยอดที่ไม่ใช่เงินสดเกินยอดที่ต้องชำระ'));
   }
   const creditAmount = payments.filter((p) => p.kind === 'credit').reduce((a, p) => a + p.amount, 0);
   if (creditAmount > 0) {
-    if (!customer) throw badRequest('การค้างชำระต้องเลือกลูกค้าก่อน');
+    if (!customer) throw badRequest(t('การค้างชำระต้องเลือกลูกค้าก่อน'));
     await authorizeWithPin(ctx, user, 'pos.credit_sale', input.managerPin);
     if (customer.creditLimit > 0 && customer.creditBalance + creditAmount > customer.creditLimit)
-      throw badRequest(`เกินวงเงินเครดิตของลูกค้า (คงเหลือ ${((customer.creditLimit - customer.creditBalance) / 100).toFixed(2)} บาท)`);
+      throw badRequest(t('เกินวงเงินเครดิตของลูกค้า (คงเหลือ {0} บาท)', ((customer.creditLimit - customer.creditBalance) / 100).toFixed(2)));
   }
-  if (input.taxInvoice && !settings.tax.vatEnabled) throw badRequest('ร้านยังไม่ได้เปิดใช้ VAT จึงออกใบกำกับภาษีเต็มรูปไม่ได้');
+  if (input.taxInvoice && !settings.tax.vatEnabled) throw badRequest(t('ร้านยังไม่ได้เปิดใช้ VAT จึงออกใบกำกับภาษีเต็มรูปไม่ได้'));
 
   const stamp = bizStamp(created);
   const earned = customer ? Math.floor(pointsEarned(pricing.total - pointsAmount, pointsCfg) * customer.pointMultiplier) : 0;
 
   await ctx.db.transaction().execute(async (tx) => {
     const shift = await findOpenShift(tx, branchId, register);
-    if (settings.pos.requireShift && !shift && !opts.offline) throw badRequest('ยังไม่ได้เปิดกะ กรุณาเปิดกะก่อนขาย');
+    if (settings.pos.requireShift && !shift && !opts.offline) throw badRequest(t('ยังไม่ได้เปิดกะ กรุณาเปิดกะก่อนขาย'));
     const branch = await tx.selectFrom('branches').select(['code', 'tax_branch_no']).where('id', '=', branchId).executeTakeFirstOrThrow();
     const r = settings.receipt;
     const seq = await nextSeq(tx, `receipt:${branchId}:${stamp.biz_date.slice(0, 7)}`);
@@ -240,7 +241,7 @@ export async function createSale(
       taxNo = formatDocNo(r.taxInvoicePattern, { prefix: r.taxInvoicePrefix, branch: branch.code, seq: tseq, date: created });
     }
     const dup = await tx.selectFrom('sales').select('id').where('doc_no', '=', docNo).executeTakeFirst();
-    if (dup) throw conflict('เลขที่เอกสารซ้ำ กรุณาลองอีกครั้ง');
+    if (dup) throw conflict(t('เลขที่เอกสารซ้ำ กรุณาลองอีกครั้ง'));
 
     const costs = await moveSaleStock(
       ctx,
@@ -251,7 +252,7 @@ export async function createSale(
     let tableName: string | null = null;
     if (input.orderId) {
       const order = await tx.selectFrom('orders').selectAll().where('id', '=', input.orderId).executeTakeFirst();
-      if (!order || order.status === 'paid' || order.status === 'cancelled') throw badRequest('บิลโต๊ะนี้ปิดไปแล้ว');
+      if (!order || order.status === 'paid' || order.status === 'cancelled') throw badRequest(t('บิลโต๊ะนี้ปิดไปแล้ว'));
       if (order.table_id) {
         tableName = (await tableLabel(tx, order.table_id)) ?? order.name;
       } else tableName = order.name || null;
@@ -405,7 +406,7 @@ async function upgradeTier(tx: Tx, customerId: string) {
 export async function getSaleView(ctx: AppContext, id: string): Promise<SaleView> {
   const db = ctx.db;
   const s = await db.selectFrom('sales').selectAll().where('id', '=', id).executeTakeFirst();
-  if (!s) throw notFound('บิล');
+  if (!s) throw notFound(t('บิล'));
   const [lines, pays, user, branch, customer, ref, productFields] = await Promise.all([
     db.selectFrom('sale_lines').selectAll().where('sale_id', '=', id).execute(),
     db.selectFrom('sale_payments').selectAll().where('sale_id', '=', id).execute(),
@@ -485,11 +486,11 @@ export async function voidSale(ctx: AppContext, req: FastifyRequest, user: Sessi
   const approver = await authorizeWithPin(ctx, user, 'pos.void', managerPin);
   await ctx.db.transaction().execute(async (tx) => {
     const s = await tx.selectFrom('sales').selectAll().where('id', '=', id).executeTakeFirst();
-    if (!s) throw notFound('บิล');
-    if (s.type !== 'sale') throw badRequest('ยกเลิกได้เฉพาะบิลขาย');
-    if (s.status === 'voided') throw badRequest('บิลนี้ถูกยกเลิกไปแล้ว');
+    if (!s) throw notFound(t('บิล'));
+    if (s.type !== 'sale') throw badRequest(t('ยกเลิกได้เฉพาะบิลขาย'));
+    if (s.status === 'voided') throw badRequest(t('บิลนี้ถูกยกเลิกไปแล้ว'));
     const refunds = await tx.selectFrom('sales').select('id').where('ref_sale_id', '=', id).where('status', '!=', 'voided').executeTakeFirst();
-    if (refunds) throw badRequest('บิลนี้มีการคืนสินค้าแล้ว ใช้การคืนสินค้าแทนการยกเลิก');
+    if (refunds) throw badRequest(t('บิลนี้มีการคืนสินค้าแล้ว ใช้การคืนสินค้าแทนการยกเลิก'));
     const lines = await tx.selectFrom('sale_lines').selectAll().where('sale_id', '=', id).execute();
     await reverseStockForLines(ctx, tx, s.branch_id, user.id, id, lines.map((l) => ({ line: l, qty: l.qty })), 'void');
     if (s.customer_id) {
@@ -554,16 +555,16 @@ export async function refundSale(
   const stamp = bizStamp(now);
   await ctx.db.transaction().execute(async (tx) => {
     const s = await tx.selectFrom('sales').selectAll().where('id', '=', saleId).executeTakeFirst();
-    if (!s) throw notFound('บิล');
-    if (s.type !== 'sale' || s.status === 'voided') throw badRequest('บิลนี้คืนสินค้าไม่ได้');
+    if (!s) throw notFound(t('บิล'));
+    if (s.type !== 'sale' || s.status === 'voided') throw badRequest(t('บิลนี้คืนสินค้าไม่ได้'));
     const lines = await tx.selectFrom('sale_lines').selectAll().where('sale_id', '=', saleId).execute();
     const method = await tx.selectFrom('payment_methods').selectAll().where('code', '=', input.methodCode).executeTakeFirst();
-    if (!method) throw badRequest('ไม่พบวิธีคืนเงิน');
+    if (!method) throw badRequest(t('ไม่พบวิธีคืนเงิน'));
     const shift = await findOpenShift(tx, s.branch_id, register);
     const picked = input.lines.map((r) => {
       const l = lines.find((x) => x.id === r.lineId);
-      if (!l) throw badRequest('ไม่พบรายการในบิล');
-      if (r.qty > l.qty - l.refunded_qty + 1e-9) throw badRequest(`คืน “${l.name}” ได้ไม่เกิน ${l.qty - l.refunded_qty}`);
+      if (!l) throw badRequest(t('ไม่พบรายการในบิล'));
+      if (r.qty > l.qty - l.refunded_qty + 1e-9) throw badRequest(t('คืน “{0}” ได้ไม่เกิน {1}', l.name, l.qty - l.refunded_qty));
       return { line: l, qty: r.qty, ratio: r.qty / l.qty };
     });
     const part = (v: number, ratio: number) => Math.round(v * ratio);

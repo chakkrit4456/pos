@@ -11,6 +11,7 @@ import type {
 import type { AppContext, Tx } from '../context.js';
 import { badRequest, conflict, notFound } from '../errors.js';
 import { bool, isTrue, nowIso, parseJson, uuid } from '../util.js';
+import { t } from '@flexpos/shared';
 
 let catalogVersion = Date.now().toString(36);
 export const bumpCatalog = (ctx: AppContext) => {
@@ -131,7 +132,7 @@ export async function buildCatalog(ctx: AppContext, branchId: string): Promise<C
 /** Pass the transaction when called inside one (SQLite has a single connection). */
 export async function getProductDetail(ctx: AppContext, id: string, db: Tx = ctx.db) {
   const p = await db.selectFrom('products').selectAll().where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
-  if (!p) throw notFound('สินค้า');
+  if (!p) throw notFound(t('สินค้า'));
   const [barcodes, variants, units, pmg, bundle, prices, levels] = await Promise.all([
     db.selectFrom('product_barcodes').selectAll().where('product_id', '=', id).execute(),
     db.selectFrom('product_variants').selectAll().where('product_id', '=', id).orderBy('sort').execute(),
@@ -185,12 +186,12 @@ export async function getProductDetail(ctx: AppContext, id: string, db: Tx = ctx
 
 async function assertBarcodesFree(tx: Tx, codes: string[], productId: string | null) {
   const clean = codes.filter(Boolean);
-  if (new Set(clean).size !== clean.length) throw badRequest('มีบาร์โค้ดซ้ำกันในสินค้านี้');
+  if (new Set(clean).size !== clean.length) throw badRequest(t('มีบาร์โค้ดซ้ำกันในสินค้านี้'));
   if (clean.length === 0) return;
   let q = tx.selectFrom('product_barcodes').innerJoin('products', 'products.id', 'product_barcodes.product_id').select(['product_barcodes.code', 'products.name']).where('product_barcodes.code', 'in', clean).where('products.deleted_at', 'is', null);
   if (productId) q = q.where('product_barcodes.product_id', '!=', productId);
   const taken = await q.executeTakeFirst();
-  if (taken) throw conflict(`บาร์โค้ด ${taken.code} ถูกใช้แล้วกับสินค้า “${taken.name}”`);
+  if (taken) throw conflict(t('บาร์โค้ด {0} ถูกใช้แล้วกับสินค้า “{1}”', taken.code, taken.name));
 }
 
 async function assertSkuFree(tx: Tx, sku: string, productId: string | null) {
@@ -198,7 +199,7 @@ async function assertSkuFree(tx: Tx, sku: string, productId: string | null) {
   let q = tx.selectFrom('products').select(['id', 'name']).where('sku', '=', sku).where('deleted_at', 'is', null);
   if (productId) q = q.where('id', '!=', productId);
   const taken = await q.executeTakeFirst();
-  if (taken) throw conflict(`SKU ${sku} ซ้ำกับสินค้า “${taken.name}”`);
+  if (taken) throw conflict(t('SKU {0} ซ้ำกับสินค้า “{1}”', sku, taken.name));
 }
 
 export async function validateCustom(ctx: AppContext, entity: 'product' | 'customer' | 'supplier', custom: Record<string, unknown>, db: Tx = ctx.db) {
@@ -208,13 +209,13 @@ export async function validateCustom(ctx: AppContext, entity: 'product' | 'custo
     const v = custom[f.field_key];
     const empty = v === undefined || v === null || v === '';
     if (empty) {
-      if (f.required === 1) throw badRequest(`กรุณากรอก “${f.label}”`);
+      if (f.required === 1) throw badRequest(t('กรุณากรอก “{0}”', f.label));
       continue;
     }
-    if (f.type === 'number' && !Number.isFinite(Number(v))) throw badRequest(`“${f.label}” ต้องเป็นตัวเลข`);
+    if (f.type === 'number' && !Number.isFinite(Number(v))) throw badRequest(t('“{0}” ต้องเป็นตัวเลข', f.label));
     if (f.type === 'select') {
       const opts = parseJson<string[]>(f.options, []);
-      if (!opts.includes(String(v))) throw badRequest(`“${f.label}” ต้องเป็นหนึ่งในตัวเลือกที่กำหนด`);
+      if (!opts.includes(String(v))) throw badRequest(t('“{0}” ต้องเป็นหนึ่งในตัวเลือกที่กำหนด', f.label));
     }
     out[f.field_key] = f.type === 'number' ? Number(v) : f.type === 'checkbox' ? !!v : v;
   }
@@ -228,8 +229,8 @@ export async function saveProduct(ctx: AppContext, tx: Tx, input: ProductInput, 
   await assertSkuFree(tx, input.sku, existingId);
   const allCodes = [...input.barcodes, ...input.variants.map((v) => v.barcode), ...input.units.map((u) => u.barcode)];
   await assertBarcodesFree(tx, allCodes, existingId);
-  if (input.kind === 'bundle' && input.bundleItems.length === 0) throw badRequest('สินค้าชุดต้องมีส่วนประกอบอย่างน้อย 1 รายการ');
-  if (input.bundleItems.some((b) => b.productId === id)) throw badRequest('สินค้าชุดใส่ตัวเองเป็นส่วนประกอบไม่ได้');
+  if (input.kind === 'bundle' && input.bundleItems.length === 0) throw badRequest(t('สินค้าชุดต้องมีส่วนประกอบอย่างน้อย 1 รายการ'));
+  if (input.bundleItems.some((b) => b.productId === id)) throw badRequest(t('สินค้าชุดใส่ตัวเองเป็นส่วนประกอบไม่ได้'));
   const custom = await validateCustom(ctx, 'product', input.custom, tx);
 
   const row = {
@@ -252,7 +253,7 @@ export async function saveProduct(ctx: AppContext, tx: Tx, input: ProductInput, 
   };
   if (existingId) {
     const r = await tx.updateTable('products').set(row).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
-    if (Number(r.numUpdatedRows) === 0) throw notFound('สินค้า');
+    if (Number(r.numUpdatedRows) === 0) throw notFound(t('สินค้า'));
   } else {
     const max = await tx.selectFrom('products').select((eb) => eb.fn.max('sort').as('m')).executeTakeFirst();
     await tx

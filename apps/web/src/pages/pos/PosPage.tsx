@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ChevronDown, PackageSearch, QrCode, Search, Send, UserRound, X, WifiOff, CloudUpload } from 'lucide-react';
-import { effectiveBillDiscount, priceCart, type CatalogProduct, type PromotionRule, type SaleInput } from '@flexpos/shared';
+import { effectiveBillDiscount, priceCart, type CatalogProduct, type PromotionRule, type SaleInput, t } from '@flexpos/shared';
 import { api, errorMessage, registerName } from '@/lib/api';
 import { useBarcodeScanner, useCatalog } from '@/lib/catalog';
 import { useSession } from '@/lib/session';
@@ -19,6 +19,7 @@ import { ApprovalHost, BillDiscountDialog, CustomerDialog, LineDialog, OptionsDi
 import { DoneDialog, PaymentDialog, type PayDone } from './PaymentDialog';
 import { BillPicker, OpenShiftGate, SplitDialog } from './BillPicker';
 import { BillSlipDialog } from '@/components/BillSlipDialog';
+import { tn } from '@/lib/i18n';
 
 const DEFAULT_KEYS: Record<string, string> = { search: 'F2', member: 'F4', hold: 'F6', recall: 'F7', discount: 'F8', drawer: 'F9', pay: 'F12' };
 
@@ -40,7 +41,7 @@ export interface OrderDetail {
 export function orderToCart(o: OrderDetail): CartOrder {
   return {
     id: o.id,
-    name: o.tableName ? `โต๊ะ ${o.tableName}` : o.name,
+    name: o.tableName ? t('โต๊ะ {0}', o.tableName) : o.name,
     tableId: o.tableId,
     items: o.items
       .filter((i) => i.status !== 'cancelled')
@@ -154,7 +155,7 @@ export default function PosPage() {
       const price = u ? u.price : v ? v.price : tierId && p.tierPrices[tierId] !== undefined ? p.tierPrices[tierId]! : p.price;
       const stock = v ? v.stock : p.stock;
       if (stock !== null && stock <= 0 && !settings.pos.allowNegativeStock) {
-        toast.error(`${p.name} หมดสต็อก`);
+        toast.error(t('{0} หมดสต็อก', p.name));
         return;
       }
       cart.add({ productId: p.id, variantId: v?.id ?? null, unitId: u?.id ?? null, name: v ? `${p.name} (${v.name})` : u ? `${p.name} (${u.name})` : p.name, sku: v?.sku || p.sku, unitPrice: price, priceOverridden: false, modifiers: [], note: '', discount: null, categoryId: p.categoryId, taxable: p.taxable, kind: p.kind });
@@ -167,7 +168,7 @@ export default function PosPage() {
       if (!index || dialog || optionsFor) return;
       const hit = index.byCode.get(code) ?? index.byCode.get(code.toLowerCase());
       if (!hit) {
-        toast.error(`ไม่พบสินค้าบาร์โค้ด ${code}`);
+        toast.error(t('ไม่พบสินค้าบาร์โค้ด {0}', code));
         return;
       }
       addProduct(hit.product, { variantId: hit.variantId, unitId: hit.unitId });
@@ -181,15 +182,15 @@ export default function PosPage() {
     const s = cart.get();
     if (!s.lines.length) return;
     if (s.order) {
-      toast.info('บิลโต๊ะถูกเก็บไว้ที่โต๊ะอยู่แล้ว กด “ส่งครัว” เพื่อบันทึกรายการเพิ่ม');
+      toast.info(t('บิลโต๊ะถูกเก็บไว้ที่โต๊ะอยู่แล้ว กด “ส่งครัว” เพื่อบันทึกรายการเพิ่ม'));
       return;
     }
     const id = s.heldId ?? uuid();
     try {
-      await api.post('/api/held', { id, name: s.heldName || s.customer?.name || `บิลพัก ${new Date().toTimeString().slice(0, 5)}`, data: { ...s, saleId: s.saleId, managerPin: null } });
+      await api.post('/api/held', { id, name: s.heldName || s.customer?.name || t('บิลพัก {0}', new Date().toTimeString().slice(0, 5)), data: { ...s, saleId: s.saleId, managerPin: null } });
       cart.clear();
       qc.invalidateQueries({ queryKey: ['held'] });
-      toast.success('พักบิลแล้ว เรียกคืนได้ที่ปุ่มชื่อบิล');
+      toast.success(t('พักบิลแล้ว เรียกคืนได้ที่ปุ่มชื่อบิล'));
     } catch (e) {
       toast.error(errorMessage(e));
     }
@@ -199,7 +200,7 @@ export default function PosPage() {
     const s = cart.get();
     if (!s.lines.length && !s.order && !s.customer) return;
     if (s.lines.length) {
-      const r = await confirm({ title: 'ล้างรายการทั้งหมด?', body: s.order ? 'รายการที่ยังไม่ส่งครัวจะถูกลบ บิลโต๊ะยังอยู่' : 'รายการในตะกร้าจะถูกลบ', confirmText: 'ล้าง', danger: true });
+      const r = await confirm({ title: t('ล้างรายการทั้งหมด?'), body: s.order ? t('รายการที่ยังไม่ส่งครัวจะถูกลบ บิลโต๊ะยังอยู่') : t('รายการในตะกร้าจะถูกลบ'), confirmText: t('ล้าง'), danger: true });
       if (!r.ok) return;
     }
     cart.clear();
@@ -216,7 +217,7 @@ export default function PosPage() {
         items: s.lines.map((l) => ({ productId: l.productId, variantId: l.variantId, qty: l.qty, modifiers: l.modifiers, note: l.note })),
       });
       cart.patch({ lines: [], order: orderToCart(o) });
-      toast.success(o.printedTo ? `ส่งครัวแล้ว · พิมพ์ที่ ${o.printedTo} เครื่อง` : 'ส่งครัวแล้ว');
+      toast.success(o.printedTo ? t('ส่งครัวแล้ว · พิมพ์ที่ {0} เครื่อง', o.printedTo) : t('ส่งครัวแล้ว'));
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -225,11 +226,11 @@ export default function PosPage() {
   };
 
   const openDrawer = useCallback(async () => {
-    const pin = await approve('pos.open_drawer', 'เปิดลิ้นชักเงินโดยไม่มีการขาย');
+    const pin = await approve('pos.open_drawer', t('เปิดลิ้นชักเงินโดยไม่มีการขาย'));
     if (pin === null) return;
     try {
       await api.post('/api/drawer/open', { managerPin: pin || undefined });
-      toast.success('เปิดลิ้นชักแล้ว');
+      toast.success(t('เปิดลิ้นชักแล้ว'));
     } catch (e) {
       toast.error(errorMessage(e));
     }
@@ -276,14 +277,14 @@ export default function PosPage() {
   const needShift = settings.pos.requireShift && shift.isSuccess && !shift.data;
   const editing = state.lines.find((l) => l.id === editLine) ?? null;
   const rounds = groupRounds(state.order?.items ?? []);
-  const billTitle = state.order ? state.order.name : state.heldName || 'บิลใหม่';
+  const billTitle = state.order ? state.order.name : state.heldName || t('บิลใหม่');
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <header className="flex h-[72px] flex-none items-center gap-4 border-b border-line bg-surface px-4 md:px-6">
         <div className="hidden min-w-0 flex-col sm:flex">
           <span className="truncate text-[17px] font-semibold">{settings.store.name}</span>
-          <span className="truncate text-[13px] text-muted">{shift.data ? `กะ #${shift.data.number} · เปิดโดย ${shift.data.openedBy} · ${new Date(shift.data.openedAt).toTimeString().slice(0, 5)}` : `${registerName()} · ยังไม่เปิดกะ`}</span>
+          <span className="truncate text-[13px] text-muted">{shift.data ? t('กะ #{0} · เปิดโดย {1} · {2}', shift.data.number, shift.data.openedBy, new Date(shift.data.openedAt).toTimeString().slice(0, 5)) : t('{0} · ยังไม่เปิดกะ', registerName())}</span>
         </div>
         <div className="ml-auto flex h-12 w-full max-w-[520px] items-center gap-2.5 rounded-xl border border-line-strong bg-sunken px-3.5">
           <Search className="h-4 w-4 flex-none text-faint" />
@@ -305,12 +306,12 @@ export default function PosPage() {
                 }
               } else if (e.key === 'Escape') setQ('');
             }}
-            placeholder="ค้นหาชื่อ, SKU หรือสแกนบาร์โค้ด"
+            placeholder={t('ค้นหาชื่อ, SKU หรือสแกนบาร์โค้ด')}
             className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
-            aria-label="ค้นหาสินค้า"
+            aria-label={t('ค้นหาสินค้า')}
           />
           {q ? (
-            <button onClick={() => setQ('')} aria-label="ล้างคำค้น" className="text-faint">
+            <button onClick={() => setQ('')} aria-label={t('ล้างคำค้น')} className="text-faint">
               <X className="h-4 w-4" />
             </button>
           ) : (
@@ -323,9 +324,7 @@ export default function PosPage() {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 md:p-[20px_24px_24px]">
           <div className="scroll-thin flex flex-none gap-2 overflow-x-auto pb-1">
-            <Chip active={!cat} onClick={() => setCat(null)} count={catalog.products.filter((p) => p.showInPos).length}>
-              ทั้งหมด
-            </Chip>
+            <Chip active={!cat} onClick={() => setCat(null)} count={catalog.products.filter((p) => p.showInPos).length}>{t('ทั้งหมด')}</Chip>
             {topCats.map((c) => (
               <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)} count={counts.get(c.id)}>
                 {c.name}
@@ -340,9 +339,9 @@ export default function PosPage() {
               <div className="col-span-full">
                 <EmptyState
                   icon={<PackageSearch className="h-6 w-6" />}
-                  title={q ? `ไม่พบสินค้าที่ตรงกับ “${q}”` : 'ยังไม่มีสินค้าในหมวดนี้'}
-                  body={q ? 'ลองค้นด้วย SKU หรือสแกนบาร์โค้ด' : can('products.manage') ? 'เพิ่มสินค้าหรือนำเข้าจาก Excel ได้ที่หน้าสินค้า' : undefined}
-                  action={!q && can('products.manage') ? <Button onClick={() => nav('/products/new')}>เพิ่มสินค้า</Button> : undefined}
+                  title={q ? t('ไม่พบสินค้าที่ตรงกับ “{0}”', q) : t('ยังไม่มีสินค้าในหมวดนี้')}
+                  body={q ? t('ลองค้นด้วย SKU หรือสแกนบาร์โค้ด') : can('products.manage') ? t('เพิ่มสินค้าหรือนำเข้าจาก Excel ได้ที่หน้าสินค้า') : undefined}
+                  action={!q && can('products.manage') ? <Button onClick={() => nav('/products/new')}>{t('เพิ่มสินค้า')}</Button> : undefined}
                 />
               </div>
             )}
@@ -354,17 +353,13 @@ export default function PosPage() {
             <button onClick={() => setDialog('bills')} className="flex min-h-[48px] items-center gap-2.5 rounded-xl border border-line-strong bg-sunken px-3 py-1.5 text-left">
               <span className="flex flex-col">
                 <span className="text-[17px] font-semibold leading-tight">{billTitle}</span>
-                <span className="text-[13px] text-muted">{itemCount ? `${qtyText(itemCount)} รายการ` : 'แตะเพื่อเลือกโต๊ะ/บิลที่พักไว้'}</span>
+                <span className="text-[13px] text-muted">{itemCount ? t('{0} รายการ', qtyText(itemCount)) : t('แตะเพื่อเลือกโต๊ะ/บิลที่พักไว้')}</span>
               </span>
               <ChevronDown className="h-4 w-4 text-muted" />
             </button>
             <div className="flex gap-1.5">
-              <Button size="sm" className="h-10" onClick={() => void hold()} disabled={!state.lines.length || !!state.order}>
-                พักบิล
-              </Button>
-              <Button size="sm" className="h-10 text-danger" onClick={() => void clearCart()}>
-                ล้าง
-              </Button>
+              <Button size="sm" className="h-10" onClick={() => void hold()} disabled={!state.lines.length || !!state.order}>{t('พักบิล')}</Button>
+              <Button size="sm" className="h-10 text-danger" onClick={() => void clearCart()}>{t('ล้าง')}</Button>
             </div>
           </div>
           {settings.modules.members &&
@@ -373,19 +368,15 @@ export default function PosPage() {
                 <UserRound className="h-5 w-5" />
                 <button className="flex flex-1 flex-col text-left" onClick={() => setDialog('customer')}>
                   <span className="text-[15px] font-semibold">{state.customer.name}</span>
-                  <span className="text-[12px]">
-                    {state.customer.points.toLocaleString()} แต้ม{state.customer.groupPercent ? ` · ส่วนลดสมาชิก ${state.customer.groupPercent}%` : ''}
-                  </span>
+                  <span className="text-[12px]">{tn('{0} แต้ม{1}', state.customer.points.toLocaleString(), state.customer.groupPercent ? t(' · ส่วนลดสมาชิก {0}%', state.customer.groupPercent) : '')}</span>
                 </button>
-                <button aria-label="นำสมาชิกออก" onClick={() => cart.patch({ customer: null, pointsRedeemed: 0 })}>
+                <button aria-label={t('นำสมาชิกออก')} onClick={() => cart.patch({ customer: null, pointsRedeemed: 0 })}>
                   <X className="h-4 w-4" />
                 </button>
               </div>
             ) : (
               <button onClick={() => setDialog('customer')} className="mx-5 mt-3 flex h-12 items-center gap-2.5 rounded-xl border border-dashed border-[#cfccc2] bg-sunken px-3.5 text-[14px] text-muted">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-soft font-semibold text-primary">+</span>
-                เลือกสมาชิก / สะสมแต้ม
-                <span className="ml-auto">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-soft font-semibold text-primary">+</span>{t('เลือกสมาชิก / สะสมแต้ม')}<span className="ml-auto">
                   <Kbd>{settings.pos.hotkeys.member ?? 'F4'}</Kbd>
                 </span>
               </button>
@@ -394,11 +385,8 @@ export default function PosPage() {
             {rounds.map((r) => (
               <div key={r.round} className="flex flex-col border-b border-line-soft py-2.5">
                 <div className="flex justify-between pb-1 text-[12px] text-muted">
-                  <span>
-                    รอบ {r.round} · {r.time}
-                    {r.by ? ` · ${r.by}` : ''}
-                  </span>
-                  <span>{r.ready ? 'พร้อมเสิร์ฟ' : 'ส่งครัวแล้ว'}</span>
+                  <span>{tn('รอบ {0} · {1}{2}', r.round, r.time, r.by ? ` · ${r.by}` : '')}</span>
+                  <span>{r.ready ? t('พร้อมเสิร์ฟ') : t('ส่งครัวแล้ว')}</span>
                 </div>
                 {r.items.map((i) => (
                   <div key={i.id} className="flex items-baseline gap-2.5 py-1 text-[15px] text-ink-2">
@@ -414,8 +402,8 @@ export default function PosPage() {
             ))}
             {state.order && state.lines.length > 0 && (
               <div className="flex items-center justify-between pt-3.5 text-[12px] font-semibold text-primary">
-                <span>สั่งเพิ่มที่เคาน์เตอร์</span>
-                <span className="rounded-full bg-soft px-2 py-0.5">ยังไม่ส่งครัว</span>
+                <span>{t('สั่งเพิ่มที่เคาน์เตอร์')}</span>
+                <span className="rounded-full bg-soft px-2 py-0.5">{t('ยังไม่ส่งครัว')}</span>
               </div>
             )}
             {state.lines.map((l) => (
@@ -429,21 +417,19 @@ export default function PosPage() {
                   </span>
                   {(l.note || l.discount || l.priceOverridden) && (
                     <span className="text-[12px] text-warn">
-                      {[l.note && `* ${l.note}`, l.discount && `ลด ${l.discount.kind === 'percent' ? l.discount.value + '%' : money(l.discount.value)}`, l.priceOverridden && 'แก้ราคา'].filter(Boolean).join(' · ')}
+                      {[l.note && `* ${l.note}`, l.discount && t('ลด {0}', l.discount.kind === 'percent' ? l.discount.value + '%' : money(l.discount.value)), l.priceOverridden && t('แก้ราคา')].filter(Boolean).join(' · ')}
                     </span>
                   )}
                 </button>
                 {l.kind === 'weighted' ? (
-                  <button onClick={() => setEditLine(l.id)} className="num h-10 rounded-[10px] border border-line-strong px-3 text-[14px] font-semibold">
-                    {qtyText(l.qty)} กก.
-                  </button>
+                  <button onClick={() => setEditLine(l.id)} className="num h-10 rounded-[10px] border border-line-strong px-3 text-[14px] font-semibold">{tn('{0} กก.', qtyText(l.qty))}</button>
                 ) : (
                   <div className="flex items-center overflow-hidden rounded-[10px] border border-line-strong">
-                    <button onClick={() => cart.inc(l.id, -1)} className="h-10 w-10 bg-sunken text-[18px]" aria-label={`ลด ${l.name}`}>
+                    <button onClick={() => cart.inc(l.id, -1)} className="h-10 w-10 bg-sunken text-[18px]" aria-label={t('ลด {0}', l.name)}>
                       −
                     </button>
                     <span className="num w-[34px] text-center font-semibold">{qtyText(l.qty)}</span>
-                    <button onClick={() => cart.inc(l.id, 1)} className="h-10 w-10 bg-sunken text-[18px]" aria-label={`เพิ่ม ${l.name}`}>
+                    <button onClick={() => cart.inc(l.id, 1)} className="h-10 w-10 bg-sunken text-[18px]" aria-label={t('เพิ่ม {0}', l.name)}>
                       +
                     </button>
                   </div>
@@ -453,51 +439,43 @@ export default function PosPage() {
             ))}
             {cartEmpty && (
               <div className="flex flex-col items-center gap-1.5 px-3 py-14 text-center">
-                <span className="text-[16px] font-semibold">ยังไม่มีรายการ</span>
-                <span className="text-[14px] text-muted [text-wrap:pretty]">แตะสินค้าทางซ้าย หรือสแกนบาร์โค้ดได้ทันทีโดยไม่ต้องคลิกช่องค้นหา</span>
+                <span className="text-[16px] font-semibold">{t('ยังไม่มีรายการ')}</span>
+                <span className="text-[14px] text-muted [text-wrap:pretty]">{t('แตะสินค้าทางซ้าย หรือสแกนบาร์โค้ดได้ทันทีโดยไม่ต้องคลิกช่องค้นหา')}</span>
               </div>
             )}
           </div>
           <div className="num flex flex-col gap-2 border-t border-line-soft px-5 pb-5 pt-4">
-            <SumRow label="ยอดรวม" value={money(pricing.subtotal)} />
-            {pricing.lineDiscountTotal > 0 && <SumRow label="ส่วนลดรายการ" value={`-${money(pricing.lineDiscountTotal)}`} accent />}
+            <SumRow label={t('ยอดรวม')} value={money(pricing.subtotal)} />
+            {pricing.lineDiscountTotal > 0 && <SumRow label={t('ส่วนลดรายการ')} value={`-${money(pricing.lineDiscountTotal)}`} accent />}
             {pricing.appliedPromotions.map((p) => (
               <SumRow key={p.id} label={p.name} value={`-${money(p.amount)}`} accent />
             ))}
             {pricing.billDiscountTotal > 0 && (
               <SumRow
-                label={state.billDiscount ? `ส่วนลดท้ายบิล${state.billDiscount.kind === 'percent' ? ` ${state.billDiscount.value}%` : ''}` : `ส่วนลดสมาชิก ${state.customer?.groupPercent}%`}
+                label={state.billDiscount ? t('ส่วนลดท้ายบิล{0}', state.billDiscount.kind === 'percent' ? ` ${state.billDiscount.value}%` : '') : t('ส่วนลดสมาชิก {0}%', state.customer?.groupPercent)}
                 value={`-${money(pricing.billDiscountTotal)}`}
                 accent
               />
             )}
-            {pricing.serviceCharge > 0 && <SumRow label={`ค่าบริการ ${settings.tax.serviceChargeRate}%`} value={money(pricing.serviceCharge)} />}
-            {settings.tax.vatEnabled && <SumRow label={`VAT ${settings.tax.vatRate}%${settings.tax.pricesIncludeVat ? ' (รวมในราคา)' : ''}`} value={money(pricing.vat)} />}
-            {pricing.rounding !== 0 && <SumRow label="ปัดเศษ" value={money(pricing.rounding)} />}
+            {pricing.serviceCharge > 0 && <SumRow label={t('ค่าบริการ {0}%', settings.tax.serviceChargeRate)} value={money(pricing.serviceCharge)} />}
+            {settings.tax.vatEnabled && <SumRow label={`VAT ${settings.tax.vatRate}%${settings.tax.pricesIncludeVat ? t(' (รวมในราคา)') : ''}`} value={money(pricing.vat)} />}
+            {pricing.rounding !== 0 && <SumRow label={t('ปัดเศษ')} value={money(pricing.rounding)} />}
             <div className="mt-1 flex items-baseline justify-between">
-              <span className="text-[16px] font-semibold">ยอดชำระ</span>
+              <span className="text-[16px] font-semibold">{t('ยอดชำระ')}</span>
               <span className="text-[30px] font-bold">{money(pricing.total)}</span>
             </div>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
-              <Button size="lg" onClick={() => setDialog('discount')} disabled={cartEmpty}>
-                ส่วนลดบิล
-              </Button>
-              <Button size="lg" onClick={() => setDialog('split')} disabled={itemCount < 2}>
-                แยกบิล
-              </Button>
+              <Button size="lg" onClick={() => setDialog('discount')} disabled={cartEmpty}>{t('ส่วนลดบิล')}</Button>
+              <Button size="lg" onClick={() => setDialog('split')} disabled={itemCount < 2}>{t('แยกบิล')}</Button>
             </div>
             {state.order && state.order.items.length > 0 && (
-              <Button size="lg" icon={<QrCode className="h-4 w-4" />} onClick={() => setSlip(true)}>
-                ใบแจ้งยอด + QR
-              </Button>
+              <Button size="lg" icon={<QrCode className="h-4 w-4" />} onClick={() => setSlip(true)}>{t('ใบแจ้งยอด + QR')}</Button>
             )}
             {state.order && (
-              <Button variant="outline-primary" size="lg" className="h-[52px] font-semibold" disabled={!state.lines.length} loading={sending} icon={<Send className="h-4 w-4" />} onClick={() => void sendToKitchen()}>
-                ส่งครัว · เพิ่มเข้าบิล{state.order.name}
-              </Button>
+              <Button variant="outline-primary" size="lg" className="h-[52px] font-semibold" disabled={!state.lines.length} loading={sending} icon={<Send className="h-4 w-4" />} onClick={() => void sendToKitchen()}>{tn('ส่งครัว · เพิ่มเข้าบิล{0}', state.order.name)}</Button>
             )}
             <Button variant="primary" size="xl" className="h-16 justify-between px-[22px]" disabled={cartEmpty || !can('pos.sell')} onClick={() => setDialog('pay')}>
-              <span>ชำระเงิน {money(pricing.total)}</span>
+              <span>{tn('ชำระเงิน {0}', money(pricing.total))}</span>
               <span className="font-mono text-[13px] font-medium opacity-80">{settings.pos.hotkeys.pay ?? 'F12'}</span>
             </Button>
           </div>
@@ -577,7 +555,7 @@ function ProductTile({ p, qty, onAdd, showImage }: { p: CatalogProduct; qty: num
             {p.variants.length > 1 ? `${money(Math.min(...p.variants.map((v) => v.price)))}+` : money(p.price)}
             {p.kind === 'weighted' && <span className="text-[12px] font-normal text-muted">/{p.unit}</span>}
           </span>
-          {out ? <span className="text-[11px] font-semibold text-danger">หมด</span> : low ? <span className="text-[11px] font-semibold text-warn">เหลือ {qtyText(p.stock!)}</span> : null}
+          {out ? <span className="text-[11px] font-semibold text-danger">{t('หมด')}</span> : low ? <span className="text-[11px] font-semibold text-warn">{tn('เหลือ {0}', qtyText(p.stock!))}</span> : null}
         </span>
       </div>
     </button>
@@ -587,20 +565,14 @@ function ProductTile({ p, qty, onAdd, showImage }: { p: CatalogProduct; qty: num
 function ConnectionPill({ online, pending }: { online: boolean; pending: number }) {
   if (pending > 0)
     return (
-      <button onClick={() => void syncOutbox().then((r) => r.sent && toast.success(`ส่งบิลค้าง ${r.sent} บิลแล้ว`))} className="flex flex-none items-center gap-2 whitespace-nowrap rounded-full bg-warn-soft px-3 py-2 text-[13px] font-medium text-warn">
-        <CloudUpload className="h-4 w-4" />
-        รอส่ง {pending} บิล
-      </button>
+      <button onClick={() => void syncOutbox().then((r) => r.sent && toast.success(t('ส่งบิลค้าง {0} บิลแล้ว', r.sent)))} className="flex flex-none items-center gap-2 whitespace-nowrap rounded-full bg-warn-soft px-3 py-2 text-[13px] font-medium text-warn">
+        <CloudUpload className="h-4 w-4" />{t('รอส่ง')}{' '}{pending}{' '}{t('บิล')}</button>
     );
   return online ? (
     <div className="hidden flex-none items-center gap-2 whitespace-nowrap rounded-full bg-soft px-3 py-2 text-[13px] font-medium text-soft-fg md:flex">
-      <span className="h-2 w-2 rounded-full bg-accent" />
-      ออนไลน์
-    </div>
+      <span className="h-2 w-2 rounded-full bg-accent" />{t('ออนไลน์')}</div>
   ) : (
     <div className="flex flex-none items-center gap-2 whitespace-nowrap rounded-full bg-danger-soft px-3 py-2 text-[13px] font-medium text-danger">
-      <WifiOff className="h-4 w-4" />
-      ออฟไลน์
-    </div>
+      <WifiOff className="h-4 w-4" />{t('ออฟไลน์')}</div>
   );
 }
