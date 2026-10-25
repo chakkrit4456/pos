@@ -96,7 +96,7 @@
     font-variant-numeric: tabular-nums;
   }
   .card {
-    @apply rounded-2xl border border-line bg-surface;
+    @apply rounded-2xl border border-line/80 bg-surface shadow-[0_1px_2px_rgb(23_25_28/0.04),0_4px_16px_rgb(23_25_28/0.04)];
   }
   .scroll-thin {
     scrollbar-width: thin;
