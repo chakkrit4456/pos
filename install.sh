@@ -14,7 +14,7 @@ if [ "$major" -lt 20 ]; then
 fi
 
 echo "[1/3] Installing packages ..."
-corepack pnpm install --frozen-lockfile
+ELECTRON_SKIP_BINARY_DOWNLOAD=1 corepack pnpm install --frozen-lockfile
 echo "[2/3] Building web app ..."
 corepack pnpm --filter @flexpos/web build
 echo "[3/3] Building server ..."

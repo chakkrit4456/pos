@@ -20,6 +20,7 @@ if %NODEMAJOR% LSS 20 (
 )
 
 echo [1/3] ติดตั้งแพ็กเกจ ...
+set ELECTRON_SKIP_BINARY_DOWNLOAD=1
 call corepack pnpm install --frozen-lockfile
 if errorlevel 1 goto fail
 
