@@ -26,6 +26,19 @@ export interface SetupStatus {
   hostUrl: string | null;
   version: string;
   license: LicenseStatus;
+  /** public branding for the login screen */
+  brand: PublicBrand;
+}
+
+export interface PublicBrand {
+  appName: string;
+  appLogo: string;
+  primary: string;
+  accent: string;
+  sidebar: string;
+  loginTitle: string;
+  loginSubtitle: string;
+  storeName: string;
 }
 
 export interface LicenseStatus {

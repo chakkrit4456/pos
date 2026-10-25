@@ -6,6 +6,7 @@ import {
   closeShiftSchema,
   holdSchema,
   openShiftSchema,
+  promptPayAccount,
   promptPayPayload,
   quoteSchema,
   refundSchema,
@@ -95,7 +96,8 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     const { reprint, paper } = z.object({ reprint: z.coerce.boolean().default(false), paper: z.enum(['58', '80', 'A4']).optional() }).parse(req.query);
     const sale = await getSaleView(ctx, id);
     const credit = sale.payments.find((p) => p.kind === 'credit');
-    const pp = credit && ctx.settings.store.promptPayId ? promptPayPayload(ctx.settings.store.promptPayId, credit.amount) : null;
+    const acct = promptPayAccount(ctx.settings);
+    const pp = credit && acct ? promptPayPayload(acct.promptPayId, credit.amount) : null;
     return buildReceiptDoc(sale, ctx.settings, { reprint, paper, promptPayPayload: pp });
   });
 
@@ -162,11 +164,16 @@ export function salesRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     return getSaleView(ctx, id);
   });
 
-  app.get('/api/promptpay', auth('pos.sell'), async (req) => {
-    const { amount } = z.object({ amount: z.coerce.number().int().min(0) }).parse(req.query);
-    const id = ctx.settings.store.promptPayId;
-    if (!id) throw badRequest('ยังไม่ได้ตั้งค่าหมายเลข PromptPay ของร้าน (ตั้งค่า → ข้อมูลร้าน)');
-    return { payload: promptPayPayload(id, amount) };
+  /** Exact-amount PromptPay QR for the chosen (or default) company account. Works with every Thai bank/e-wallet app. */
+  app.get('/api/promptpay', auth(), async (req) => {
+    const { amount, accountId } = z.object({ amount: z.coerce.number().int().min(0), accountId: z.string().optional() }).parse(req.query);
+    const pp = promptPayAccount(ctx.settings, accountId);
+    if (!pp) throw badRequest('ยังไม่ได้ตั้งค่าบัญชีรับเงิน PromptPay (ตั้งค่า → บัญชีรับเงิน)');
+    try {
+      return { payload: promptPayPayload(pp.promptPayId, amount), account: pp.account, amount };
+    } catch (e) {
+      throw badRequest(e instanceof Error ? e.message : 'หมายเลข PromptPay ไม่ถูกต้อง');
+    }
   });
 
   /* ---------- Held bills ---------- */

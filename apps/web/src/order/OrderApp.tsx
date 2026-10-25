@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Bell, ChevronLeft, ClipboardList, LayoutGrid, Minus, MoreHorizontal, Plus, Search, UserRound, X } from 'lucide-react';
-import { effectiveBillDiscount, initials, priceCart, resolveBasePrice, type CatalogProduct } from '@flexpos/shared';
+import { effectiveBillDiscount, initials, priceCart, resolveBasePrice, type CatalogProduct, type SetupStatus } from '@flexpos/shared';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useCatalog } from '@/lib/catalog';
 import { useLive, useLiveInvalidation, useLiveStatus } from '@/lib/live';
 import { useSession } from '@/lib/session';
-import { money, useSettings, useTheme } from '@/lib/settings';
+import { applyBrand, money, useSettings, useTheme } from '@/lib/settings';
+import { BrandMark } from '@/components/BrandMark';
 import { cn, qtyText, uuid } from '@/lib/utils';
 import { PinPad } from '@/components/ui/inputs';
 import { QrImage } from '@/components/PrintDocView';
@@ -67,6 +68,8 @@ const hhmm = (iso: string) => new Date(iso).toTimeString().slice(0, 5);
 
 export default function OrderApp() {
   const { user, loginPin } = useSession();
+  const status = useQuery({ queryKey: ['setup-status'], queryFn: () => api.get<SetupStatus>('/api/setup/status'), staleTime: 60_000 });
+  const brand = status.data?.brand;
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const onPin = useCallback(
@@ -86,14 +89,18 @@ export default function OrderApp() {
   useEffect(() => {
     const link = document.querySelector('link[rel=manifest]');
     link?.setAttribute('href', '/order.webmanifest');
-    document.title = 'FlexPOS Order';
-  }, []);
+    document.title = `${brand?.appName ?? 'FlexPOS'} Order`;
+    if (brand && !user) applyBrand(brand);
+  }, [brand, user]);
   if (!user) {
     return (
       <div className="mx-auto flex min-h-full max-w-[480px] flex-col gap-5 bg-rail px-6 pb-5 pt-7 text-white">
         <div className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-[10px] bg-accent font-bold">F</div>
-          <span className="font-semibold">FlexPOS Order</span>
+          <BrandMark logo={brand?.appLogo} name={brand?.appName} className="h-9 w-9 rounded-[10px] text-[15px]" />
+          <span className="flex flex-col">
+            <span className="font-semibold">{brand?.appName ?? 'FlexPOS'} Order</span>
+            {brand?.storeName && <span className="text-[12px] text-[#a5a8ad]">{brand.storeName}</span>}
+          </span>
         </div>
         <div className="mt-2 flex flex-col items-center gap-3.5">
           <span className="text-[20px] font-semibold">ใส่ PIN พนักงาน</span>
@@ -150,7 +157,7 @@ function Shell() {
   const tab = screen.s === 'orders' ? 'orders' : screen.s === 'notifications' ? 'notifications' : screen.s === 'me' ? 'me' : 'tables';
   const showTabs = ['tables', 'orders', 'notifications', 'me'].includes(screen.s);
   return (
-    <div className="mx-auto flex h-full max-w-[560px] flex-col bg-canvas">
+    <div className="mx-auto flex h-full max-w-[560px] flex-col bg-canvas md:max-w-[1100px] md:border-x md:border-line">
       <div className="flex min-h-0 flex-1 flex-col">
         {screen.s === 'tables' && <Tables go={setScreen} />}
         {screen.s === 'table' && <TableDetail orderId={screen.orderId} go={setScreen} />}
@@ -245,14 +252,14 @@ function Tables({ go }: { go: (s: Screen) => void }) {
           <button key={z.id} onClick={() => setZone(z.id)} className={cn('h-10 flex-none whitespace-nowrap rounded-full border px-3.5 text-[14px] font-medium', zone === z.id ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-surface')}>{z.name}</button>
         ))}
       </div>
-      <div className="scroll-thin grid flex-1 auto-rows-min grid-cols-3 gap-2.5 overflow-y-auto px-5 pb-3">
+      <div className="scroll-thin grid flex-1 auto-rows-min grid-cols-3 gap-2.5 overflow-y-auto px-5 pb-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {floor.isLoading && Array.from({ length: 9 }, (_, i) => <div key={i} className="skeleton h-24 rounded-[14px]" />)}
         {tables.map((t) => {
           const o = t.order;
           const status = !o ? 'ว่าง' : o.billRequested ? 'เช็คบิล' : o.readyCount ? `พร้อมเสิร์ฟ ${o.readyCount}` : o.waitingCount ? `รออาหาร ${o.waitingCount}` : 'กำลังทาน';
           return (
             <button key={t.id} onClick={() => void open(t.id, o?.id)} className={cn('flex h-24 flex-col items-start justify-between rounded-[14px] border px-3 py-2.5 text-left', !o ? 'border-line bg-surface' : o.billRequested ? 'border-danger/40 bg-danger-soft' : o.readyCount ? 'border-primary/50 bg-soft' : 'border-[#c9b98f] bg-[#fbf3df] dark:bg-warn-soft')}>
-              <span className="text-[20px] font-semibold">{t.name}</span>
+              <span className="flex flex-col"><span className="text-[20px] font-semibold leading-tight">{t.name}</span>{zone === 'all' && t.zoneName && <span className="text-[11px] text-muted">{t.zoneName}</span>}</span>
               <span className="flex flex-col gap-px">
                 <span className={cn('text-[12px] font-semibold', !o ? 'text-muted' : o.billRequested ? 'text-danger' : o.readyCount ? 'text-soft-fg' : 'text-warn')}>{status}</span>
                 {o && <span className="num text-[12px] text-muted">{money(o.total)} · {mins(o.openedAt)}น.</span>}
@@ -360,7 +367,7 @@ function TableDetail({ orderId, go }: { orderId: string; go: (s: Screen) => void
       {pick && (
         <div className="absolute inset-0 z-10 flex flex-col bg-canvas">
           <Header title={pick === 'move' ? 'ย้ายไปโต๊ะ' : 'รวมโต๊ะเข้าบิลนี้'} back={() => setPick(null)} />
-          <div className="grid auto-rows-min grid-cols-3 gap-2.5 overflow-y-auto p-4">
+          <div className="grid auto-rows-min grid-cols-3 gap-2.5 overflow-y-auto p-4 md:grid-cols-5">
             {floor.data?.tables.filter((t) => t.id !== d.tableId && (pick === 'move' ? !t.order : !!t.order)).map((t) => (
               <button key={t.id} onClick={async () => { setPick(null); await act(() => (pick === 'move' ? api.post(`/api/orders/${orderId}/move`, { tableId: t.id }) : api.post(`/api/orders/${orderId}/merge`, { fromId: t.order!.id })), pick === 'move' ? `ย้ายไปโต๊ะ ${t.name} แล้ว` : `รวมโต๊ะ ${t.name} แล้ว`); }} className="flex h-20 flex-col items-start justify-between rounded-[14px] border border-line bg-surface px-3 py-2 text-left">
                 <span className="text-[18px] font-semibold">{t.name}</span>
@@ -410,7 +417,7 @@ function Menu({ orderId, lines, setLines, go }: { orderId: string; lines: Line[]
           ))}
         </div>
       </div>
-      <div className="scroll-thin flex-1 overflow-y-auto px-4 pb-24 pt-2">
+      <div className="scroll-thin flex-1 auto-rows-min content-start overflow-y-auto px-4 pb-24 pt-2 md:grid md:grid-cols-2 md:gap-x-6">
         {products.map((p) => {
           const n = qtyOf(p.id);
           const out = p.stock !== null && p.stock <= 0;
@@ -427,7 +434,7 @@ function Menu({ orderId, lines, setLines, go }: { orderId: string; lines: Line[]
         })}
       </div>
       {count > 0 && (
-        <button onClick={() => go({ s: 'review', orderId })} className="absolute inset-x-4 bottom-4 flex h-14 items-center justify-between rounded-[14px] bg-primary px-5 text-[16px] font-semibold text-primary-fg shadow-pop">
+        <button onClick={() => go({ s: 'review', orderId })} className="absolute inset-x-4 bottom-4 mx-auto flex h-14 max-w-[640px] items-center justify-between rounded-[14px] bg-primary px-5 text-[16px] font-semibold text-primary-fg shadow-pop">
           <span>ตรวจออเดอร์ · {qtyText(count)} รายการ</span>
           <span className="num">{money(Math.round(total))}</span>
         </button>

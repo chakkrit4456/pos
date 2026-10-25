@@ -32,6 +32,10 @@ export default {
         'info-soft': v('info-soft'),
         rail: v('rail'),
         'rail-2': v('rail-2'),
+        'rail-fg': v('rail-fg'),
+        'rail-muted': v('rail-muted'),
+        'rail-faint': v('rail-faint'),
+        'rail-hover': v('rail-hover'),
       },
       fontFamily: {
         sans: ['"IBM Plex Sans Thai"', 'system-ui', 'sans-serif'],

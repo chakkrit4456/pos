@@ -18,7 +18,7 @@ import {
 import { ilike } from '@flexpos/db';
 import type { AppContext } from '../context.js';
 import { audit, branchOf, nextSeq, requireAuth } from '../auth.js';
-import { badRequest, conflict, notFound } from '../errors.js';
+import { AppError, badRequest, conflict, notFound } from '../errors.js';
 import { bool, nowIso, parseJson, uuid } from '../util.js';
 import { buildCatalog, bumpCatalog, getProductDetail, saveProduct } from '../services/catalog.js';
 
@@ -117,15 +117,30 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
     return { id };
   });
 
+  /**
+   * Delete a category. Its products move to `moveTo` (another category id) or become uncategorised ('none');
+   * sub-categories move up to the parent. Products are never deleted.
+   */
   app.delete('/api/categories/:id', auth('products.manage'), async (req) => {
     const { id } = req.params as { id: string };
-    const used = await ctx.db.selectFrom('products').select('id').where('category_id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
-    if (used) throw conflict('ยังมีสินค้าในหมวดนี้ ย้ายสินค้าออกก่อนจึงจะลบได้');
-    const child = await ctx.db.selectFrom('categories').select('id').where('parent_id', '=', id).executeTakeFirst();
-    if (child) throw conflict('ยังมีหมวดย่อยอยู่ในหมวดนี้');
-    await ctx.db.deleteFrom('categories').where('id', '=', id).execute();
+    const { moveTo } = z.object({ moveTo: z.string().optional() }).parse(req.query);
+    const cat = await ctx.db.selectFrom('categories').selectAll().where('id', '=', id).executeTakeFirst();
+    if (!cat) throw notFound('หมวดหมู่');
+    const count = Number((await ctx.db.selectFrom('products').select((eb) => eb.fn.countAll<number>().as('n')).where('category_id', '=', id).where('deleted_at', 'is', null).executeTakeFirst())?.n ?? 0);
+    if (count > 0 && !moveTo) throw new AppError(409, 'has_products', `หมวดนี้มีสินค้า ${count} รายการ เลือกว่าจะย้ายสินค้าไปหมวดไหน`, { count });
+    if (moveTo && moveTo !== 'none') {
+      if (moveTo === id) throw badRequest('เลือกหมวดอื่นที่ไม่ใช่หมวดที่จะลบ');
+      const target = await ctx.db.selectFrom('categories').select('id').where('id', '=', moveTo).executeTakeFirst();
+      if (!target) throw badRequest('ไม่พบหมวดปลายทาง');
+    }
+    await ctx.db.transaction().execute(async (tx) => {
+      await tx.updateTable('products').set({ category_id: moveTo && moveTo !== 'none' ? moveTo : null, updated_at: nowIso() }).where('category_id', '=', id).execute();
+      await tx.updateTable('categories').set({ parent_id: cat.parent_id }).where('parent_id', '=', id).execute();
+      await tx.deleteFrom('categories').where('id', '=', id).execute();
+      await audit(ctx, tx, req, 'category.delete', 'category', id, { name: cat.name, movedProducts: count, moveTo: moveTo ?? null });
+    });
     bumpCatalog(ctx);
-    return { ok: true };
+    return { ok: true, movedProducts: count };
   });
 
   app.post('/api/categories/reorder', auth('products.manage'), async (req) => {
@@ -460,7 +475,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
         }
         const targetId = d.sku ? (bySku.get(d.sku.toLowerCase()) ?? null) : null;
         const base: ProductInput = targetId
-          ? (productSchema.parse({ ...(await getProductDetail(ctx, targetId)), barcodes: undefined }) as ProductInput)
+          ? (productSchema.parse({ ...(await getProductDetail(ctx, targetId, tx)), barcodes: undefined }) as ProductInput)
           : productSchema.parse({ name: d.name, price: 0 });
         const input: ProductInput = {
           ...base,
@@ -474,7 +489,7 @@ export function catalogRoutes(app: FastifyInstance, ctx: AppContext) {
           trackStock: yes(d.track_stock, targetId ? base.trackStock : !!d.stock),
           lowStock: d.low_stock ? Number(d.low_stock) : base.lowStock,
           active: yes(d.active, base.active),
-          barcodes: d.barcode !== undefined ? d.barcode.split('|').map((c) => c.trim()).filter(Boolean) : targetId ? (await getProductDetail(ctx, targetId)).barcodes : [],
+          barcodes: d.barcode !== undefined ? d.barcode.split('|').map((c) => c.trim()).filter(Boolean) : targetId ? (await getProductDetail(ctx, targetId, tx)).barcodes : [],
         };
         const id = await saveProduct(ctx, tx, input, targetId);
         if (!targetId && d.stock && Number(d.stock) !== 0 && input.trackStock) {

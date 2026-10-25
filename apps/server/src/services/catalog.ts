@@ -128,8 +128,8 @@ export async function buildCatalog(ctx: AppContext, branchId: string): Promise<C
   return { products: catalogProducts, categories, modifierGroups, paymentMethods, version: catalogVersion };
 }
 
-export async function getProductDetail(ctx: AppContext, id: string) {
-  const db = ctx.db;
+/** Pass the transaction when called inside one (SQLite has a single connection). */
+export async function getProductDetail(ctx: AppContext, id: string, db: Tx = ctx.db) {
   const p = await db.selectFrom('products').selectAll().where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
   if (!p) throw notFound('สินค้า');
   const [barcodes, variants, units, pmg, bundle, prices, levels] = await Promise.all([
@@ -201,8 +201,8 @@ async function assertSkuFree(tx: Tx, sku: string, productId: string | null) {
   if (taken) throw conflict(`SKU ${sku} ซ้ำกับสินค้า “${taken.name}”`);
 }
 
-export async function validateCustom(ctx: AppContext, entity: 'product' | 'customer' | 'supplier', custom: Record<string, unknown>) {
-  const fields = await ctx.db.selectFrom('custom_fields').selectAll().where('entity', '=', entity).execute();
+export async function validateCustom(ctx: AppContext, entity: 'product' | 'customer' | 'supplier', custom: Record<string, unknown>, db: Tx = ctx.db) {
+  const fields = await db.selectFrom('custom_fields').selectAll().where('entity', '=', entity).execute();
   const out: Record<string, unknown> = {};
   for (const f of fields) {
     const v = custom[f.field_key];
@@ -230,7 +230,7 @@ export async function saveProduct(ctx: AppContext, tx: Tx, input: ProductInput, 
   await assertBarcodesFree(tx, allCodes, existingId);
   if (input.kind === 'bundle' && input.bundleItems.length === 0) throw badRequest('สินค้าชุดต้องมีส่วนประกอบอย่างน้อย 1 รายการ');
   if (input.bundleItems.some((b) => b.productId === id)) throw badRequest('สินค้าชุดใส่ตัวเองเป็นส่วนประกอบไม่ได้');
-  const custom = await validateCustom(ctx, 'product', input.custom);
+  const custom = await validateCustom(ctx, 'product', input.custom, tx);
 
   const row = {
     sku: input.sku,

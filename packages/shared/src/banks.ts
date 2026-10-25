@@ -1,0 +1,50 @@
+import type { BankAccount, Settings } from './settings.js';
+
+export interface BankInfo {
+  code: string;
+  name: string;
+  nameEn: string;
+  color: string;
+  /** e-wallet providers receive PromptPay via a 15-digit e-wallet ID */
+  wallet?: boolean;
+}
+
+/** Banks and wallets in Thailand. PromptPay / Thai QR works with all of their apps. */
+export const BANKS: BankInfo[] = [
+  { code: 'KBANK', name: 'ธนาคารกสิกรไทย', nameEn: 'Kasikornbank', color: '#138f2d' },
+  { code: 'SCB', name: 'ธนาคารไทยพาณิชย์', nameEn: 'Siam Commercial Bank', color: '#4e2e7f' },
+  { code: 'BBL', name: 'ธนาคารกรุงเทพ', nameEn: 'Bangkok Bank', color: '#1e4598' },
+  { code: 'KTB', name: 'ธนาคารกรุงไทย', nameEn: 'Krungthai Bank', color: '#1ba5e1' },
+  { code: 'BAY', name: 'ธนาคารกรุงศรีอยุธยา', nameEn: 'Bank of Ayudhya (Krungsri)', color: '#fec43b' },
+  { code: 'TTB', name: 'ธนาคารทหารไทยธนชาต', nameEn: 'TMBThanachart Bank', color: '#0050f0' },
+  { code: 'GSB', name: 'ธนาคารออมสิน', nameEn: 'Government Savings Bank', color: '#eb198d' },
+  { code: 'BAAC', name: 'ธ.ก.ส.', nameEn: 'BAAC', color: '#4b9b1d' },
+  { code: 'GHB', name: 'ธนาคารอาคารสงเคราะห์', nameEn: 'Government Housing Bank', color: '#f57d23' },
+  { code: 'CIMBT', name: 'ธนาคารซีไอเอ็มบี ไทย', nameEn: 'CIMB Thai', color: '#7e2f36' },
+  { code: 'UOB', name: 'ธนาคารยูโอบี', nameEn: 'UOB Thailand', color: '#0b3979' },
+  { code: 'KKP', name: 'ธนาคารเกียรตินาคินภัทร', nameEn: 'Kiatnakin Phatra Bank', color: '#635f98' },
+  { code: 'TISCO', name: 'ธนาคารทิสโก้', nameEn: 'TISCO Bank', color: '#12549f' },
+  { code: 'LHB', name: 'ธนาคารแลนด์ แอนด์ เฮ้าส์', nameEn: 'LH Bank', color: '#6d6e71' },
+  { code: 'ICBCT', name: 'ธนาคารไอซีบีซี (ไทย)', nameEn: 'ICBC (Thai)', color: '#c50f1c' },
+  { code: 'TCRB', name: 'ธนาคารไทยเครดิต', nameEn: 'Thai Credit Bank', color: '#0a4ea2' },
+  { code: 'IBANK', name: 'ธนาคารอิสลามแห่งประเทศไทย', nameEn: 'Islamic Bank of Thailand', color: '#184615' },
+  { code: 'TMW', name: 'ทรูมันนี่ วอลเล็ท', nameEn: 'TrueMoney Wallet', color: '#f39200', wallet: true },
+  { code: 'OTHER', name: 'ธนาคารต่างประเทศ / อื่นๆ', nameEn: 'Foreign / other bank', color: '#5f6368' },
+];
+
+export const bankInfo = (code: string): BankInfo => BANKS.find((b) => b.code === code) ?? BANKS[BANKS.length - 1]!;
+
+/** Account used for PromptPay QR: the chosen one, else the default, else any with PromptPay, else the legacy store field. */
+export function promptPayAccount(settings: Settings, accountId?: string | null): { promptPayId: string; account: BankAccount | null } | null {
+  const withPP = settings.payments.accounts.filter((a) => a.promptPayId);
+  const acc = (accountId && withPP.find((a) => a.id === accountId)) || withPP.find((a) => a.isDefault) || withPP[0];
+  if (acc) return { promptPayId: acc.promptPayId, account: acc };
+  if (settings.store.promptPayId) return { promptPayId: settings.store.promptPayId, account: null };
+  return null;
+}
+
+export function maskAccount(n: string): string {
+  const d = n.replace(/\D/g, '');
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 4)}-${d.slice(4, 9)}-${d.slice(9)}`;
+  return n;
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ChevronDown, PackageSearch, Search, Send, UserRound, X, WifiOff, CloudUpload } from 'lucide-react';
+import { ChevronDown, PackageSearch, QrCode, Search, Send, UserRound, X, WifiOff, CloudUpload } from 'lucide-react';
 import { effectiveBillDiscount, priceCart, type CatalogProduct, type PromotionRule, type SaleInput } from '@flexpos/shared';
 import { api, errorMessage, registerName } from '@/lib/api';
 import { useBarcodeScanner, useCatalog } from '@/lib/catalog';
@@ -18,6 +18,7 @@ import { cart, useCart, type CartOrder, type SentItem } from './cart';
 import { ApprovalHost, BillDiscountDialog, CustomerDialog, LineDialog, OptionsDialog, useApproval } from './dialogs';
 import { DoneDialog, PaymentDialog, type PayDone } from './PaymentDialog';
 import { BillPicker, OpenShiftGate, SplitDialog } from './BillPicker';
+import { BillSlipDialog } from '@/components/BillSlipDialog';
 
 const DEFAULT_KEYS: Record<string, string> = { search: 'F2', member: 'F4', hold: 'F6', recall: 'F7', discount: 'F8', drawer: 'F9', pay: 'F12' };
 
@@ -66,6 +67,7 @@ export default function PosPage() {
   const [done, setDone] = useState<PayDone | null>(null);
   const [pending, setPending] = useState(0);
   const [sending, setSending] = useState(false);
+  const [slip, setSlip] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const shift = useQuery({ queryKey: ['shift', 'current'], queryFn: () => api.get<ShiftInfo | null>('/api/shifts/current'), staleTime: 30_000 });
@@ -318,7 +320,7 @@ export default function PosPage() {
         <ConnectionPill online={online} pending={pending} />
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 md:p-[20px_24px_24px]">
           <div className="scroll-thin flex flex-none gap-2 overflow-x-auto pb-1">
             <Chip active={!cat} onClick={() => setCat(null)} count={catalog.products.filter((p) => p.showInPos).length}>
@@ -330,7 +332,7 @@ export default function PosPage() {
               </Chip>
             ))}
           </div>
-          <div className="scroll-thin grid min-h-0 flex-1 content-start gap-3 overflow-y-auto" style={{ gridTemplateColumns: settings.pos.gridColumns ? `repeat(${settings.pos.gridColumns}, minmax(0,1fr))` : 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+          <div className="scroll-thin grid min-h-0 flex-1 content-start gap-3 overflow-y-auto" style={{ gridTemplateColumns: settings.pos.gridColumns ? `repeat(${settings.pos.gridColumns}, minmax(0,1fr))` : 'repeat(auto-fill, minmax(136px, 1fr))' }}>
             {products.map((p) => (
               <ProductTile key={p.id} p={p} qty={inCart.get(p.id) ?? 0} showImage={settings.pos.showImages} onAdd={() => addProduct(p)} />
             ))}
@@ -347,7 +349,7 @@ export default function PosPage() {
           </div>
         </section>
 
-        <aside className="flex max-h-[55vh] min-h-0 w-full flex-none flex-col border-t border-line bg-surface lg:max-h-none lg:w-[380px] lg:border-l lg:border-t-0">
+        <aside className="flex max-h-[55vh] min-h-0 w-full flex-none flex-col border-t border-line bg-surface md:max-h-none md:w-[320px] md:border-l md:border-t-0 xl:w-[380px]">
           <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-[18px]">
             <button onClick={() => setDialog('bills')} className="flex min-h-[48px] items-center gap-2.5 rounded-xl border border-line-strong bg-sunken px-3 py-1.5 text-left">
               <span className="flex flex-col">
@@ -484,6 +486,11 @@ export default function PosPage() {
                 แยกบิล
               </Button>
             </div>
+            {state.order && state.order.items.length > 0 && (
+              <Button size="lg" icon={<QrCode className="h-4 w-4" />} onClick={() => setSlip(true)}>
+                ใบแจ้งยอด + QR
+              </Button>
+            )}
             {state.order && (
               <Button variant="outline-primary" size="lg" className="h-[52px] font-semibold" disabled={!state.lines.length} loading={sending} icon={<Send className="h-4 w-4" />} onClick={() => void sendToKitchen()}>
                 ส่งครัว · เพิ่มเข้าบิล{state.order.name}
@@ -522,6 +529,7 @@ export default function PosPage() {
         }}
       />
       <DoneDialog done={done} printers={printers.data ?? []} onClose={() => (setDone(null), searchRef.current?.focus())} />
+      {slip && state.order && <BillSlipDialog orderId={state.order.id} customerId={state.customer?.id} onClose={() => setSlip(false)} />}
       <ApprovalHost />
       {needShift && <OpenShiftGate onOpened={() => void shift.refetch()} />}
     </div>

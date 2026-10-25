@@ -33,8 +33,22 @@ export function CategoriesTab() {
   const { can } = useSession();
   const list = useQuery({ queryKey: ['categories'], queryFn: () => api.get<CategoryRow[]>('/api/categories') });
   const [edit, setEdit] = useState<Partial<CategoryRow> | null>(null);
+  const [del, setDel] = useState<CategoryRow | null>(null);
+  const [moveTo, setMoveTo] = useState('none');
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const rows = list.data ?? [];
+  const doDelete = async () => {
+    if (!del) return;
+    try {
+      const r = await api.del<{ movedProducts: number }>(`/api/categories/${del.id}?moveTo=${encodeURIComponent(moveTo)}`);
+      toast.success(`ลบหมวด ${del.name} แล้ว · ย้ายสินค้า ${r.movedProducts} รายการ`);
+      qc.invalidateQueries({ queryKey: ['categories'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      setDel(null);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
   const tops = rows.filter((r) => !r.parentId);
   const ordered = tops.flatMap((t) => [t, ...rows.filter((r) => r.parentId === t.id)]);
 
@@ -90,11 +104,17 @@ export function CategoriesTab() {
                     className="text-danger"
                     aria-label={`ลบ ${c.name}`}
                     onClick={async () => {
-                      const r = await confirm({ title: `ลบหมวด “${c.name}”?`, danger: true, confirmText: 'ลบ' });
+                      if (c.productCount > 0) {
+                        setDel(c);
+                        setMoveTo('none');
+                        return;
+                      }
+                      const r = await confirm({ title: `ลบหมวด “${c.name}”?`, body: rows.some((x) => x.parentId === c.id) ? 'หมวดย่อยจะถูกย้ายขึ้นไปอยู่ระดับเดียวกับหมวดนี้' : undefined, danger: true, confirmText: 'ลบ' });
                       if (!r.ok) return;
                       try {
                         await api.del(`/api/categories/${c.id}`);
                         qc.invalidateQueries({ queryKey: ['categories'] });
+                        toast.success(`ลบหมวด ${c.name} แล้ว`);
                       } catch (e) {
                         toast.error(errorMessage(e));
                       }
@@ -108,6 +128,35 @@ export function CategoriesTab() {
           </DndContext>
         )}
       </div>
+      <Dialog
+        open={!!del}
+        onOpenChange={(v) => !v && setDel(null)}
+        title={`ลบหมวด “${del?.name ?? ''}”`}
+        description={`หมวดนี้มีสินค้า ${del?.productCount ?? 0} รายการ สินค้าจะไม่ถูกลบ เลือกว่าจะย้ายไปไว้ที่ไหน`}
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setDel(null)}>ยกเลิก</Button>
+            <Button variant="danger" onClick={() => void doDelete()}>
+              ย้ายสินค้าและลบหมวด
+            </Button>
+          </>
+        }
+      >
+        <div className="pb-2">
+          <Field label="ย้ายสินค้าไปที่">
+            <Select value={moveTo} onChange={(e) => setMoveTo(e.target.value)}>
+              <option value="none">ไม่มีหมวด</option>
+              {rows.filter((r) => r.id !== del?.id).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.parentId ? '— ' : ''}
+                  {r.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+      </Dialog>
       <Dialog
         open={!!edit}
         onOpenChange={(v) => !v && setEdit(null)}

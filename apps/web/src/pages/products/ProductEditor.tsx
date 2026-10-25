@@ -182,7 +182,31 @@ export default function ProductEditor() {
                 <Field label="SKU / รหัสสินค้า">
                   <Input value={f.sku} onChange={(e) => set('sku', e.target.value.trim())} className="font-mono" />
                 </Field>
-                <Field label="หมวดหมู่">
+                <Field
+                  label={
+                    <span className="flex items-center justify-between">
+                      หมวดหมู่
+                      <button
+                        type="button"
+                        className="text-[12px] font-semibold text-primary"
+                        onClick={async () => {
+                          const r = await confirm({ title: 'เพิ่มหมวดหมู่ใหม่', confirmText: 'เพิ่ม', reason: { label: 'ชื่อหมวด', placeholder: 'เช่น เครื่องดื่มร้อน' } });
+                          if (!r.ok) return;
+                          try {
+                            const c = await api.post<{ id: string }>('/api/categories', { name: r.reason, parentId: null, color: '', sort: cats.data?.length ?? 0, active: true });
+                            await qc.invalidateQueries({ queryKey: ['categories'] });
+                            set('categoryId', c.id);
+                            toast.success(`เพิ่มหมวด ${r.reason} แล้ว`);
+                          } catch (e) {
+                            toast.error(errorMessage(e));
+                          }
+                        }}
+                      >
+                        + เพิ่มหมวดใหม่
+                      </button>
+                    </span>
+                  }
+                >
                   <Select value={f.categoryId ?? ''} onChange={(e) => set('categoryId', e.target.value || null)}>
                     <option value="">ไม่มีหมวด</option>
                     {cats.data?.map((c) => (

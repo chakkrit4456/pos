@@ -160,12 +160,28 @@ export function TaxSection() {
 }
 
 interface Method { id: string; code: string; name: string; kind: string; active: boolean; sort: number }
+const METHOD_PRESETS: { code: string; name: string; kind: string; hint?: string }[] = [
+  { code: 'card', name: 'บัตรเครดิต/เดบิต', kind: 'other', hint: 'เครื่อง EDC' },
+  { code: 'truemoney', name: 'TrueMoney Wallet', kind: 'other' },
+  { code: 'shopeepay', name: 'ShopeePay', kind: 'other' },
+  { code: 'linepay', name: 'Rabbit LINE Pay', kind: 'other' },
+  { code: 'alipay', name: 'Alipay', kind: 'other', hint: 'ลูกค้าจีน' },
+  { code: 'wechat', name: 'WeChat Pay', kind: 'other', hint: 'ลูกค้าจีน' },
+  { code: 'intl_qr', name: 'QR ต่างประเทศ', kind: 'other', hint: 'แอปที่รองรับ Thai QR' },
+  { code: 'transfer_intl', name: 'โอนต่างประเทศ (SWIFT)', kind: 'other' },
+  { code: 'cheque', name: 'เช็ค', kind: 'other' },
+  { code: 'voucher', name: 'บัตรกำนัล/คูปอง', kind: 'other' },
+  { code: 'foreign_cash', name: 'เงินสดต่างประเทศ', kind: 'other', hint: 'บันทึกเป็นบาท' },
+  { code: 'credit', name: 'ค้างชำระ (ลูกหนี้)', kind: 'credit' },
+];
+
 const KIND_LABEL: Record<string, string> = { cash: 'เงินสด (มีเงินทอน)', promptpay: 'PromptPay QR', credit: 'ค้างชำระ/ลูกหนี้', other: 'อื่นๆ (โอน บัตร ฯลฯ)' };
 
 export function PaymentsSection() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['payment-methods'], queryFn: () => api.get<Method[]>('/api/payment-methods') });
   const [edit, setEdit] = useState<Partial<Method> | null>(null);
+  const presets = METHOD_PRESETS.filter((p) => !list.data?.some((m) => m.code === p.code));
   const save = async (m: Partial<Method>) => {
     try {
       const body = { name: m.name, code: m.code, kind: m.kind, active: m.active ?? true, sort: m.sort ?? 99 };
@@ -189,6 +205,20 @@ export function PaymentsSection() {
           </div>
         ))}
       </Card>
+      {presets.length > 0 && (
+        <Card className="max-w-[720px]" title="เพิ่มวิธีชำระยอดนิยม">
+          <p className="-mt-2 text-[13px] text-muted">กดเพื่อเพิ่ม · ตอนรับเงินจะบันทึกยอดและเลขอ้างอิง (เช่น เลขอนุมัติจากเครื่อง EDC หรือเลขรายการ)</p>
+          <div className="flex flex-wrap gap-2">
+            {presets.map((p) => (
+              <button key={p.code} onClick={() => void save({ code: p.code, name: p.name, kind: p.kind, active: true, sort: 20 })} className="flex h-10 items-center gap-1.5 rounded-full border border-line-strong px-3.5 text-[14px] hover:border-primary hover:bg-soft">
+                <Plus className="h-4 w-4 text-primary" />
+                {p.name}
+                {p.hint && <span className="text-[12px] text-muted">· {p.hint}</span>}
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
       <Dialog open={!!edit} onOpenChange={(v) => !v && setEdit(null)} title={edit?.id ? 'แก้ไขวิธีชำระ' : 'เพิ่มวิธีชำระ'} size="sm" footer={<><Button onClick={() => setEdit(null)}>ยกเลิก</Button><Button variant="primary" disabled={!edit?.name?.trim() || !edit?.code?.trim()} onClick={() => edit && void save(edit)}>บันทึก</Button></>}>
         {edit && (
           <div className="flex flex-col gap-4 pb-2">
@@ -225,38 +255,6 @@ export function ModulesSection() {
       <SectionTitle title="โมดูลและฟีเจอร์" sub="ปิดสิ่งที่ไม่ใช้ เพื่อให้หน้าจอเรียบง่ายสำหรับพนักงาน" />
       <Card className="max-w-[720px]"><div className="-my-2 flex flex-col">{MODULES.map((m) => <ToggleRow key={m.key} label={m.label} hint={m.hint} checked={d.draft[m.key]} onChange={(v) => d.set(m.key, v)} />)}</div></Card>
       <SaveBar dirty={d.dirty} saving={d.saving} onSave={() => void d.save()} onReset={d.reset} />
-    </>
-  );
-}
-
-const COLORS = ['#1d7a57', '#1967b2', '#7a3fb0', '#c2410c', '#b3261e', '#0f766e', '#17191c', '#a16207'];
-
-export function BrandSection() {
-  const brand = useDraft('brand');
-  const locale = useDraft('locale');
-  const dirty = brand.dirty || locale.dirty;
-  return (
-    <>
-      <SectionTitle title="หน้าตาและภาษา" />
-      <Card className="max-w-[720px]" title="สีหลักของร้าน">
-        <div className="flex flex-wrap items-center gap-2">
-          {COLORS.map((c) => <button key={c} onClick={() => brand.set('primary', c)} aria-label={c} aria-pressed={brand.draft.primary === c} className={`h-10 w-10 rounded-xl ${brand.draft.primary === c ? 'ring-2 ring-offset-2 ring-[rgb(var(--ink))]' : ''}`} style={{ background: c }} />)}
-          <label className="flex items-center gap-2 text-[14px]">กำหนดเอง <input type="color" value={brand.draft.primary} onChange={(e) => brand.set('primary', e.target.value)} className="h-10 w-14 rounded-lg border border-line-strong" /></label>
-        </div>
-        <Field label="ธีม">
-          <Select value={brand.draft.theme} onChange={(e) => brand.set('theme', e.target.value as typeof brand.draft.theme)}>
-            <option value="light">สว่าง</option><option value="dark">มืด</option><option value="system">ตามระบบ</option>
-          </Select>
-        </Field>
-      </Card>
-      <Card className="max-w-[720px]" title="ภาษาและรูปแบบ">
-        <div className="grid gap-3 md:grid-cols-3">
-          <Field label="ภาษา"><Select value={locale.draft.language} onChange={(e) => locale.set('language', e.target.value as 'th' | 'en')}><option value="th">ไทย</option><option value="en">English</option></Select></Field>
-          <Field label="ปีในเอกสาร"><Select value={locale.draft.era} onChange={(e) => locale.set('era', e.target.value as 'BE' | 'CE')}><option value="BE">พ.ศ.</option><option value="CE">ค.ศ.</option></Select></Field>
-          <Field label="สัญลักษณ์เงิน"><Input value={locale.draft.currencySymbol} onChange={(e) => locale.set('currencySymbol', e.target.value.slice(0, 4))} /></Field>
-        </div>
-      </Card>
-      <SaveBar dirty={dirty} saving={brand.saving || locale.saving} onSave={() => void brand.save({ locale: locale.draft })} onReset={() => (brand.reset(), locale.reset())} />
     </>
   );
 }

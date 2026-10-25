@@ -55,7 +55,7 @@ export default function FloorPage() {
               return (
                 <button key={t.id} onClick={() => void open(t.id, o?.id)} className={cn('flex h-[124px] flex-col justify-between rounded-2xl border p-3.5 text-left transition-colors', o ? (o.billRequested ? 'border-danger/40 bg-danger-soft' : 'border-[#c9b98f] bg-[#fbf3df] dark:bg-warn-soft') : 'border-line bg-surface hover:bg-sunken')}>
                   <span className="flex items-start justify-between">
-                    <span className="text-[22px] font-semibold">{t.name}</span>
+                    <span className="flex flex-col"><span className="text-[22px] font-semibold leading-tight">{t.name}</span>{zone === 'all' && t.zoneName && <span className="text-[12px] text-muted">{t.zoneName}</span>}</span>
                     {o?.readyCount ? <Badge tone="success">พร้อมเสิร์ฟ {o.readyCount}</Badge> : o?.billRequested ? <Badge tone="danger">เช็คบิล</Badge> : null}
                   </span>
                   {o ? (

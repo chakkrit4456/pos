@@ -191,10 +191,96 @@ export function buildReceiptDoc(
           blocks.push({ t: 'feed', lines: 1 });
           blocks.push({ t: 'text', text: r.footer, align: 'center' });
         }
+        if (settings.brand.poweredBy) blocks.push({ t: 'text', text: `ระบบโดย ${settings.brand.appName || 'FlexPOS'}`, align: 'center' });
         break;
     }
   }
   return { paper: opts.paper ?? r.paper, blocks, cut: true };
+}
+
+export interface BillInput {
+  title: string;
+  orderNo: string;
+  guests: number;
+  openedAt: string;
+  lines: { qty: number; name: string; total: number; modifiers: string[] }[];
+  subtotal: number;
+  discount: number;
+  promotions: { name: string; amount: number }[];
+  serviceCharge: number;
+  serviceChargeRate: number;
+  vat: number;
+  vatRate: number;
+  vatEnabled: boolean;
+  pricesIncludeVat: boolean;
+  total: number;
+  customerName?: string | null;
+}
+
+export interface BillAccount {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  branch: string;
+  swift: string;
+  iban: string;
+  promptPayId: string;
+}
+
+/**
+ * Check-bill slip (ใบแจ้งยอด) for a table: items, totals and an exact-amount PromptPay QR,
+ * so the customer scans and pays without typing the amount. Not a tax receipt.
+ */
+export function buildBillDoc(
+  b: BillInput,
+  settings: Settings,
+  opts: { qrPayload?: string | null; qrAccount?: BillAccount | null; accounts?: BillAccount[]; paper?: '58' | '80' | 'A4' } = {},
+): PrintDoc {
+  const s = settings.store;
+  const era = settings.locale.era;
+  const blocks: DocBlock[] = [];
+  if (s.logo) blocks.push({ t: 'image', src: s.logo, width: 140 });
+  blocks.push({ t: 'text', text: s.name, align: 'center', size: 2, bold: true });
+  if (s.phone) blocks.push({ t: 'text', text: `โทร ${s.phone}`, align: 'center' });
+  blocks.push({ t: 'text', text: 'ใบแจ้งยอด / CHECK BILL', align: 'center', bold: true });
+  blocks.push({ t: 'text', text: b.title, align: 'center', size: 3, bold: true });
+  blocks.push({ t: 'line', dashed: true });
+  blocks.push({ t: 'row', left: `เลขที่ ${b.orderNo}`, right: formatDateTime(new Date(), era, { shortYear: true }) });
+  blocks.push({ t: 'row', left: `เปิดโต๊ะ ${formatDateTime(b.openedAt, era, { shortYear: true })}`, right: b.guests ? `${b.guests} ท่าน` : '' });
+  if (b.customerName) blocks.push({ t: 'text', text: `สมาชิก: ${b.customerName}` });
+  blocks.push({ t: 'line', dashed: true });
+  for (const l of b.lines) {
+    blocks.push({ t: 'row', left: `${qtyText(l.qty)}× ${l.name}`, right: formatAmount(l.total) });
+    if (l.modifiers.length) blocks.push({ t: 'text', text: `   ${l.modifiers.join(' · ')}` });
+  }
+  blocks.push({ t: 'line', dashed: true });
+  blocks.push({ t: 'row', left: 'รวม', right: formatAmount(b.subtotal) });
+  for (const p of b.promotions) blocks.push({ t: 'row', left: p.name, right: `-${formatAmount(p.amount)}` });
+  const other = b.discount - b.promotions.reduce((a, p) => a + p.amount, 0);
+  if (other > 0) blocks.push({ t: 'row', left: 'ส่วนลด', right: `-${formatAmount(other)}` });
+  if (b.serviceCharge > 0) blocks.push({ t: 'row', left: `ค่าบริการ ${b.serviceChargeRate}%`, right: formatAmount(b.serviceCharge) });
+  if (b.vatEnabled) blocks.push({ t: 'row', left: `VAT ${b.vatRate}%${b.pricesIncludeVat ? ' (รวมแล้ว)' : ''}`, right: formatAmount(b.vat) });
+  blocks.push({ t: 'row', left: 'ยอดชำระ', right: formatAmount(b.total), bold: true, size: 2 });
+  if (opts.qrPayload) {
+    blocks.push({ t: 'line', dashed: true });
+    blocks.push({ t: 'text', text: 'สแกนจ่ายด้วยแอปธนาคารใดก็ได้', align: 'center', bold: true });
+    blocks.push({ t: 'qr', data: opts.qrPayload, size: 220, caption: `PromptPay · ยอด ${formatAmount(b.total)} บาท (ระบุยอดแล้ว)` });
+    if (opts.qrAccount) blocks.push({ t: 'text', text: `ชื่อบัญชี ${opts.qrAccount.accountName}`, align: 'center' });
+  }
+  const transfer = (opts.accounts ?? []).filter((a) => a.accountNumber || a.iban);
+  if (transfer.length) {
+    blocks.push({ t: 'line', dashed: true });
+    blocks.push({ t: 'text', text: 'หรือโอนเข้าบัญชี', bold: true });
+    for (const a of transfer) {
+      blocks.push({ t: 'text', text: `${a.bankName}${a.branch ? ` สาขา${a.branch}` : ''}` });
+      blocks.push({ t: 'text', text: `${a.accountName}${a.accountNumber ? ` · ${a.accountNumber}` : ''}` });
+      if (a.swift || a.iban) blocks.push({ t: 'text', text: [a.swift && `SWIFT ${a.swift}`, a.iban && `IBAN ${a.iban}`].filter(Boolean).join(' · ') });
+    }
+  }
+  blocks.push({ t: 'feed', lines: 1 });
+  blocks.push({ t: 'text', text: 'เอกสารนี้ไม่ใช่ใบเสร็จรับเงิน', align: 'center' });
+  if (settings.brand.poweredBy) blocks.push({ t: 'text', text: `ระบบโดย ${settings.brand.appName || 'FlexPOS'}`, align: 'center' });
+  return { paper: opts.paper ?? (settings.receipt.paper === 'A4' ? '80' : settings.receipt.paper), blocks, cut: true };
 }
 
 export interface KitchenTicketItem {

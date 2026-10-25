@@ -6,6 +6,7 @@ import { localDate, toCsv } from '@flexpos/shared';
 import type { AppContext } from '../context.js';
 import { branchOf, currentUser, hasPerm, requireAuth } from '../auth.js';
 import { num, parseJson } from '../util.js';
+import { tableLabels } from '../services/tables.js';
 
 const rangeSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -153,11 +154,12 @@ export function reportRoutes(app: FastifyInstance, ctx: AppContext) {
 
     let open = { count: 0, total: 0, list: [] as { id: string; name: string; meta: string; total: number }[] };
     if (ctx.settings.modules.restaurant) {
-      let oq = ctx.db.selectFrom('orders').leftJoin('tables', 'tables.id', 'orders.table_id').select(['orders.id', 'orders.name', 'orders.opened_at', 'orders.guests', 'tables.name as table_name']).where('orders.status', '=', 'open');
+      let oq = ctx.db.selectFrom('orders').leftJoin('tables', 'tables.id', 'orders.table_id').select(['orders.id', 'orders.name', 'orders.opened_at', 'orders.guests', 'orders.table_id', 'tables.name as table_name']).where('orders.status', '=', 'open');
       if (branchId) oq = oq.where('orders.branch_id', '=', branchId);
       const orders = await oq.orderBy('orders.opened_at').execute();
       const sums = orders.length ? await ctx.db.selectFrom('order_items').select(['order_id', (eb) => eb.fn.sum<number>(eb('qty', '*', eb.ref('unit_price'))).as('t')]).where('order_id', 'in', orders.map((o) => o.id)).where('status', '!=', 'cancelled').groupBy('order_id').execute() : [];
-      const list = orders.map((o) => ({ id: o.id, name: o.table_name ? `โต๊ะ ${o.table_name}` : o.name, meta: `${o.guests ? o.guests + ' คน · ' : ''}เปิด ${new Date(o.opened_at).toTimeString().slice(0, 5)}`, total: Math.round(num(sums.find((s) => s.order_id === o.id)?.t)) }));
+      const labels = await tableLabels(ctx.db, branchId ?? undefined);
+      const list = orders.map((o) => ({ id: o.id, name: o.table_id ? `โต๊ะ ${labels.get(o.table_id) ?? o.table_name}` : o.name, meta: `${o.guests ? o.guests + ' คน · ' : ''}เปิด ${new Date(o.opened_at).toTimeString().slice(0, 5)}`, total: Math.round(num(sums.find((s) => s.order_id === o.id)?.t)) }));
       open = { count: list.length, total: list.reduce((a, b) => a + b.total, 0), list: list.slice(0, 6) };
     }
 

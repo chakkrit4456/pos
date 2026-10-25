@@ -167,7 +167,7 @@ for (const [name, target] of targets) {
     });
 
     it('runs a table order: rounds, kitchen, pay with orderId', async () => {
-      const floor = (await t.call<{ tables: { id: string; name: string }[] }>('GET', '/api/floor')).body;
+      const floor = (await t.call<{ tables: { id: string; name: string; label: string }[] }>('GET', '/api/floor')).body;
       const table = floor.tables[0]!;
       const o = (await t.call<{ id: string }>('POST', '/api/orders', { tableId: table.id, guests: 2 })).body;
       const latte = product('ลาเต้ร้อน');
@@ -189,7 +189,7 @@ for (const [name, target] of targets) {
         payments: [{ methodCode: 'cash', amount: 15000 }],
       });
       expect(pay.status, JSON.stringify(pay.body)).toBe(200);
-      expect(pay.body.tableName).toBe(table.name);
+      expect(pay.body.tableName).toBe(table.label);
       const floor2 = (await t.call<{ tables: { id: string; order: unknown }[] }>('GET', '/api/floor')).body;
       expect(floor2.tables.find((x) => x.id === table.id)!.order).toBeNull();
     });
@@ -227,6 +227,75 @@ for (const [name, target] of targets) {
       expect(r.status, JSON.stringify(r.body)).toBe(200);
       const after = (await t.call<{ total: number }>('GET', '/api/sales')).body.total;
       expect(after).toBe(before);
+    });
+
+    it('uses the default company account for PromptPay with the exact amount', async () => {
+      await t.call('PUT', '/api/settings', { payments: { accounts: [
+        { id: 'a1', bankCode: 'KBANK', accountName: 'บริษัท ทดสอบ จำกัด', accountNumber: '1234567890', promptPayId: '0105561234560', isDefault: false },
+        { id: 'a2', bankCode: 'SCB', accountName: 'ร้านทดสอบ', accountNumber: '9876543210', promptPayId: '0899999999', isDefault: true },
+      ], billShowQr: true } });
+      const def = await t.call<{ payload: string; account: { id: string } }>('GET', '/api/promptpay?amount=12345');
+      expect(def.status).toBe(200);
+      expect(def.body.account.id).toBe('a2');
+      expect(def.body.payload).toContain('01130066899999999');
+      expect(def.body.payload).toContain('5406123.45');
+      const pick = await t.call<{ payload: string }>('GET', '/api/promptpay?amount=100&accountId=a1');
+      expect(pick.body.payload).toContain('02130105561234560');
+    });
+
+    it('prints a table bill slip with an exact-amount QR matching the sale total', async () => {
+      const floor = (await t.call<{ tables: { id: string; order: unknown }[] }>('GET', '/api/floor')).body;
+      const table = floor.tables.find((x) => !x.order)!;
+      const o = (await t.call<{ id: string }>('POST', '/api/orders', { tableId: table.id })).body;
+      const p = product('บราวนี่');
+      await t.call('POST', `/api/orders/${o.id}/items`, { requestId: newId(), items: [{ productId: p.id, qty: 2 }] });
+      const bill = await t.call<{ total: number; qr: string; doc: { blocks: { t: string; data?: string }[] } }>('GET', `/api/orders/${o.id}/bill`);
+      expect(bill.status, JSON.stringify(bill.body)).toBe(200);
+      expect(bill.body.total).toBe(13000);
+      expect(bill.body.qr).toContain('5406130.00');
+      expect(bill.body.doc.blocks.some((b) => b.t === 'qr' && b.data === bill.body.qr)).toBe(true);
+      const printed = await t.call<{ printed: boolean }>('POST', `/api/orders/${o.id}/bill/print`, {});
+      expect(printed.status).toBe(200);
+      expect(printed.body.printed).toBe(false);
+      await t.call('POST', `/api/orders/${o.id}/cancel`, { reason: 'test' });
+    });
+
+    it('keeps tables separate per zone and closes open bills when a zone is deleted', async () => {
+      const z1 = (await t.call<{ id: string }>('POST', '/api/zones', { name: 'โซนทดสอบ 1' })).body.id;
+      const z2 = (await t.call<{ id: string }>('POST', '/api/zones', { name: 'โซนทดสอบ 2' })).body.id;
+      const a = await t.call<{ id: string }>('POST', '/api/tables', { name: 'T1', zoneId: z1 });
+      const b = await t.call<{ id: string }>('POST', '/api/tables', { name: 'T1', zoneId: z2 });
+      expect(a.status).toBe(200);
+      expect(b.status).toBe(200);
+      expect((await t.call('POST', '/api/tables', { name: 'T1', zoneId: z1 })).status).toBe(409);
+      expect((await t.call('POST', '/api/tables', { name: 'T9' })).status).toBe(400);
+      const floor = (await t.call<{ tables: { id: string; label: string }[] }>('GET', '/api/floor')).body;
+      expect(floor.tables.find((x) => x.id === a.body.id)!.label).toBe('โซนทดสอบ 1 · T1');
+      const o = (await t.call<{ id: string }>('POST', '/api/orders', { tableId: a.body.id })).body;
+      await t.call('POST', `/api/orders/${o.id}/items`, { requestId: newId(), items: [{ productId: product('น้ำดื่ม').id, qty: 1 }] });
+      const del = await t.call<{ tables: number; cancelledBills: number }>('DELETE', `/api/zones/${z1}`);
+      expect(del.status, JSON.stringify(del.body)).toBe(200);
+      expect(del.body).toEqual({ tables: 1, cancelledBills: 1 });
+      const order = (await t.call<{ status: string }>('GET', `/api/orders/${o.id}`)).body;
+      expect(order.status).toBe('cancelled');
+      const after = (await t.call<{ tables: { id: string }[] }>('GET', '/api/floor')).body;
+      expect(after.tables.some((x) => x.id === a.body.id)).toBe(false);
+      expect(after.tables.some((x) => x.id === b.body.id)).toBe(true);
+      await t.call('DELETE', `/api/zones/${z2}`);
+    });
+
+    it('deletes a category by moving its products', async () => {
+      const c = (await t.call<{ id: string }>('POST', '/api/categories', { name: 'หมวดชั่วคราว' })).body.id;
+      const p = product('น้ำดื่ม');
+      const detail = (await t.call<Record<string, unknown>>('GET', `/api/products/${p.id}`)).body;
+      await t.call('PUT', `/api/products/${p.id}`, { ...detail, categoryId: c });
+      const blocked = await t.call<{ details: { count: number } }>('DELETE', `/api/categories/${c}`);
+      expect(blocked.status).toBe(409);
+      expect(blocked.body.details.count).toBe(1);
+      const ok = await t.call<{ movedProducts: number }>('DELETE', `/api/categories/${c}?moveTo=none`);
+      expect(ok.body.movedProducts).toBe(1);
+      const moved = (await t.call<{ categoryId: string | null }>('GET', `/api/products/${p.id}`)).body;
+      expect(moved.categoryId).toBeNull();
     });
   });
 }

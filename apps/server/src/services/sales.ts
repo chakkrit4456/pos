@@ -26,6 +26,7 @@ import { bizStamp, nowIso, parseJson, uuid } from '../util.js';
 import { buildCatalog, getCatalogVersion } from './catalog.js';
 import { loadPromotions } from './promotions.js';
 import { moveSaleStock } from './stock.js';
+import { tableLabel } from './tables.js';
 import type { FastifyRequest } from 'fastify';
 
 const catalogCache = new Map<string, Catalog>();
@@ -252,8 +253,7 @@ export async function createSale(
       const order = await tx.selectFrom('orders').selectAll().where('id', '=', input.orderId).executeTakeFirst();
       if (!order || order.status === 'paid' || order.status === 'cancelled') throw badRequest('บิลโต๊ะนี้ปิดไปแล้ว');
       if (order.table_id) {
-        const t = await tx.selectFrom('tables').select('name').where('id', '=', order.table_id).executeTakeFirst();
-        tableName = t?.name ?? order.name;
+        tableName = (await tableLabel(tx, order.table_id)) ?? order.name;
       } else tableName = order.name || null;
       await tx.updateTable('orders').set({ status: 'paid', closed_at: stamp.created_at, sale_id: input.id }).where('id', '=', order.id).execute();
     }

@@ -5,6 +5,7 @@ import { useSession } from '@/lib/session';
 import { errorMessage } from '@/lib/api';
 import { Button, Field, Input, Segmented } from '@/components/ui/core';
 import { PinPad } from '@/components/ui/inputs';
+import { BrandMark } from '@/components/BrandMark';
 
 export function LoginPage({ status }: { status: SetupStatus }) {
   const { login, loginPin } = useSession();
@@ -30,12 +31,13 @@ export function LoginPage({ status }: { status: SetupStatus }) {
   );
 
   return (
-    <div className="grid min-h-full place-items-center bg-rail px-4 py-10 text-white">
+    <div className="grid min-h-full place-items-center bg-rail px-4 py-10 text-rail-fg">
       <div className="flex w-full max-w-[400px] flex-col gap-6">
         <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-[18px] font-bold">F</div>
+          <BrandMark logo={status.brand?.appLogo} name={status.brand?.appName} />
           <div>
-            <div className="text-[18px] font-semibold">FlexPOS</div>
+            <div className="text-[18px] font-semibold">{status.brand?.loginTitle || status.brand?.storeName || status.brand?.appName || 'FlexPOS'}</div>
+            {status.brand?.loginSubtitle && <div className="text-[13px] text-[#c9ccd1]">{status.brand.loginSubtitle}</div>}
             <div className="text-[13px] text-[#a5a8ad]">v{status.version}{status.dbKind ? ` · ${status.dbKind === 'sqlite' ? 'ฐานข้อมูลในเครื่อง' : status.dbKind}` : ''}</div>
           </div>
         </div>

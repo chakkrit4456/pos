@@ -48,6 +48,26 @@ export const RECEIPT_SECTION_LABELS: Record<ReceiptSection, string> = {
 };
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/);
+const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+/** A company account customers can pay into. Kept in settings until the admin changes it. */
+export const bankAccountSchema = z.object({
+  id: z.string().min(1).max(40),
+  /** code from BANKS (shared/banks.ts) or 'OTHER' for foreign/other banks */
+  bankCode: z.string().min(1).max(20),
+  bankName: z.string().max(100).default(''),
+  accountName: z.string().trim().min(1).max(120),
+  accountNumber: z.string().trim().max(40).default(''),
+  branch: z.string().max(80).default(''),
+  /** phone (10), tax/citizen ID (13) or e-wallet ID (15). Empty = no PromptPay for this account */
+  promptPayId: z.string().max(20).default(''),
+  swift: z.string().trim().max(11).default(''),
+  iban: z.string().trim().max(34).default(''),
+  currency: z.string().max(3).default('THB'),
+  showOnBill: z.boolean().default(true),
+  isDefault: z.boolean().default(false),
+});
+export type BankAccount = z.infer<typeof bankAccountSchema>;
 
 export const settingsSchema = z.object({
   businessType: z.enum(BUSINESS_TYPES).default('retail'),
@@ -79,11 +99,23 @@ export const settingsSchema = z.object({
     .default({}),
   brand: z
     .object({
-      primary: z
-        .string()
-        .regex(/^#[0-9a-fA-F]{6}$/)
-        .default('#1d7a57'),
+      appName: z.string().trim().max(40).default('FlexPOS'),
+      /** data URL; empty = use the store logo */
+      appLogo: z.string().max(400_000).default(''),
+      primary: hex.default('#1d7a57'),
+      accent: hex.default('#2f9e74'),
+      sidebar: hex.default('#17191c'),
       theme: z.enum(['light', 'dark', 'system']).default('light'),
+      loginTitle: z.string().max(80).default(''),
+      loginSubtitle: z.string().max(160).default(''),
+      poweredBy: z.boolean().default(true),
+    })
+    .default({}),
+  payments: z
+    .object({
+      accounts: z.array(bankAccountSchema).max(20).default([]),
+      /** print exact-amount PromptPay QR on table bill slips */
+      billShowQr: z.boolean().default(true),
     })
     .default({}),
   modules: z

@@ -36,6 +36,10 @@
   --info-soft: 226 238 250;
   --rail: 23 25 28;
   --rail-2: 58 61 66;
+  --rail-fg: 255 255 255;
+  --rail-muted: 180 183 188;
+  --rail-faint: 107 110 114;
+  --rail-hover: 255 255 255;
   color-scheme: light;
 }
 

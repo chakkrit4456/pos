@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { SetupStatus } from '@flexpos/shared';
 import { api } from './lib/api';
 import { useSession } from './lib/session';
-import { useSettings, useTheme } from './lib/settings';
+import { applyBrand, useSettings, useTheme } from './lib/settings';
 import { useLiveInvalidation } from './lib/live';
 import { AppShell } from './components/layout/AppShell';
 import { Spinner, ErrorState } from './components/ui/core';
@@ -84,9 +84,11 @@ export function App() {
   const loc = useLocation();
   const status = useQuery({ queryKey: ['setup-status'], queryFn: () => api.get<SetupStatus>('/api/setup/status'), staleTime: 30_000, retry: 3 });
 
+  // Before login, brand the screens from the public setup status.
   useEffect(() => {
-    document.title = 'FlexPOS';
-  }, []);
+    const b = status.data?.brand;
+    if (b && !user) applyBrand({ primary: b.primary, accent: b.accent, sidebar: b.sidebar, appName: b.appName, appLogo: b.appLogo });
+  }, [status.data, user]);
 
   if (loc.pathname === '/order' || loc.pathname.startsWith('/order/')) {
     return (

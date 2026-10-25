@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Minus, Printer, Trash2, X } from 'lucide-react';
+import { Minus, Printer, QrCode, Trash2, X } from 'lucide-react';
 import { priceCart } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { money, useSettings } from '@/lib/settings';
@@ -10,6 +10,7 @@ import { cn, qtyText } from '@/lib/utils';
 import { Badge, Button, ErrorState, Field, Input, Spinner } from '@/components/ui/core';
 import { Dialog } from '@/components/ui/dialog';
 import { useApproval } from '../pos/dialogs';
+import { BillSlipDialog } from '@/components/BillSlipDialog';
 
 interface Item {
   id: string;
@@ -56,6 +57,7 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
   const approve = useApproval();
   const q = useQuery({ queryKey: ['order', orderId], queryFn: () => api.get<OrderView>(`/api/orders/${orderId}`), refetchInterval: 10_000 });
   const [remove, setRemove] = useState<Item | null>(null);
+  const [slip, setSlip] = useState(false);
   const [flash, setFlash] = useState<Set<string>>(new Set());
   const prev = useRef<Map<string, number> | null>(null);
   const o = q.data;
@@ -174,6 +176,11 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
           <span className="text-[26px] font-bold">{money(pricing.total)}</span>
         </div>
         <p className="text-[12px] text-muted">ส่วนลดสมาชิกและโปรโมชั่นจะคำนวณตอนเก็บเงิน</p>
+        {open && live.length > 0 && (
+          <Button className="mt-2" icon={<QrCode className="h-4 w-4" />} onClick={() => setSlip(true)}>
+            ใบแจ้งยอด + QR PromptPay (ระบุยอด)
+          </Button>
+        )}
         {open && (
           <div className="mt-2 flex gap-2">
             {rounds.length > 0 && (
@@ -188,6 +195,7 @@ export function OrderBillPanel({ orderId, onClose }: { orderId: string; onClose?
         )}
       </div>
 
+      {slip && <BillSlipDialog orderId={o.id} onClose={() => setSlip(false)} />}
       {remove && (
         <RemoveDialog
           item={remove}

@@ -60,6 +60,16 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     hostUrl: ctx.config.hostUrl,
     version: VERSION,
     license: license.status(),
+    brand: {
+      appName: ctx.settings.brand.appName,
+      appLogo: ctx.settings.brand.appLogo || ctx.settings.store.logo,
+      primary: ctx.settings.brand.primary,
+      accent: ctx.settings.brand.accent,
+      sidebar: ctx.settings.brand.sidebar,
+      loginTitle: ctx.settings.brand.loginTitle,
+      loginSubtitle: ctx.settings.brand.loginSubtitle,
+      storeName: ctx.settings.store.name,
+    },
   }));
 
   /** Setup endpoints are open only until an owner exists; afterwards they require settings permission. */

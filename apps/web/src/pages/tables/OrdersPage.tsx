@@ -31,9 +31,9 @@ export default function OrdersPage() {
   const nav = useNavigate();
   const [status, setStatus] = useState<'open' | 'all'>('open');
   const [selected, setSelected] = useState<string | null>(null);
-  const [wide, setWide] = useState(() => matchMedia('(min-width: 1280px)').matches);
+  const [wide, setWide] = useState(() => matchMedia('(min-width: 1024px)').matches);
   useEffect(() => {
-    const mq = matchMedia('(min-width: 1280px)');
+    const mq = matchMedia('(min-width: 1024px)');
     const on = () => setWide(mq.matches);
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
@@ -62,7 +62,7 @@ export default function OrdersPage() {
         }
       />
       <Segmented className="self-start" value={status} onChange={setStatus} options={[{ value: 'open', label: 'ยังไม่เก็บเงิน' }, { value: 'all', label: 'ทั้งหมดวันนี้' }]} />
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="card overflow-hidden">
           {orders.isLoading ? <SkeletonRows /> : orders.isError ? <ErrorState error={orders.error} onRetry={() => void orders.refetch()} /> : !orders.data?.length ? (
             <EmptyState title="ไม่มีออเดอร์" body="ออเดอร์จากแอปรับออเดอร์ (เปิด /order บนมือถือพนักงาน) และจากหน้าขายจะแสดงที่นี่" />
@@ -88,7 +88,7 @@ export default function OrdersPage() {
             </button>
           ))}
         </div>
-        <aside className="card sticky top-0 hidden max-h-[calc(100vh-150px)] min-h-[420px] overflow-hidden xl:flex xl:flex-col">
+        <aside className="card sticky top-0 hidden max-h-[calc(100vh-150px)] min-h-[420px] overflow-hidden lg:flex lg:flex-col">
           {selected ? <OrderBillPanel key={selected} orderId={selected} /> : <EmptyState className="my-auto" title="เลือกออเดอร์" body="แตะโต๊ะทางซ้ายเพื่อดูรายละเอียดบิล ลบรายการ หรือเก็บเงิน" />}
         </aside>
       </div>

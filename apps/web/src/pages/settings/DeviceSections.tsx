@@ -233,68 +233,6 @@ export function DevicesSection() {
   );
 }
 
-export function TablesSection() {
-  const qc = useQueryClient();
-  const confirm = useConfirm();
-  const zones = useQuery({ queryKey: ['zones'], queryFn: () => api.get<{ id: string; name: string; sort: number }[]>('/api/zones') });
-  const floor = useQuery({ queryKey: ['floor'], queryFn: () => api.get<{ tables: { id: string; name: string; zoneId: string | null; seats: number; order: unknown }[] }>('/api/floor') });
-  const [zoneName, setZoneName] = useState('');
-  const [bulk, setBulk] = useState<{ zoneId: string; prefix: string; from: number; to: number; seats: number } | null>(null);
-  const refresh = () => { qc.invalidateQueries({ queryKey: ['zones'] }); qc.invalidateQueries({ queryKey: ['floor'] }); };
-  const addBulk = async () => {
-    if (!bulk) return;
-    try {
-      for (let i = bulk.from; i <= bulk.to; i++) await api.post('/api/tables', { name: `${bulk.prefix}${i}`, zoneId: bulk.zoneId || null, seats: bulk.seats, sort: i });
-      toast.success(`เพิ่ม ${bulk.to - bulk.from + 1} โต๊ะแล้ว`);
-      setBulk(null);
-      refresh();
-    } catch (e) {
-      toast.error(errorMessage(e));
-      refresh();
-    }
-  };
-  return (
-    <>
-      <SectionTitle title="โต๊ะและโซน" actions={<Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setBulk({ zoneId: zones.data?.[0]?.id ?? '', prefix: 'A', from: 1, to: 6, seats: 4 })}>เพิ่มโต๊ะ</Button>} />
-      <Card title="โซน">
-        <form className="flex gap-2" onSubmit={async (e) => { e.preventDefault(); await api.post('/api/zones', { name: zoneName, sort: zones.data?.length ?? 0 }).catch((err) => toast.error(errorMessage(err))); setZoneName(''); refresh(); }}>
-          <Input value={zoneName} onChange={(e) => setZoneName(e.target.value)} placeholder="ชื่อโซนใหม่ เช่น ระเบียง" />
-          <Button type="submit" disabled={!zoneName.trim()}>เพิ่มโซน</Button>
-        </form>
-        <div className="flex flex-wrap gap-2">
-          {zones.data?.map((z) => (
-            <span key={z.id} className="flex items-center gap-2 rounded-full bg-canvas px-3 py-1.5 text-[14px]">{z.name}
-              <button aria-label={`ลบโซน ${z.name}`} onClick={async () => { const r = await confirm({ title: `ลบโซน ${z.name}?`, body: 'โต๊ะในโซนนี้จะไม่ถูกลบ', danger: true, confirmText: 'ลบ' }); if (r.ok) { await api.del(`/api/zones/${z.id}`); refresh(); } }}><Trash2 className="h-3.5 w-3.5 text-faint" /></button>
-            </span>
-          ))}
-        </div>
-      </Card>
-      <Card title={`โต๊ะ (${floor.data?.tables.length ?? 0})`}>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-          {floor.data?.tables.map((t) => (
-            <div key={t.id} className="flex items-center justify-between rounded-xl border border-line px-3 py-2">
-              <span className="flex flex-col"><span className="font-semibold">{t.name}</span><span className="text-[11px] text-muted">{zones.data?.find((z) => z.id === t.zoneId)?.name ?? '—'} · {t.seats} ที่</span></span>
-              <button aria-label={`ลบโต๊ะ ${t.name}`} disabled={!!t.order} className="disabled:opacity-30" onClick={async () => { const r = await confirm({ title: `ลบโต๊ะ ${t.name}?`, danger: true, confirmText: 'ลบ' }); if (r.ok) { await api.del(`/api/tables/${t.id}`).catch((e) => toast.error(errorMessage(e))); refresh(); } }}><Trash2 className="h-4 w-4 text-faint" /></button>
-            </div>
-          ))}
-        </div>
-      </Card>
-      <Dialog open={!!bulk} onOpenChange={(v) => !v && setBulk(null)} title="เพิ่มโต๊ะ" size="sm" footer={<><Button onClick={() => setBulk(null)}>ยกเลิก</Button><Button variant="primary" disabled={!bulk || bulk.to < bulk.from} onClick={() => void addBulk()}>เพิ่ม {bulk ? Math.max(0, bulk.to - bulk.from + 1) : 0} โต๊ะ</Button></>}>
-        {bulk && (
-          <div className="grid grid-cols-2 gap-3 pb-2">
-            <Field label="โซน" className="col-span-2"><Select value={bulk.zoneId} onChange={(e) => setBulk({ ...bulk, zoneId: e.target.value })}><option value="">ไม่มีโซน</option>{zones.data?.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}</Select></Field>
-            <Field label="ชื่อนำหน้า"><Input value={bulk.prefix} onChange={(e) => setBulk({ ...bulk, prefix: e.target.value })} /></Field>
-            <Field label="ที่นั่ง"><NumberInput value={bulk.seats} onValue={(seats) => setBulk({ ...bulk, seats })} /></Field>
-            <Field label="ตั้งแต่เลข"><NumberInput value={bulk.from} onValue={(from) => setBulk({ ...bulk, from })} /></Field>
-            <Field label="ถึงเลข"><NumberInput value={bulk.to} onValue={(to) => setBulk({ ...bulk, to: Math.min(to, bulk.from + 99) })} /></Field>
-            <p className="col-span-2 text-[13px] text-muted">ตัวอย่าง: {bulk.prefix}{bulk.from} … {bulk.prefix}{bulk.to}</p>
-          </div>
-        )}
-      </Dialog>
-    </>
-  );
-}
-
 interface Branch { id: string; code: string; name: string; address: string; phone: string; tax_branch_no: string; active: number }
 
 export function BranchesSection() {

@@ -13,7 +13,7 @@ import { orderToCart, type OrderDetail } from './PosPage';
 
 export interface FloorData {
   zones: { id: string; name: string }[];
-  tables: { id: string; name: string; zoneId: string | null; seats: number; order: { id: string; total: number; items: number; openedAt: string; billRequested: boolean; readyCount: number; waitingCount: number; guests: number } | null }[];
+  tables: { id: string; name: string; label?: string; zoneName?: string | null; zoneId: string | null; seats: number; order: { id: string; total: number; items: number; openedAt: string; billRequested: boolean; readyCount: number; waitingCount: number; guests: number } | null }[];
   takeaway: { id: string; name: string; total: number; items: number; openedAt: string }[];
 }
 
@@ -151,7 +151,7 @@ export function BillPicker({ open, onClose }: { open: boolean; onClose: () => vo
                         current ? 'border-2 border-primary bg-soft' : busy ? 'border-[#c9b98f] bg-[#fbf3df]' : 'border-line bg-surface hover:bg-sunken',
                       )}
                     >
-                      <span className="text-[17px] font-semibold">{t.name}</span>
+                      <span className="text-[17px] font-semibold">{zone === 'all' ? (t.label ?? t.name) : t.name}</span>
                       <span className={cn('num text-[12px]', busy ? 'text-warn' : 'text-muted')}>
                         {t.order ? `${money(t.order.total)} · ${minutesSince(t.order.openedAt)} นาที${t.order.billRequested ? ' · เช็คบิล' : ''}` : 'ว่าง'}
                       </span>

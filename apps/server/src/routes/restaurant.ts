@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { orderItemsSchema, resolveBasePrice, tableSchema, validateModifiers, zoneSchema } from '@flexpos/shared';
+import { bankInfo, buildBillDoc, orderItemsSchema, promptPayAccount, promptPayPayload, resolveBasePrice, tableSchema, validateModifiers, zoneSchema, type BankAccount } from '@flexpos/shared';
 import type { AppContext, Tx } from '../context.js';
 import { audit, authorizeWithPin, branchOf, currentUser, nextSeq, requireAuth } from '../auth.js';
 import { badRequest, conflict, notFound } from '../errors.js';
 import { nowIso, num, parseJson, uuid } from '../util.js';
-import { cachedCatalog } from '../services/sales.js';
+import { cachedCatalog, quote } from '../services/sales.js';
 import type { PrintService } from '../services/printing.js';
+import { tableLabel, tableLabels } from '../services/tables.js';
 
 const ITEM_STATUSES = ['pending', 'sent', 'preparing', 'ready', 'served', 'cancelled'] as const;
 
@@ -14,6 +15,16 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
   const auth = (...p: Parameters<typeof requireAuth>[1][]) => ({ preHandler: requireAuth(ctx, ...p) });
 
   /* ---------- Zones & tables ---------- */
+  /** A table belongs to exactly one zone (when the branch has zones) and its name is unique within that zone. */
+  const assertTableSlot = async (branchId: string, zoneId: string | null, name: string, selfId: string | null) => {
+    const zones = await ctx.db.selectFrom('zones').select('id').where('branch_id', '=', branchId).execute();
+    if (zones.length && !zoneId) throw badRequest('กรุณาเลือกโซนของโต๊ะ');
+    if (zoneId && !zones.some((z) => z.id === zoneId)) throw badRequest('ไม่พบโซนนี้');
+    let q = ctx.db.selectFrom('tables').select('id').where('branch_id', '=', branchId).where('name', '=', name.trim());
+    q = zoneId ? q.where('zone_id', '=', zoneId) : q.where('zone_id', 'is', null);
+    if (selfId) q = q.where('id', '!=', selfId);
+    if (await q.executeTakeFirst()) throw conflict(`โซนนี้มีโต๊ะชื่อ ${name} แล้ว`);
+  };
   app.get('/api/zones', auth(), async (req) => ctx.db.selectFrom('zones').selectAll().where('branch_id', '=', branchOf(ctx, req)).orderBy('sort').execute());
   app.post('/api/zones', auth('settings.manage'), async (req) => {
     const b = zoneSchema.parse(req.body);
@@ -26,23 +37,47 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
     await ctx.db.updateTable('zones').set({ name: b.name, sort: b.sort }).where('id', '=', (req.params as { id: string }).id).execute();
     return { ok: true };
   });
+  /** Delete a zone with all its tables; open bills on those tables are closed (cancelled) and audited. */
   app.delete('/api/zones/:id', auth('settings.manage'), async (req) => {
     const { id } = req.params as { id: string };
-    await ctx.db.updateTable('tables').set({ zone_id: null }).where('zone_id', '=', id).execute();
-    await ctx.db.deleteFrom('zones').where('id', '=', id).execute();
-    return { ok: true };
+    const zone = await ctx.db.selectFrom('zones').selectAll().where('id', '=', id).executeTakeFirst();
+    if (!zone) throw notFound('โซน');
+    const result = await ctx.db.transaction().execute(async (tx) => {
+      const tables = await tx.selectFrom('tables').select(['id', 'name']).where('zone_id', '=', id).execute();
+      const ids = tables.map((t) => t.id);
+      const open = ids.length ? await tx.selectFrom('orders').select(['id', 'table_id']).where('table_id', 'in', ids).where('status', '=', 'open').execute() : [];
+      for (const o of open) {
+        await tx.updateTable('order_items').set({ status: 'cancelled' }).where('order_id', '=', o.id).where('status', '!=', 'cancelled').execute();
+        await tx.updateTable('orders').set({ status: 'cancelled', closed_at: nowIso(), note: `ปิดบิลเพราะลบโซน ${zone.name}` }).where('id', '=', o.id).execute();
+        await audit(ctx, tx, req, 'order.cancel', 'order', o.id, { reason: `ลบโซน ${zone.name}`, table: tables.find((t) => t.id === o.table_id)?.name });
+      }
+      // Closed bills keep their history; detach them from the deleted tables.
+      if (ids.length) {
+        await tx.updateTable('orders').set({ table_id: null }).where('table_id', 'in', ids).execute();
+        await tx.deleteFrom('tables').where('id', 'in', ids).execute();
+      }
+      await tx.deleteFrom('zones').where('id', '=', id).execute();
+      await audit(ctx, tx, req, 'zone.delete', 'zone', id, { name: zone.name, tables: ids.length, cancelledBills: open.length });
+      return { tables: ids.length, cancelledBills: open.length, orderIds: open.map((o) => o.id) };
+    });
+    for (const oid of result.orderIds) ctx.emit({ type: 'orders.changed', tableId: null, orderId: oid });
+    ctx.emit({ type: 'orders.changed', tableId: null, orderId: '' });
+    return { tables: result.tables, cancelledBills: result.cancelledBills };
   });
   app.post('/api/tables', auth('settings.manage'), async (req) => {
     const b = tableSchema.parse(req.body);
     const branchId = branchOf(ctx, req);
-    const dup = await ctx.db.selectFrom('tables').select('id').where('branch_id', '=', branchId).where('name', '=', b.name).executeTakeFirst();
-    if (dup) throw conflict(`มีโต๊ะชื่อ ${b.name} แล้ว`);
+    await assertTableSlot(branchId, b.zoneId ?? null, b.name, null);
     const id = uuid();
     await ctx.db.insertInto('tables').values({ id, branch_id: branchId, zone_id: b.zoneId ?? null, name: b.name, seats: b.seats, sort: b.sort }).execute();
     return { id };
   });
   app.put('/api/tables/:id', auth('settings.manage'), async (req) => {
     const b = tableSchema.parse(req.body);
+    const { id: tid } = req.params as { id: string };
+    const cur = await ctx.db.selectFrom('tables').select('branch_id').where('id', '=', tid).executeTakeFirst();
+    if (!cur) throw notFound('โต๊ะ');
+    await assertTableSlot(cur.branch_id, b.zoneId ?? null, b.name, tid);
     await ctx.db.updateTable('tables').set({ zone_id: b.zoneId ?? null, name: b.name, seats: b.seats, sort: b.sort }).where('id', '=', (req.params as { id: string }).id).execute();
     return { ok: true };
   });
@@ -75,6 +110,8 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
       ? await ctx.db.selectFrom('order_items').select(['order_id', 'status']).where('order_id', 'in', orders.map((o) => o.id)).where('status', 'in', ['sent', 'preparing', 'ready']).execute()
       : [];
     const tm = new Map(totals.map((t) => [t.order_id, t]));
+    const labels = await tableLabels(ctx.db, branchId);
+    const zoneName = new Map(zones.map((z) => [z.id, z.name]));
     const orderView = (o: (typeof orders)[number]) => ({
       id: o.id,
       name: o.name,
@@ -90,7 +127,7 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
       zones,
       tables: tables.map((t) => {
         const o = orders.find((x) => x.table_id === t.id);
-        return { id: t.id, name: t.name, zoneId: t.zone_id, seats: t.seats, order: o ? orderView(o) : null };
+        return { id: t.id, name: t.name, label: labels.get(t.id) ?? t.name, zoneId: t.zone_id, zoneName: t.zone_id ? (zoneName.get(t.zone_id) ?? null) : null, seats: t.seats, order: o ? orderView(o) : null };
       }),
       takeaway: orders.filter((o) => !o.table_id).map(orderView),
     };
@@ -100,7 +137,7 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
     const o = await ctx.db.selectFrom('orders').selectAll().where('id', '=', id).executeTakeFirst();
     if (!o) throw notFound('ออเดอร์');
     const items = await ctx.db.selectFrom('order_items').leftJoin('users', 'users.id', 'order_items.created_by').select(['order_items.id', 'order_items.round_no', 'order_items.product_id', 'order_items.variant_id', 'order_items.name', 'order_items.qty', 'order_items.unit_price', 'order_items.modifiers', 'order_items.note', 'order_items.status', 'order_items.station', 'order_items.source', 'order_items.created_at', 'order_items.sent_at', 'order_items.ready_at', 'users.name as by']).where('order_id', '=', id).orderBy('round_no').orderBy('order_items.created_at').execute();
-    const table = o.table_id ? await ctx.db.selectFrom('tables').select('name').where('id', '=', o.table_id).executeTakeFirst() : undefined;
+    const table = o.table_id ? { name: (await tableLabel(ctx.db, o.table_id)) ?? '' } : undefined;
     const opener = await ctx.db.selectFrom('users').select('name').where('id', '=', o.opened_by).executeTakeFirst();
     const live = items.filter((i) => i.status !== 'cancelled');
     return {
@@ -121,10 +158,12 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
 
   app.get('/api/orders', auth('tables.manage'), async (req) => {
     const q = z.object({ status: z.enum(['open', 'paid', 'cancelled', 'all']).default('open'), date: z.string().optional() }).parse(req.query);
-    let base = ctx.db.selectFrom('orders').leftJoin('tables', 'tables.id', 'orders.table_id').leftJoin('users', 'users.id', 'orders.opened_by').select(['orders.id', 'orders.name', 'orders.status', 'orders.guests', 'orders.opened_at', 'orders.closed_at', 'orders.bill_requested', 'orders.sale_id', 'tables.name as table_name', 'users.name as opened_by']).where('orders.branch_id', '=', branchOf(ctx, req));
+    let base = ctx.db.selectFrom('orders').leftJoin('tables', 'tables.id', 'orders.table_id').leftJoin('users', 'users.id', 'orders.opened_by').select(['orders.id', 'orders.name', 'orders.status', 'orders.guests', 'orders.opened_at', 'orders.closed_at', 'orders.bill_requested', 'orders.sale_id', 'orders.table_id', 'tables.name as table_name', 'users.name as opened_by']).where('orders.branch_id', '=', branchOf(ctx, req));
     if (q.status !== 'all') base = base.where('orders.status', '=', q.status);
     if (q.date) base = base.where('orders.opened_at', '>=', new Date(q.date + 'T00:00:00').toISOString()).where('orders.opened_at', '<=', new Date(q.date + 'T23:59:59.999').toISOString());
-    const rows = await base.orderBy('orders.opened_at', 'desc').limit(300).execute();
+    const raw = await base.orderBy('orders.opened_at', 'desc').limit(300).execute();
+    const labels = await tableLabels(ctx.db, branchOf(ctx, req));
+    const rows = raw.map((r) => ({ ...r, table_name: r.table_id ? (labels.get(r.table_id) ?? r.table_name) : null }));
     const ids = rows.map((r) => r.id);
     const items = ids.length ? await ctx.db.selectFrom('order_items').select(['order_id', 'qty', 'unit_price', 'status', 'source', 'round_no']).where('order_id', 'in', ids).execute() : [];
     return rows.map((r) => {
@@ -196,7 +235,7 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
         await tx.insertInto('order_items').values({ id: uuid(), order_id: id, round_no: round, product_id: p.id, variant_id: it.variantId ?? null, name, qty: it.qty, unit_price: unitPrice, modifiers: JSON.stringify(mods.names), note: it.note, status: 'sent', station: (p.categoryId && stationOf.get(p.categoryId)) || 'kitchen', source: b.source, created_by: user.id, created_at: now, sent_at: now, ready_at: null }).execute();
         ticketItems.push({ categoryId: p.categoryId, qty: it.qty, name, modifiers: mods.names.map((m) => m.name), note: it.note });
       }
-      const table = o.table_id ? await tx.selectFrom('tables').select('name').where('id', '=', o.table_id).executeTakeFirst() : undefined;
+      const table = o.table_id ? { name: (await tableLabel(tx, o.table_id)) ?? '' } : undefined;
       const ticketNo = String(await nextSeq(tx, `kitchen:${branchId}`));
       printed = await printer.printKitchen(tx, branchId, { title: table ? `โต๊ะ ${table.name}` : o.name || 'กลับบ้าน', ticketNo: `K-${ticketNo}`, by: user.name, createdAt: now }, ticketItems);
       await tx.insertInto('idempotency').values({ id: `order-items:${b.requestId}`, response: '{}', created_at: now }).execute();
@@ -272,7 +311,7 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
     await ctx.db.transaction().execute(async (tx) => {
       const o = await tx.selectFrom('orders').selectAll().where('id', '=', id).executeTakeFirst();
       if (!o || o.status !== 'open') throw badRequest('บิลนี้ปิดแล้ว');
-      const table = o.table_id ? await tx.selectFrom('tables').select('name').where('id', '=', o.table_id).executeTakeFirst() : undefined;
+      const table = o.table_id ? { name: (await tableLabel(tx, o.table_id)) ?? '' } : undefined;
       await tx.insertInto('orders').values({ id: newId, branch_id: o.branch_id, table_id: null, name: name || `${table?.name ?? o.name} (แยก)`, status: 'open', guests: 0, opened_by: currentUser(req).id, opened_at: nowIso(), closed_at: null, sale_id: null, bill_requested: 0, note: '' }).execute();
       await tx.updateTable('order_items').set({ order_id: newId }).where('order_id', '=', id).where('id', 'in', itemIds).execute();
     });
@@ -288,12 +327,83 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
     return loadOrder(id);
   });
 
+  /** Check-bill slip with an exact-amount PromptPay QR (priced like the final sale, incl. member discount). */
+  const billDoc = async (req: Parameters<typeof branchOf>[1], id: string, customerId?: string | null, accountId?: string | null) => {
+    const o = await loadOrder(id);
+    const live = o.items.filter((i) => i.status !== 'cancelled');
+    if (!live.length) throw badRequest('บิลนี้ยังไม่มีรายการ');
+    const pricing = await quote(ctx, branchOf(ctx, req), {
+      lines: live.map((i) => ({ id: i.id, productId: i.product_id, variantId: i.variant_id, unitId: null, name: i.name, qty: i.qty, unitPrice: i.unit_price, priceOverridden: false, modifiers: i.modifiers, note: i.note, discount: null })),
+      billDiscount: null,
+      customerId: customerId ?? null,
+      couponCodes: [],
+      pointsRedeemed: 0,
+    });
+    const s = ctx.settings;
+    const pp = s.payments.billShowQr ? promptPayAccount(s, accountId) : null;
+    const toBill = (a: BankAccount) => ({ bankName: a.bankCode === 'OTHER' ? a.bankName : bankInfo(a.bankCode).name, accountName: a.accountName, accountNumber: a.accountNumber, branch: a.branch, swift: a.swift, iban: a.iban, promptPayId: a.promptPayId });
+    const customer = customerId ? await ctx.db.selectFrom('customers').select('name').where('id', '=', customerId).executeTakeFirst() : undefined;
+    const doc = buildBillDoc(
+      {
+        title: o.tableName ? `โต๊ะ ${o.tableName}` : o.name,
+        orderNo: o.id.slice(0, 8).toUpperCase(),
+        guests: o.guests,
+        openedAt: o.openedAt,
+        lines: live.map((i) => ({ qty: i.qty, name: i.name, total: Math.round(i.qty * i.unit_price), modifiers: i.modifiers.map((m) => m.name) })),
+        subtotal: pricing.subtotal,
+        discount: pricing.discountTotal,
+        promotions: pricing.appliedPromotions,
+        serviceCharge: pricing.serviceCharge,
+        serviceChargeRate: s.tax.serviceChargeRate,
+        vat: pricing.vat,
+        vatRate: s.tax.vatRate,
+        vatEnabled: s.tax.vatEnabled,
+        pricesIncludeVat: s.tax.pricesIncludeVat,
+        total: pricing.total,
+        customerName: customer?.name ?? null,
+      },
+      s,
+      {
+        qrPayload: pp && pricing.total > 0 ? promptPayPayload(pp.promptPayId, pricing.total) : null,
+        qrAccount: pp?.account ? toBill(pp.account) : null,
+        accounts: s.payments.accounts.filter((a) => a.showOnBill).map(toBill),
+      },
+    );
+    return { doc, total: pricing.total, qr: pp ? promptPayPayload(pp.promptPayId, pricing.total) : null };
+  };
+
+  app.get('/api/orders/:id/bill', auth('tables.manage'), async (req) => {
+    const { id } = req.params as { id: string };
+    const q = z.object({ customerId: z.string().optional(), accountId: z.string().optional() }).parse(req.query);
+    return billDoc(req, id, q.customerId, q.accountId);
+  });
+
+  /** Print the slip on the network receipt printer; without one, the client prints the returned doc itself. */
+  app.post('/api/orders/:id/bill/print', auth('tables.manage'), async (req) => {
+    const { id } = req.params as { id: string };
+    const b = z.object({ customerId: z.string().nullable().optional(), accountId: z.string().nullable().optional() }).parse(req.body ?? {});
+    const bill = await billDoc(req, id, b.customerId, b.accountId);
+    const p = await ctx.db.selectFrom('printers').selectAll().where('active', '=', 1).where('role', '=', 'receipt').where('kind', '=', 'network').where('branch_id', '=', branchOf(ctx, req)).executeTakeFirst();
+    if (p) await printer.enqueue(ctx.db, p.id, 'bill', `ใบแจ้งยอด ${id.slice(0, 8)}`, { ...bill.doc, paper: p.paper === '58' ? '58' : '80' });
+    await ctx.db.updateTable('orders').set({ bill_requested: 1 }).where('id', '=', id).execute();
+    ctx.emit({ type: 'orders.changed', tableId: null, orderId: id });
+    return { ...bill, printed: !!p };
+  });
+
   app.post('/api/orders/:id/request-bill', auth('tables.manage'), async (req) => {
     const { id } = req.params as { id: string };
     const { value } = z.object({ value: z.boolean().default(true) }).parse(req.body ?? {});
     await ctx.db.updateTable('orders').set({ bill_requested: value ? 1 : 0 }).where('id', '=', id).execute();
     const o = await loadOrder(id);
-    if (value) await notify(ctx, branchOf(ctx, req), null, 'bill', `เช็คบิล ${o.name}`, `ยอด ฿${(o.total / 100).toFixed(2)}`, id);
+    if (value) {
+      await notify(ctx, branchOf(ctx, req), null, 'bill', `เช็คบิล ${o.name}`, `ยอด ฿${(o.total / 100).toFixed(2)}`, id);
+      // Print the check-bill slip (with exact-amount QR) when a network receipt printer exists.
+      const p = await ctx.db.selectFrom('printers').selectAll().where('active', '=', 1).where('role', '=', 'receipt').where('kind', '=', 'network').where('branch_id', '=', branchOf(ctx, req)).executeTakeFirst();
+      if (p) {
+        const bill = await billDoc(req, id).catch(() => null);
+        if (bill) await printer.enqueue(ctx.db, p.id, 'bill', `ใบแจ้งยอด ${o.name}`, { ...bill.doc, paper: p.paper === '58' ? '58' : '80' });
+      }
+    }
     ctx.emit({ type: 'orders.changed', tableId: o.tableId, orderId: id });
     return o;
   });
@@ -333,13 +443,14 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
       .innerJoin('orders', 'orders.id', 'order_items.order_id')
       .leftJoin('tables', 'tables.id', 'orders.table_id')
       .leftJoin('users', 'users.id', 'order_items.created_by')
-      .select(['order_items.id', 'order_items.order_id', 'order_items.round_no', 'order_items.name', 'order_items.qty', 'order_items.modifiers', 'order_items.note', 'order_items.status', 'order_items.station', 'order_items.sent_at', 'order_items.ready_at', 'orders.name as order_name', 'tables.name as table_name', 'users.name as by'])
+      .select(['order_items.id', 'order_items.order_id', 'order_items.round_no', 'order_items.name', 'order_items.qty', 'order_items.modifiers', 'order_items.note', 'order_items.status', 'order_items.station', 'order_items.sent_at', 'order_items.ready_at', 'orders.name as order_name', 'orders.table_id', 'tables.name as table_name', 'users.name as by'])
       .where('orders.branch_id', '=', branchOf(ctx, req))
       .where('order_items.status', 'in', ['sent', 'preparing', 'ready'])
       .where('orders.status', '=', 'open');
     if (station) q = q.where('order_items.station', '=', station);
     const rows = await q.orderBy('order_items.sent_at').execute();
-    return rows.map((r) => ({ ...r, modifiers: parseJson<{ name: string }[]>(r.modifiers, []).map((m) => m.name), title: r.table_name ? `โต๊ะ ${r.table_name}` : r.order_name }));
+    const labels = await tableLabels(ctx.db, branchOf(ctx, req));
+    return rows.map((r) => ({ ...r, modifiers: parseJson<{ name: string }[]>(r.modifiers, []).map((m) => m.name), title: r.table_id ? `โต๊ะ ${labels.get(r.table_id) ?? r.table_name}` : r.order_name }));
   });
 
   app.post('/api/kitchen/items/status', auth('kitchen.view'), async (req) => {
@@ -352,7 +463,7 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
       for (const i of items) byOrder.set(i.order_id, [...(byOrder.get(i.order_id) ?? []), i]);
       for (const [orderId, list] of byOrder) {
         const first = list[0]!;
-        const t = first.table_id ? await ctx.db.selectFrom('tables').select('name').where('id', '=', first.table_id).executeTakeFirst() : undefined;
+        const t = first.table_id ? { name: (await tableLabel(ctx.db, first.table_id)) ?? '' } : undefined;
         await notify(ctx, first.branch_id, first.created_by, 'ready', `${t ? 'โต๊ะ ' + t.name : first.order_name} อาหารพร้อมเสิร์ฟ`, list.map((x) => x.name).join(', '), orderId);
       }
     }

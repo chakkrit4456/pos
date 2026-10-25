@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Check, Plus, Printer, X, WifiOff, FileText } from 'lucide-react';
-import { computeTender, pointsValue, type PaymentMethodView, type PricingResult, type SaleInput, type SaleView, type Settings } from '@flexpos/shared';
+import { bankInfo, computeTender, maskAccount, pointsValue, type BankAccount, type PaymentMethodView, type PricingResult, type SaleInput, type SaleView, type Settings } from '@flexpos/shared';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { money } from '@/lib/settings';
 import { queueSale } from '@/lib/offline';
@@ -77,10 +77,17 @@ export function PaymentDialog({
     setTaxInv({ on: false, name: c?.taxName ?? '', taxId: c?.taxId ?? '', branch: c?.taxBranch || 'สำนักงานใหญ่', address: c?.address ?? '' });
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const ppAccounts = settings.payments.accounts.filter((a) => a.promptPayId);
+  const [ppAccountId, setPpAccountId] = useState('');
+  useEffect(() => {
+    if (open) setPpAccountId((ppAccounts.find((a) => a.isDefault) ?? ppAccounts[0])?.id ?? '');
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const transferAccounts = settings.payments.accounts.filter((a) => a.accountNumber && a.showOnBill);
   const pointsAmt = Math.min(pointsValue(points, settings.points), pricing.total);
   const total = pricing.total;
   const m = usable.find((x) => x.code === method);
   const kind = m?.kind ?? 'cash';
+  const isTransfer = !!m && (m.code === 'transfer' || m.code === 'transfer_intl' || m.name.includes('โอน'));
   const paidBefore = tenders.reduce((a, t) => a + t.amount, 0) + pointsAmt;
   const remaining = Math.max(0, total - paidBefore);
   const cashTyped = cashText ? Math.round(Number(cashText) * 100) : 0;
@@ -95,8 +102,8 @@ export function PaymentDialog({
 
   // PromptPay QR for the amount being paid now
   const qr = useQuery({
-    queryKey: ['promptpay', current],
-    queryFn: () => api.get<{ payload: string }>('/api/promptpay', { amount: current }),
+    queryKey: ['promptpay', current, ppAccountId],
+    queryFn: () => api.get<{ payload: string; account: BankAccount | null }>('/api/promptpay', { amount: current, accountId: ppAccountId || undefined }),
     enabled: open && kind === 'promptpay' && current > 0,
     retry: false,
   });
@@ -295,8 +302,14 @@ export function PaymentDialog({
                 </div>
                 <div className="flex flex-col gap-2 text-[14px] text-ink-2">
                   <span className="text-[16px] font-semibold text-ink">สแกนเพื่อชำระ {money(current)}</span>
-                  <span>บัญชี: {settings.store.name}</span>
-                  <span className="num">PromptPay {settings.store.promptPayId || '-'}</span>
+                  {ppAccounts.length > 1 && (
+                    <select value={ppAccountId} onChange={(e) => setPpAccountId(e.target.value)} className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-[14px]" aria-label="บัญชีรับเงิน">
+                      {ppAccounts.map((a) => <option key={a.id} value={a.id}>{a.accountName} · {bankInfo(a.bankCode).name}</option>)}
+                    </select>
+                  )}
+                  <span>บัญชี: {qr.data?.account?.accountName ?? settings.store.name}</span>
+                  {qr.data?.account && <span>{bankInfo(qr.data.account.bankCode).name}</span>}
+                  <span className="text-[13px] text-muted">ยอดเงินอยู่ใน QR แล้ว ลูกค้าไม่ต้องพิมพ์ยอด · ใช้ได้ทุกแอปธนาคาร</span>
                   {settings.modules.customerDisplay && (
                     <span className="flex items-center gap-2 text-primary">
                       <span className="h-2 w-2 rounded-full bg-accent" />
@@ -318,6 +331,20 @@ export function PaymentDialog({
               </div>
             )}
 
+            {kind === 'other' && isTransfer && transferAccounts.length > 0 && (
+              <div className="flex flex-col gap-2 rounded-[14px] border border-line p-3">
+                <span className="text-[13px] font-semibold text-muted">ให้ลูกค้าโอนเข้าบัญชี</span>
+                {transferAccounts.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 text-[14px]">
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-lg text-[10px] font-bold text-white" style={{ background: bankInfo(a.bankCode).color }}>{a.bankCode.slice(0, 4)}</span>
+                    <span className="flex flex-col">
+                      <span className="font-semibold">{a.accountName}</span>
+                      <span className="num text-muted">{a.bankCode === 'OTHER' ? a.bankName : bankInfo(a.bankCode).name} · {maskAccount(a.accountNumber)}{a.swift ? ` · SWIFT ${a.swift}` : ''}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             {kind === 'other' && (
               <div className="flex flex-col gap-3">
                 <div className="rounded-[14px] bg-canvas p-4 text-[15px] text-ink-2">
