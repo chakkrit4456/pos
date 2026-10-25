@@ -21,6 +21,9 @@ import type { BackupService } from '../services/backup.js';
 import type { LicenseService } from '../services/license.js';
 import { probe } from '../services/escpos.js';
 import { networkInterfaces } from 'node:os';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { readdir, statfs } from 'node:fs/promises';
+import { dirname, join as joinPath, resolve as resolvePath } from 'node:path';
 
 export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: PrintService, backup: BackupService, license: LicenseService) {
   const auth = (...p: Parameters<typeof requireAuth>[1][]) => ({ preHandler: requireAuth(ctx, ...p) });
@@ -285,7 +288,11 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
   });
 
   /* ---------- Backup ---------- */
-  app.get('/api/backups', auth('backup.manage'), async () => ({ dir: backup.dir(), items: backup.list() }));
+  app.get('/api/backups', auth('backup.manage'), async () => {
+    const dir = backup.dir();
+    const s = await statfs(dir).catch(() => null);
+    return { dir, defaultDir: backup.defaultDir(), chosenDir: ctx.settings.backup.dir, fallback: backup.usingFallback(), free: s ? s.bavail * s.bsize : null, items: backup.list() };
+  });
   app.post('/api/backups', auth('backup.manage'), async (req) => {
     const r = await backup.create('manual');
     await audit(ctx, ctx.db, req, 'backup.create', 'backup', r.file.slice(-60), { size: r.size });
@@ -320,6 +327,60 @@ export function adminRoutes(app: FastifyInstance, ctx: AppContext, printer: Prin
   });
 
   app.get('/api/license', auth(), async () => license.status());
+
+  /* ---------- Folder browser for choosing the backup location (on the server machine) ---------- */
+  const space = async (p: string) => {
+    try {
+      const s = await statfs(p);
+      return { free: s.bavail * s.bsize, total: s.blocks * s.bsize };
+    } catch {
+      return { free: null, total: null };
+    }
+  };
+  app.get('/api/system/folders', auth('backup.manage'), async (req) => {
+    const { path: p } = z.object({ path: z.string().max(1000).optional() }).parse(req.query);
+    if (!p) {
+      const roots = process.platform === 'win32' ? 'CDEFGHIJKLMNOPQRSTUVWXYZAB'.split('').map((l) => `${l}:\\`).filter((d) => existsSync(d)) : ['/'];
+      return { path: null, parent: null, drives: await Promise.all(roots.map(async (d) => ({ path: d, ...(await space(d)) }))), folders: [] };
+    }
+    const dir = resolvePath(p);
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      throw badRequest('เปิดโฟลเดอร์นี้ไม่ได้ (ไม่มีสิทธิ์หรือไม่พบโฟลเดอร์)');
+    }
+    const folders = entries
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !e.name.startsWith('$') && e.name !== 'System Volume Information')
+      .map((e) => ({ name: e.name, path: joinPath(dir, e.name) }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'th'))
+      .slice(0, 500);
+    const parent = dirname(dir) === dir ? null : dirname(dir);
+    return { path: dir, parent, drives: [], folders, ...(await space(dir)) };
+  });
+  app.post('/api/system/folders', auth('backup.manage'), async (req) => {
+    const b = z.object({ path: z.string().min(1).max(1000), name: z.string().trim().min(1).max(100).regex(/^[^\\/:*?"<>|]+$/, 'ชื่อโฟลเดอร์มีอักขระที่ใช้ไม่ได้') }).parse(req.body);
+    const dir = joinPath(resolvePath(b.path), b.name);
+    try {
+      mkdirSync(dir, { recursive: true });
+    } catch {
+      throw badRequest('สร้างโฟลเดอร์ไม่ได้ ตรวจสอบสิทธิ์การเขียนของไดรฟ์นี้');
+    }
+    return { path: dir };
+  });
+  app.post('/api/system/folders/check', auth('backup.manage'), async (req) => {
+    const { path: p } = z.object({ path: z.string().min(1).max(1000) }).parse(req.body);
+    const dir = resolvePath(p);
+    try {
+      mkdirSync(dir, { recursive: true });
+      const probe = joinPath(dir, `.flexpos-write-test-${Date.now()}`);
+      writeFileSync(probe, 'ok');
+      unlinkSync(probe);
+    } catch {
+      throw badRequest('บันทึกไฟล์ลงโฟลเดอร์นี้ไม่ได้ (ไดรฟ์อาจถูกถอด เป็นแบบอ่านอย่างเดียว หรือไม่มีสิทธิ์)');
+    }
+    return { ok: true, path: dir, ...(await space(dir)) };
+  });
 
   app.get('/api/system/info', auth('settings.manage'), async () => {
     const ips = Object.values(networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => i!.address);

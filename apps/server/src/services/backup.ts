@@ -27,10 +27,29 @@ export class BackupService {
   private timer: NodeJS.Timeout | null = null;
   constructor(private readonly ctx: AppContext) {}
 
+  defaultDir(): string {
+    return join(this.ctx.dataDir, 'backups');
+  }
+
+  /** The chosen folder, or the program's own folder when the chosen drive is unavailable (e.g. USB unplugged). */
   dir(): string {
-    const d = this.ctx.settings.backup.dir || join(this.ctx.dataDir, 'backups');
+    const chosen = this.ctx.settings.backup.dir;
+    if (chosen) {
+      try {
+        mkdirSync(chosen, { recursive: true });
+        return chosen;
+      } catch {
+        /* fall through */
+      }
+    }
+    const d = this.defaultDir();
     mkdirSync(d, { recursive: true });
     return d;
+  }
+
+  usingFallback(): boolean {
+    const chosen = this.ctx.settings.backup.dir;
+    return !!chosen && this.dir() !== chosen;
   }
 
   async dump(): Promise<Buffer> {

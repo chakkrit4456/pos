@@ -1,16 +1,15 @@
 import { Fragment, useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Copy, Download, KeyRound, Plus, RotateCcw, Save, Trash2, Upload } from 'lucide-react';
-import { CUSTOM_FIELD_TYPES, PERMISSION_GROUPS, PERMISSIONS, initials, type LicenseStatus, type Permission } from '@flexpos/shared';
+import { Copy, KeyRound, Plus } from 'lucide-react';
+import { PERMISSION_GROUPS, PERMISSIONS, initials, type LicenseStatus, type Permission } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { useFormatters } from '@/lib/settings';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { Badge, Button, Card, Checkbox, EmptyState, Field, Input, Pagination, Select, SkeletonRows, Switch, Textarea, ToggleRow } from '@/components/ui/core';
+import { Badge, Button, Card, EmptyState, Field, Input, Pagination, Select, SkeletonRows, Switch, Textarea } from '@/components/ui/core';
 import { Dialog, useConfirm } from '@/components/ui/dialog';
-import { NumberInput } from '@/components/ui/inputs';
-import { SaveBar, SectionTitle, useDraft } from './common';
+import { SaveBar, SectionTitle } from './common';
 
 interface UserRow { id: string; username: string; name: string; roleId: string; roleName: string; roleCode: string; branchId: string | null; branchName: string | null; active: boolean; lastLoginAt: string | null; hasPin: boolean; permissionCount: number }
 interface Role { id: string; code: string; name: string; permissions: Permission[]; system: boolean; userCount: number }
@@ -144,118 +143,6 @@ export function RolesSection() {
         )}
       </div>
       <SaveBar dirty={dirty} saving={false} onSave={() => void save()} onReset={() => setDraft({})} />
-    </>
-  );
-}
-
-interface FieldDef { id: string; entity: 'product' | 'customer' | 'supplier'; key: string; label: string; type: (typeof CUSTOM_FIELD_TYPES)[number]; options: string[]; required: boolean; showInPos: boolean; showOnReceipt: boolean; showInReport: boolean; sort: number }
-const TYPE_LABEL: Record<FieldDef['type'], string> = { text: 'ข้อความ', number: 'ตัวเลข', date: 'วันที่', select: 'ตัวเลือก (dropdown)', checkbox: 'ช่องติ๊ก', image: 'รูปภาพ' };
-const ENTITY_LABEL = { product: 'สินค้า', customer: 'ลูกค้า', supplier: 'ซัพพลายเออร์' } as const;
-
-export function CustomFieldsSection() {
-  const qc = useQueryClient();
-  const confirm = useConfirm();
-  const list = useQuery({ queryKey: ['custom-fields', 'all'], queryFn: () => api.get<FieldDef[]>('/api/custom-fields') });
-  const [edit, setEdit] = useState<Partial<FieldDef> & { optionsText?: string } | null>(null);
-  const save = async () => {
-    if (!edit) return;
-    const body = { entity: edit.entity, key: edit.key, label: edit.label, type: edit.type, options: (edit.optionsText ?? edit.options?.join('\n') ?? '').split('\n').map((s) => s.trim()).filter(Boolean), required: !!edit.required, showInPos: !!edit.showInPos, showOnReceipt: !!edit.showOnReceipt, showInReport: !!edit.showInReport, sort: edit.sort ?? 0 };
-    try {
-      if (edit.id) await api.put(`/api/custom-fields/${edit.id}`, body);
-      else await api.post('/api/custom-fields', body);
-      qc.invalidateQueries({ queryKey: ['custom-fields'] });
-      setEdit(null);
-    } catch (e) {
-      toast.error(errorMessage(e));
-    }
-  };
-  return (
-    <>
-      <SectionTitle title="ฟิลด์เพิ่มเติม" sub="เพิ่มข้อมูลที่ธุรกิจของคุณต้องใช้ เช่น ทะเบียนยา วันหมดอายุ ไซซ์รองเท้า หรือ LINE ID ลูกค้า" actions={<Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setEdit({ entity: 'product', type: 'text', key: '', label: '' })}>เพิ่มฟิลด์</Button>} />
-      {(['product', 'customer', 'supplier'] as const).map((ent) => {
-        const rows = list.data?.filter((f) => f.entity === ent) ?? [];
-        return (
-          <Card key={ent} title={`ฟิลด์ของ${ENTITY_LABEL[ent]}`}>
-            {!rows.length ? <span className="text-[14px] text-muted">ยังไม่มีฟิลด์</span> : rows.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 border-b border-line-soft py-2.5 last:border-0">
-                <button className="flex flex-1 flex-col text-left" onClick={() => setEdit(f)}>
-                  <span className="font-medium">{f.label} {f.required && <span className="text-danger">*</span>}</span>
-                  <span className="text-[13px] text-muted">{TYPE_LABEL[f.type]} · {f.key}{[f.showInPos && 'หน้าขาย', f.showOnReceipt && 'ใบเสร็จ', f.showInReport && 'รายงาน'].filter(Boolean).map((x) => ` · แสดงใน${x}`).join('')}</span>
-                </button>
-                <Button size="sm" variant="ghost" className="text-danger" aria-label="ลบ" onClick={async () => { const r = await confirm({ title: `ลบฟิลด์ ${f.label}?`, body: 'ข้อมูลที่กรอกไว้จะไม่แสดงอีก', danger: true, confirmText: 'ลบ' }); if (r.ok) { await api.del(`/api/custom-fields/${f.id}`); qc.invalidateQueries({ queryKey: ['custom-fields'] }); } }}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-            ))}
-          </Card>
-        );
-      })}
-      <Dialog open={!!edit} onOpenChange={(v) => !v && setEdit(null)} title={edit?.id ? 'แก้ไขฟิลด์' : 'เพิ่มฟิลด์'} footer={<><Button onClick={() => setEdit(null)}>ยกเลิก</Button><Button variant="primary" disabled={!edit?.label?.trim() || !edit?.key?.trim()} onClick={() => void save()}>บันทึก</Button></>}>
-        {edit && (
-          <div className="grid gap-4 pb-2 md:grid-cols-2">
-            <Field label="ใช้กับ"><Select disabled={!!edit.id} value={edit.entity} onChange={(e) => setEdit({ ...edit, entity: e.target.value as FieldDef['entity'] })}>{Object.entries(ENTITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
-            <Field label="ชนิดข้อมูล"><Select value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value as FieldDef['type'] })}>{CUSTOM_FIELD_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}</Select></Field>
-            <Field label="ชื่อฟิลด์ที่แสดง" required><Input autoFocus value={edit.label ?? ''} onChange={(e) => setEdit({ ...edit, label: e.target.value, key: edit.id ? edit.key : edit.key || '' })} /></Field>
-            <Field label="รหัสฟิลด์" required hint="a-z 0-9 _ เปลี่ยนไม่ได้ภายหลัง"><Input disabled={!!edit.id} className="font-mono" value={edit.key ?? ''} onChange={(e) => setEdit({ ...edit, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })} placeholder="เช่น expiry_date" /></Field>
-            {edit.type === 'select' && <Field label="ตัวเลือก (บรรทัดละ 1 ค่า)" className="md:col-span-2"><Textarea value={edit.optionsText ?? edit.options?.join('\n') ?? ''} onChange={(e) => setEdit({ ...edit, optionsText: e.target.value })} /></Field>}
-            <div className="flex flex-col md:col-span-2">
-              <Checkbox checked={!!edit.required} onChange={(required) => setEdit({ ...edit, required })} label="จำเป็นต้องกรอก" />
-              {edit.entity === 'product' && (
-                <>
-                  <Checkbox checked={!!edit.showInPos} onChange={(showInPos) => setEdit({ ...edit, showInPos })} label="แสดงในหน้าขาย" />
-                  <Checkbox checked={!!edit.showOnReceipt} onChange={(showOnReceipt) => setEdit({ ...edit, showOnReceipt })} label="พิมพ์บนใบเสร็จ" />
-                </>
-              )}
-              <Checkbox checked={!!edit.showInReport} onChange={(showInReport) => setEdit({ ...edit, showInReport })} label="ใช้ในรายงาน/ส่งออก" />
-            </div>
-          </div>
-        )}
-      </Dialog>
-    </>
-  );
-}
-
-export function BackupSection() {
-  const qc = useQueryClient();
-  const confirm = useConfirm();
-  const f = useFormatters();
-  const d = useDraft('backup');
-  const list = useQuery({ queryKey: ['backups'], queryFn: () => api.get<{ dir: string; items: { name: string; size: number; createdAt: string }[] }>('/api/backups') });
-  const [busy, setBusy] = useState(false);
-  const restore = async (name: string | null, file?: File) => {
-    const r = await confirm({ title: 'กู้คืนข้อมูล?', body: 'ข้อมูลปัจจุบันทั้งหมดจะถูกแทนที่ด้วยไฟล์สำรอง ระบบจะสำรองข้อมูลปัจจุบันไว้ให้ก่อนอัตโนมัติ', danger: true, confirmText: 'กู้คืน' });
-    if (!r.ok) return;
-    setBusy(true);
-    try {
-      const res = file ? await api.upload<{ rows: number }>('/api/backups/restore', file) : await api.post<{ rows: number }>('/api/backups/restore', {}, { name: name! });
-      toast.success(`กู้คืนสำเร็จ ${res.rows.toLocaleString()} รายการ กำลังโหลดใหม่…`);
-      setTimeout(() => location.reload(), 1200);
-    } catch (e) {
-      toast.error(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <>
-      <SectionTitle title="สำรองและกู้คืนข้อมูล" sub="ไฟล์สำรองใช้ได้กับฐานข้อมูลทุกชนิด ใช้ย้ายจาก SQLite ไป PostgreSQL/MySQL ได้" actions={<Button variant="primary" loading={busy} icon={<Save className="h-4 w-4" />} onClick={async () => { setBusy(true); try { await api.post('/api/backups'); toast.success('สำรองข้อมูลแล้ว'); qc.invalidateQueries({ queryKey: ['backups'] }); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); } }}>สำรองตอนนี้</Button>} />
-      <Card title="สำรองอัตโนมัติ">
-        <div className="-my-2 flex flex-col"><ToggleRow label="เปิดการสำรองอัตโนมัติ" checked={d.draft.auto} onChange={(v) => d.set('auto', v)} /></div>
-        <div className="grid gap-3 md:grid-cols-3">
-          <Field label="ทุกๆ (ชั่วโมง)"><NumberInput value={d.draft.intervalHours} onValue={(v) => d.set('intervalHours', Math.max(1, Math.min(168, v)))} /></Field>
-          <Field label="เก็บไว้ (ไฟล์ล่าสุด)"><NumberInput value={d.draft.keep} onValue={(v) => d.set('keep', Math.max(1, Math.min(365, v)))} /></Field>
-          <Field label="โฟลเดอร์" hint="เว้นว่าง = โฟลเดอร์ข้อมูลของโปรแกรม แนะนำเลือกไดรฟ์อื่นหรือโฟลเดอร์ที่ซิงก์คลาวด์" className="md:col-span-3"><Input value={d.draft.dir} onChange={(e) => d.set('dir', e.target.value)} placeholder={list.data?.dir} /></Field>
-        </div>
-      </Card>
-      <Card title="ไฟล์สำรอง" action={<label className="inline-flex"><input type="file" accept=".gz,application/gzip" className="sr-only" onChange={(e) => e.target.files?.[0] && void restore(null, e.target.files[0])} /><span className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-[10px] border border-line-strong px-3 text-sm font-medium hover:bg-sunken"><Upload className="h-4 w-4" />กู้คืนจากไฟล์</span></label>}>
-        <span className="-mt-2 break-all text-[12px] text-faint">{list.data?.dir}</span>
-        {!list.data?.items.length ? <EmptyState title="ยังไม่มีไฟล์สำรอง" /> : list.data.items.map((b) => (
-          <div key={b.name} className="flex flex-wrap items-center gap-2 border-b border-line-soft py-2.5 last:border-0">
-            <span className="flex flex-1 flex-col"><span className="font-mono text-[13px]">{b.name}</span><span className="text-[12px] text-muted">{f.dateTime(b.createdAt)} · {(b.size / 1024).toFixed(0)} KB</span></span>
-            <Button size="sm" icon={<Download className="h-4 w-4" />} onClick={() => void api.download(`/api/backups/${encodeURIComponent(b.name)}`, undefined, b.name)}>ดาวน์โหลด</Button>
-            <Button size="sm" icon={<RotateCcw className="h-4 w-4" />} disabled={busy} onClick={() => void restore(b.name)}>กู้คืน</Button>
-          </div>
-        ))}
-      </Card>
-      <SaveBar dirty={d.dirty} saving={d.saving} onSave={() => void d.save()} onReset={d.reset} />
     </>
   );
 }

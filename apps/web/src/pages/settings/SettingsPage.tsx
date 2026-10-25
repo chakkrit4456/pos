@@ -4,7 +4,9 @@ import { cn } from '@/lib/utils';
 import { Page } from '@/components/layout/AppShell';
 import { BrandSection, ModulesSection, PaymentsSection, PosSection, ReceiptSection, StoreSection, TaxSection } from './StoreSections';
 import { BranchesSection, DevicesSection, PrintersSection, TablesSection } from './DeviceSections';
-import { AuditSection, BackupSection, CustomFieldsSection, LicenseSection, RolesSection, StaffSection } from './AdminSections';
+import { AuditSection, LicenseSection, RolesSection, StaffSection } from './AdminSections';
+import { BackupSection } from './BackupSection';
+import { CustomFieldsSection } from './CustomFieldsSection';
 
 const SECTIONS = [
   { id: 'store', label: 'ข้อมูลร้าน', el: StoreSection },
