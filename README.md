@@ -3,6 +3,25 @@
 ระบบขายหน้าร้านสำเร็จรูปสำหรับร้านค้าปลีก ร้านอาหาร คาเฟ่ ร้านเสื้อผ้า และร้านบริการในประเทศไทย
 A ready-made point-of-sale system for Thai retail shops, restaurants, cafés, fashion stores and service businesses.
 
+## ติดตั้งใช้งาน (สำหรับร้านค้า) / Install
+
+📖 **[คู่มือการใช้งานฉบับเต็ม พร้อมภาพประกอบ](docs/manual/README.md)** ตั้งแต่ติดตั้ง ตั้งค่าร้าน จนพร้อมขายจริง
+
+1. ติดตั้ง [Node.js 20 ขึ้นไป](https://nodejs.org) (เลือกเวอร์ชัน LTS)
+2. โคลนหรือดาวน์โหลด ZIP
+
+   ```bash
+   git clone https://github.com/chakkrit4456/pos.git FlexPOS
+   ```
+
+3. Windows: ดับเบิลคลิก **`install.bat`** แล้ว **`start.bat`**
+   Linux/macOS: `sh install.sh` แล้ว `sh start.sh`
+4. เปิด <http://localhost:4100> แล้วทำตามตัวช่วยตั้งค่าร้าน
+
+ข้อมูลร้านเก็บในโฟลเดอร์ `data/` · อัปเดต: สำรองข้อมูล → `git pull` → `install.bat` → `start.bat`
+
+![FlexPOS หน้าขาย](docs/manual/images/10-pos.png)
+
 ## ความสามารถหลัก / Features
 
 - **หน้าขาย** สแกนบาร์โค้ดได้ทันทีโดยไม่ต้องคลิกช่องค้นหา, ตัวเลือก/ท็อปปิ้ง, ไซซ์/สี, สินค้าชั่งน้ำหนัก, ราคาเปิด, หน่วยแพ็ค/ลัง, พักบิล แยกบิล รวมบิล, คีย์ลัด F1–F12, Ctrl+K
@@ -49,6 +68,7 @@ pnpm typecheck && pnpm lint
 pnpm test                         # unit + integration (SQLite)
 TEST_PG=1 TEST_MYSQL=1 pnpm test  # + PostgreSQL :54329 และ MySQL :33069 (ดู docs/admin-guide.md)
 pnpm build && pnpm e2e            # Playwright end-to-end
+npx playwright test -c tools/manual/playwright.config.ts   # ถ่ายภาพประกอบคู่มือใหม่ → docs/manual/images
 ```
 
 ## สร้างไฟล์ติดตั้ง / Release
