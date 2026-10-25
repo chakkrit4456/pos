@@ -73,7 +73,7 @@ export default function OrdersPage() {
               aria-pressed={selected === o.id}
               className={cn('grid w-full grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-line-soft px-5 py-3.5 text-left transition-colors last:border-0 hover:bg-sunken', selected === o.id && 'bg-soft/60 shadow-[inset_3px_0_0_rgb(var(--primary))] hover:bg-soft/60')}
             >
-              <span className="num flex flex-col"><span className="text-[15px] font-semibold">{new Date(o.opened_at).toTimeString().slice(0, 5)}</span><span className="font-mono text-[11px] text-muted">{o.id.slice(0, 6).toUpperCase()}</span></span>
+              <span className="num flex flex-col"><span className="text-[15px] font-semibold">{new Date(o.opened_at).toTimeString().slice(0, 5)}</span><span className="font-mono text-[11px] text-muted">{o.id.slice(0, 8).toUpperCase()}</span></span>
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="text-[15px] font-semibold">{o.table_name ? `โต๊ะ ${o.table_name}` : o.name} <span className="text-[12px] font-normal text-muted">· {o.opened_by}</span></span>
                 <span className="flex flex-wrap items-center gap-1.5 text-[13px] text-ink-2">
@@ -94,7 +94,7 @@ export default function OrdersPage() {
       </div>
       {selected && !wide && (
         <Dialog open onOpenChange={(v) => !v && setSelected(null)} title="รายละเอียดบิล" size="md" hideClose className="[&>div:nth-child(2)]:p-0">
-          <div className="-mx-6 -my-3 h-[78vh]"><OrderBillPanel orderId={selected} onClose={() => setSelected(null)} /></div>
+          <div className="h-[78vh] min-w-0"><OrderBillPanel orderId={selected} onClose={() => setSelected(null)} /></div>
         </Dialog>
       )}
       <ApprovalHost />

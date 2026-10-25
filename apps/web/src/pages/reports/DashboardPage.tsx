@@ -118,7 +118,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex pl-11" style={{ gap: (d?.bars.length ?? 0) > 16 ? 3 : 8 }}>
             {d?.bars.map((b, i) => (
-              <span key={b.label} className="num min-w-0 flex-1 text-center text-[11px] text-muted">{(d.bars.length > 16 && i % 3 !== 0) ? '' : b.label}</span>
+              <span key={b.label} className={cn('num min-w-0 flex-1 whitespace-nowrap text-center text-[11px] text-muted', d.bars.length > 16 && i % 6 !== 0 && 'max-sm:invisible')}>{(d.bars.length > 16 && i % 3 !== 0) ? '' : b.label}</span>
             ))}
           </div>
         </Card>

@@ -1,5 +1,6 @@
 import { formatAmount } from './money.js';
 import { formatDateTime } from './format.js';
+import { maskAccount } from './banks.js';
 import type { ReceiptSection, Settings } from './settings.js';
 
 /** A printer-agnostic document: rendered to HTML in the browser and to a bitmap for ESC/POS. */
@@ -273,7 +274,7 @@ export function buildBillDoc(
     blocks.push({ t: 'text', text: 'หรือโอนเข้าบัญชี', bold: true });
     for (const a of transfer) {
       blocks.push({ t: 'text', text: `${a.bankName}${a.branch ? ` สาขา${a.branch}` : ''}` });
-      blocks.push({ t: 'text', text: `${a.accountName}${a.accountNumber ? ` · ${a.accountNumber}` : ''}` });
+      blocks.push({ t: 'text', text: `${a.accountName}${a.accountNumber ? ` · ${maskAccount(a.accountNumber)}` : ''}` });
       if (a.swift || a.iban) blocks.push({ t: 'text', text: [a.swift && `SWIFT ${a.swift}`, a.iban && `IBAN ${a.iban}`].filter(Boolean).join(' · ') });
     }
   }

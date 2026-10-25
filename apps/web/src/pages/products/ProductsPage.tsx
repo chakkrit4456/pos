@@ -190,13 +190,13 @@ function ProductsTab() {
         </div>
       )}
       <div className="card overflow-hidden">
-        <div className="hidden grid-cols-[32px_96px_minmax(0,2fr)_minmax(0,1fr)_110px_150px_80px] items-center gap-3 border-b border-line-soft bg-sunken px-5 py-3 text-[13px] font-medium text-muted md:grid">
+        <div className="hidden md:grid-cols-[32px_minmax(0,2fr)_minmax(0,1fr)_110px_80px] lg:grid-cols-[32px_96px_minmax(0,2fr)_minmax(0,1fr)_110px_150px_80px] items-center gap-3 border-b border-line-soft bg-sunken px-5 py-3 text-[13px] font-medium text-muted md:grid">
           {sortMode ? <span /> : <Checkbox checked={allSel} onChange={(v) => setSel(v ? new Set(items.map((i) => i.id)) : new Set())} label={<span className="sr-only">เลือกทั้งหมด</span>} />}
-          <span>SKU</span>
+          <span className="hidden lg:block">SKU</span>
           <span>ชื่อสินค้า</span>
           <span>หมวด</span>
           <span className="text-right">ราคา</span>
-          <span>สต็อก</span>
+          <span className="hidden lg:block">สต็อก</span>
           <span className="text-right">ขายอยู่</span>
         </div>
         {list.isLoading ? (
@@ -244,7 +244,7 @@ function ProductLine({ r, tint, sortMode, selected, onSelect, onOpen, onToggle, 
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn('grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 border-b border-line-soft px-5 py-2.5 text-[15px] hover:bg-sunken md:h-[60px] md:grid-cols-[32px_96px_minmax(0,2fr)_minmax(0,1fr)_110px_150px_80px] md:py-0', isDragging && 'relative z-10 bg-surface shadow-pop', !r.active && 'opacity-60')}
+      className={cn('grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 border-b border-line-soft px-5 py-2.5 text-[15px] hover:bg-sunken md:h-[60px] md:grid-cols-[32px_minmax(0,2fr)_minmax(0,1fr)_110px_80px] lg:grid-cols-[32px_96px_minmax(0,2fr)_minmax(0,1fr)_110px_150px_80px] md:py-0', isDragging && 'relative z-10 bg-surface shadow-pop', !r.active && 'opacity-60')}
     >
       {sortMode ? (
         <button {...attributes} {...listeners} className="grid h-9 w-8 cursor-grab place-items-center text-faint" aria-label={`ลากเพื่อจัดเรียง ${r.name}`}>
@@ -253,7 +253,7 @@ function ProductLine({ r, tint, sortMode, selected, onSelect, onOpen, onToggle, 
       ) : (
         <Checkbox checked={selected} onChange={onSelect} label={<span className="sr-only">เลือก {r.name}</span>} />
       )}
-      <span className="hidden font-mono text-[13px] font-medium text-muted md:block">{r.sku || '—'}</span>
+      <span className="hidden font-mono text-[13px] font-medium text-muted lg:block">{r.sku || '—'}</span>
       <button onClick={onOpen} className="flex min-w-0 items-center gap-3 text-left">
         {r.imageUrl ? <img src={r.imageUrl} alt="" className="h-9 w-9 flex-none rounded-[9px] object-cover" /> : <span className="h-9 w-9 flex-none rounded-[9px]" style={{ background: tint }} />}
         <span className="flex min-w-0 flex-col">
@@ -266,7 +266,7 @@ function ProductLine({ r, tint, sortMode, selected, onSelect, onOpen, onToggle, 
       </button>
       <span className="hidden truncate text-ink-2 md:block">{r.categoryName ?? '—'}</span>
       <span className="num hidden text-right font-medium md:block">{money(r.price)}</span>
-      <span className="hidden items-center gap-2 md:flex">
+      <span className="hidden items-center gap-2 lg:flex">
         {showStock && r.trackStock ? (
           <>
             <span className="num min-w-[28px]">{qtyText(r.stock ?? 0)}</span>

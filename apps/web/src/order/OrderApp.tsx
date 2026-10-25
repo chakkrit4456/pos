@@ -89,7 +89,7 @@ export default function OrderApp() {
   useEffect(() => {
     const link = document.querySelector('link[rel=manifest]');
     link?.setAttribute('href', '/order.webmanifest');
-    document.title = `${brand?.appName ?? 'FlexPOS'} Order`;
+    document.title = `${brand?.appName || 'FlexPOS'} Order`;
     if (brand && !user) applyBrand(brand);
   }, [brand, user]);
   if (!user) {
@@ -98,7 +98,7 @@ export default function OrderApp() {
         <div className="flex items-center gap-2.5">
           <BrandMark logo={brand?.appLogo} name={brand?.appName} className="h-9 w-9 rounded-[10px] text-[15px]" />
           <span className="flex flex-col">
-            <span className="font-semibold">{brand?.appName ?? 'FlexPOS'} Order</span>
+            <span className="font-semibold">{brand?.appName || 'FlexPOS'} Order</span>
             {brand?.storeName && <span className="text-[12px] text-[#a5a8ad]">{brand.storeName}</span>}
           </span>
         </div>

@@ -107,7 +107,7 @@ export function BrandSection() {
           </Card>
 
           <Card title="สี">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] gap-2">
               {PRESETS.map((p) => {
                 const on = p.primary === b.primary && p.accent === b.accent && p.sidebar === b.sidebar;
                 return (

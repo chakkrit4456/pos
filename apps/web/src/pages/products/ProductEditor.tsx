@@ -281,7 +281,7 @@ export default function ProductEditor() {
                       <Input value={d.values} placeholder="ค่า คั่นด้วย , เช่น S, M, L" onChange={(e) => setOptionDefs(optionDefs.map((x, j) => (j === i ? { ...x, values: e.target.value } : x)))} />
                     </div>
                   ))}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {optionDefs.length < 3 && (
                       <Button size="sm" onClick={() => setOptionDefs([...optionDefs, { name: optionDefs.length === 1 ? 'สี' : '', values: '' }])}>
                         + เพิ่มชนิดตัวเลือก

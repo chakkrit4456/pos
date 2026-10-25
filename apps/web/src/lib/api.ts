@@ -33,6 +33,15 @@ function readTokens(): Tokens | null {
 let tokens: Tokens | null = readTokens();
 const listeners = new Set<() => void>();
 
+// Other tabs/windows rotate the shared refresh token; follow their updates instead of holding a stale copy.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== TOKENS_KEY) return;
+    tokens = readTokens();
+    listeners.forEach((l) => l());
+  });
+}
+
 export const auth = {
   get accessToken() {
     return tokens?.accessToken ?? null;
@@ -91,6 +100,11 @@ export function setBranchHeader(id: string | null) {
 
 let refreshing: Promise<boolean> | null = null;
 async function refresh(): Promise<boolean> {
+  const stored = readTokens();
+  if (stored && stored.accessToken !== tokens?.accessToken) {
+    tokens = stored;
+    return true;
+  }
   const rt = auth.refreshToken;
   if (!rt) return false;
   refreshing ??= (async () => {
@@ -101,6 +115,12 @@ async function refresh(): Promise<boolean> {
         body: JSON.stringify({ refreshToken: rt }),
       });
       if (!res.ok) {
+        // Another tab may have rotated the token first: adopt its newer pair rather than logging everyone out.
+        const latest = readTokens();
+        if (latest && latest.refreshToken !== rt) {
+          tokens = latest;
+          return true;
+        }
         auth.set(null);
         return false;
       }

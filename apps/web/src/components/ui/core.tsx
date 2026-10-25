@@ -228,7 +228,7 @@ export function PageHeader({ title, sub, actions, children }: { title: ReactNode
 
 export function Segmented<T extends string>({ value, onChange, options, className }: { value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode }[]; className?: string }) {
   return (
-    <div className={cn('inline-flex gap-1 rounded-xl border border-line bg-surface p-1', className)} role="tablist">
+    <div className={cn('scroll-thin inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1', className)} role="tablist">
       {options.map((o) => (
         <button
           key={o.value}

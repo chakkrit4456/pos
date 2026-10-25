@@ -196,30 +196,30 @@ export function DevicesSection() {
   return (
     <>
       <SectionTitle title="อุปกรณ์และเครือข่าย" sub="เปิดลิงก์เหล่านี้บนแท็บเล็ต มือถือ หรือคอมพิวเตอร์ในวง Wi-Fi/LAN เดียวกัน" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
         <Card title="เครื่อง Host (เครื่องนี้)">
           <div className="flex flex-col gap-1.5 text-[14px]">
-            {hosts.length ? hosts.map((h) => <div key={h} className="flex items-center justify-between gap-2 rounded-lg bg-sunken px-3 py-2"><span className="font-mono">{h}</span><Button size="sm" variant="ghost" icon={<Copy className="h-4 w-4" />} onClick={() => void copy(h)}>คัดลอก</Button></div>) : <span className="text-muted">ไม่พบที่อยู่ในเครือข่าย</span>}
+            {hosts.length ? hosts.map((h) => <div key={h} className="flex items-center justify-between gap-2 rounded-lg bg-sunken px-3 py-2"><span className="min-w-0 break-all font-mono">{h}</span><Button size="sm" variant="ghost" icon={<Copy className="h-4 w-4" />} onClick={() => void copy(h)}>คัดลอก</Button></div>) : <span className="text-muted">ไม่พบที่อยู่ในเครือข่าย</span>}
             <span className="mt-1 text-[13px] text-muted">ฐานข้อมูล: {info.data?.dbKind === 'sqlite' ? 'SQLite ในเครื่อง' : info.data?.dbKind} · จุดขายนี้: {registerName()}</span>
             <span className="break-all text-[12px] text-faint">ที่เก็บข้อมูล: {info.data?.dataDir}</span>
           </div>
         </Card>
         <Card title="แอปรับออเดอร์ (มือถือพนักงาน)">
           <div className="flex items-center gap-4">
-            <QrImage data={`${base}/order`} size={128} className="rounded-lg border border-line" />
-            <div className="flex flex-col gap-1.5 text-[14px]">
+            <QrImage data={`${base}/order`} size={128} className="flex-none rounded-lg border border-line" />
+            <div className="flex min-w-0 flex-col gap-1.5 text-[14px]">
               <span>สแกน QR ด้วยมือถือ Android/iPhone แล้วกด “เพิ่มไปยังหน้าจอหลัก” เพื่อใช้เหมือนแอป</span>
-              <span className="font-mono text-[13px] text-muted">{base}/order</span>
+              <span className="break-all font-mono text-[13px] text-muted">{base}/order</span>
               {!settings.modules.restaurant && <Badge tone="warn">เปิดโหมดร้านอาหารก่อนใช้งาน</Badge>}
             </div>
           </div>
         </Card>
         <Card title="จอแสดงผลฝั่งลูกค้า">
           <div className="flex items-center gap-4">
-            <QrImage data={`${base}/display?register=${encodeURIComponent(registerName())}`} size={128} className="rounded-lg border border-line" />
-            <div className="flex flex-col gap-1.5 text-[14px]">
+            <QrImage data={`${base}/display?register=${encodeURIComponent(registerName())}`} size={128} className="flex-none rounded-lg border border-line" />
+            <div className="flex min-w-0 flex-col gap-1.5 text-[14px]">
               <span>เปิดบนจอที่สองหรือแท็บเล็ตที่หันหาลูกค้า จะแสดงรายการและ QR ชำระเงินของจุดขาย “{registerName()}”</span>
-              <span className="font-mono text-[13px] text-muted">{base}/display?register={registerName()}</span>
+              <span className="break-all font-mono text-[13px] text-muted">{base}/display?register={registerName()}</span>
               {!settings.modules.customerDisplay && <Badge tone="warn">เปิดโมดูล “จอแสดงผลฝั่งลูกค้า” ก่อน</Badge>}
             </div>
           </div>

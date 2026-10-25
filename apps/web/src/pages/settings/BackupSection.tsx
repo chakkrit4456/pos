@@ -269,7 +269,7 @@ export function BackupSection() {
           info.items.map((b) => (
             <div key={b.name} className="flex flex-wrap items-center gap-2 border-b border-line-soft py-2.5 last:border-0">
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="flex items-center gap-2 text-[14px] font-medium">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] font-medium">
                   {f.dateTime(b.createdAt)}
                   <Badge tone={b.name.includes('-auto-') ? 'info' : b.name.includes('pre-restore') ? 'warn' : 'neutral'}>{b.name.includes('-auto-') ? 'อัตโนมัติ' : b.name.includes('pre-restore') ? 'ก่อนกู้คืน' : 'กดเอง'}</Badge>
                 </span>

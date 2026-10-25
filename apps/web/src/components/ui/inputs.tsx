@@ -86,7 +86,7 @@ export function NumPad({ onKey, dot = true, className, dark }: { onKey: (k: stri
     <div className={cn('grid grid-cols-3 gap-2', className)}>
       {keys.map((k, i) =>
         k === '' ? (
-          <span key={i} />
+          <span key={`blank-${i}`} />
         ) : (
         <button
           key={k}

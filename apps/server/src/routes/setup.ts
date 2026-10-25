@@ -61,7 +61,7 @@ export function setupRoutes(app: FastifyInstance, ctx: AppContext, license: Lice
     version: VERSION,
     license: license.status(),
     brand: {
-      appName: ctx.settings.brand.appName,
+      appName: ctx.settings.brand.appName || 'FlexPOS',
       appLogo: ctx.settings.brand.appLogo || ctx.settings.store.logo,
       primary: ctx.settings.brand.primary,
       accent: ctx.settings.brand.accent,
