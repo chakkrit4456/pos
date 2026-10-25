@@ -221,6 +221,25 @@ export function restaurantRoutes(app: FastifyInstance, ctx: AppContext, printer:
     return loadOrder(id);
   });
 
+  /** Reduce a line's quantity (e.g. remove 1 of 2). Lowering to 0 cancels the line. */
+  app.post('/api/orders/:id/items/:itemId/qty', auth('tables.manage'), async (req) => {
+    const { id, itemId } = req.params as { id: string; itemId: string };
+    const b = z.object({ qty: z.number().min(0), reason: z.string().trim().min(1).max(200), managerPin: z.string().optional() }).parse(req.body);
+    const user = currentUser(req);
+    const item = await ctx.db.selectFrom('order_items').selectAll().where('id', '=', itemId).where('order_id', '=', id).executeTakeFirst();
+    if (!item || item.status === 'cancelled') throw notFound('รายการ');
+    const order = await ctx.db.selectFrom('orders').select('status').where('id', '=', id).executeTakeFirst();
+    if (order?.status !== 'open') throw badRequest('บิลนี้ปิดไปแล้ว');
+    if (b.qty >= item.qty) throw badRequest('ลดได้เท่านั้น ถ้าจะเพิ่มให้สั่งเพิ่มเป็นรอบใหม่');
+    const approver = ['preparing', 'ready', 'served'].includes(item.status) ? await authorizeWithPin(ctx, user, 'pos.void', b.managerPin) : user;
+    if (b.qty === 0) await ctx.db.updateTable('order_items').set({ status: 'cancelled' }).where('id', '=', itemId).execute();
+    else await ctx.db.updateTable('order_items').set({ qty: b.qty }).where('id', '=', itemId).execute();
+    await audit(ctx, ctx.db, req, b.qty === 0 ? 'order.item_cancel' : 'order.item_reduce', 'order', id, { item: item.name, from: item.qty, to: b.qty, reason: b.reason, approvedBy: approver.name });
+    ctx.emit({ type: 'orders.changed', tableId: null, orderId: id });
+    ctx.emit({ type: 'kitchen.changed', orderId: id });
+    return loadOrder(id);
+  });
+
   app.post('/api/orders/:id/move', auth('tables.manage'), async (req) => {
     const { id } = req.params as { id: string };
     const { tableId } = z.object({ tableId: z.string() }).parse(req.body);
