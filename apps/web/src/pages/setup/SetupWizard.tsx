@@ -9,9 +9,10 @@ import { cn, imageToDataUrl } from '@/lib/utils';
 import { Button, Field, Input, Switch, Textarea } from '@/components/ui/core';
 import { NumberInput } from '@/components/ui/inputs';
 import { switchLanguage, tn } from '@/lib/i18n';
+import { applyCloudDraft, CloudChoice, cloudDraftOk, emptyCloudDraft } from '@/components/CloudChoice';
 
 type DbMode = 'sqlite' | 'external' | 'lan';
-const STEPS = [t('ภาษา'), t('ฐานข้อมูล'), t('ข้อมูลร้าน'), t('ประเภทธุรกิจ'), t('ภาษี'), t('บัญชีเจ้าของ'), t('ข้อมูลเริ่มต้น')];
+const STEPS = [t('ภาษา'), t('ฐานข้อมูล'), t('ข้อมูลร้าน'), t('ประเภทธุรกิจ'), t('ภาษี'), t('บัญชีเจ้าของ'), t('แดชบอร์ดออนไลน์'), t('ข้อมูลเริ่มต้น')];
 
 export default function SetupWizard({ status }: { status: SetupStatus }) {
   const qc = useQueryClient();
@@ -29,6 +30,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
   const [tax, setTax] = useState({ vatEnabled: false, vatRate: 7, pricesIncludeVat: true, serviceChargeRate: 0 });
   const [owner, setOwner] = useState({ name: '', username: 'owner', password: '', password2: '', pin: '' });
   const [sampleData, setSampleData] = useState(true);
+  const [cloud, setCloud] = useState(emptyCloudDraft());
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -85,6 +87,12 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
         sampleData,
       });
       accept(r);
+      try {
+        await applyCloudDraft(cloud);
+        if (cloud.mode !== 'local') toast.success(t('เชื่อมต่อแดชบอร์ดออนไลน์แล้ว ข้อมูลกำลังทยอยส่งขึ้นเว็บ'));
+      } catch (e) {
+        toast.error(t('ตั้งค่าร้านเสร็จแล้ว แต่เชื่อมต่อแดชบอร์ดออนไลน์ไม่สำเร็จ: {0} ลองใหม่ได้ที่ ตั้งค่า → แดชบอร์ดออนไลน์', errorMessage(e)), { duration: 12000 });
+      }
       await qc.invalidateQueries({ queryKey: ['setup-status'] });
       toast.success(t('ตั้งค่าร้านเรียบร้อย พร้อมขายแล้ว'));
     });
@@ -98,7 +106,10 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
   };
   const ownerOk = owner.name.trim() && owner.password.length >= 8 && owner.password === owner.password2 && /^\d{4,6}$/.test(owner.pin) && !ownerErrors.username;
 
-  const next = () => setStep((s) => s + 1);
+  const next = () => {
+    if (step === 5 && !cloud.name) setCloud((c) => ({ ...c, name: owner.name }));
+    setStep((s) => s + 1);
+  };
   const back = () => setStep((s) => Math.max(status.configured ? 2 : 0, s - 1));
 
   return (
@@ -249,6 +260,12 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
           )}
 
           {step === 6 && (
+            <StepBody title={t('ดูข้อมูลร้านผ่านหน้าเว็บ')} sub={t('เลือกว่าจะเก็บสำเนาข้อมูลไว้ที่ไหนเพื่อดูแดชบอร์ดออนไลน์ เปลี่ยนภายหลังได้ที่หน้าตั้งค่า')}>
+              <CloudChoice draft={cloud} onChange={setCloud} />
+            </StepBody>
+          )}
+
+          {step === 7 && (
             <StepBody title={t('ข้อมูลเริ่มต้น')} sub={t('นำเข้าสินค้าจาก Excel/CSV ได้ที่หน้า สินค้า → นำเข้า หลังตั้งค่าเสร็จ')}>
               <div className="flex flex-col gap-3">
                 <Choice active={sampleData} onClick={() => setSampleData(true)} title={t('ใส่ข้อมูลตัวอย่าง')} body={t('สินค้า หมวดหมู่{0} และสมาชิกตัวอย่างสำหรับ{1} ลบหรือแก้ไขได้ทั้งหมด', type === 'restaurant' || type === 'cafe' ? t(' โต๊ะ ตัวเลือกเสริม') : '', BUSINESS_TYPE_LABELS[type])} />
@@ -260,6 +277,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
                     <li>{tn('ประเภท: {0}', BUSINESS_TYPE_LABELS[type])}</li>
                     <li>VAT: {tax.vatEnabled ? `${tax.vatRate}% ${tax.pricesIncludeVat ? t('(รวมในราคา)') : t('(บวกเพิ่ม)')}` : t('ไม่จด')}</li>
                     <li>{tn('เจ้าของ: {0} ({1})', owner.name, owner.username)}</li>
+                    <li>{tn('แดชบอร์ดออนไลน์: {0}', cloud.mode === 'cloud' ? 'FlexPOS Cloud' : cloud.mode === 'self' ? cloud.url : t('ไม่ใช้ (เก็บในเครื่องนี้อย่างเดียว)'))}</li>
                   </ul>
                 </div>
               </div>
@@ -275,7 +293,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
             ) : step === STEPS.length - 1 ? (
               <Button variant="primary" size="lg" loading={busy} onClick={finish}>{t('เริ่มใช้งาน')}</Button>
             ) : (
-              <Button variant="primary" size="lg" onClick={next} disabled={(step === 2 && !storeOk) || (step === 5 && !ownerOk)}>{t('ถัดไป')}</Button>
+              <Button variant="primary" size="lg" onClick={next} disabled={(step === 2 && !storeOk) || (step === 5 && !ownerOk) || (step === 6 && !cloudDraftOk(cloud))}>{t('ถัดไป')}</Button>
             )}
           </div>
         </div>

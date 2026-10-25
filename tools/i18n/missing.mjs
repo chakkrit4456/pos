@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const dirs = ['apps/web/src', 'apps/server/src', 'packages/shared/src'];
+const dirs = ['apps/web/src', 'apps/server/src', 'apps/cloud/src', 'apps/cloud-web/src', 'packages/shared/src', 'packages/reports/src'];
 const call = /\b(?:t|tn|translate)\(\s*'((?:[^'\\]|\\.)*)'/g;
 const thai = /[฀-๿]/;
 

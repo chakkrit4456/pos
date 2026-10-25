@@ -8,7 +8,9 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel --filter @flexpos/server --filter @flexpos/web dev",
+    "dev:cloud": "pnpm -r --parallel --filter @flexpos/cloud --filter @flexpos/cloud-web dev",
     "build": "pnpm --filter @flexpos/web build && pnpm --filter @flexpos/server build",
+    "build:cloud": "pnpm --filter @flexpos/cloud-web build && pnpm --filter @flexpos/cloud build",
     "start": "pnpm --filter @flexpos/server start",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

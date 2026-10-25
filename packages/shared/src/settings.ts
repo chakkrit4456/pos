@@ -242,3 +242,6 @@ export const DEFAULT_PAYMENT_METHODS = [
 ] as const;
 
 export type PaymentKind = 'cash' | 'promptpay' | 'credit' | 'points' | 'other';
+
+/** FlexPOS Cloud: the vendor's hosted web dashboard. Stores may use their own server instead. */
+export const DEFAULT_CLOUD_URL = 'https://strata-pos.itdev.in.th';

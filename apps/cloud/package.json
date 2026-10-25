@@ -1,0 +1,33 @@
+{
+  "name": "@flexpos/cloud",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "build": "node build.mjs",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "@fastify/jwt": "^9.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/static": "^8.2.0",
+    "@fastify/websocket": "^11.1.0",
+    "@flexpos/db": "workspace:*",
+    "@flexpos/reports": "workspace:*",
+    "@flexpos/shared": "workspace:*",
+    "@node-rs/argon2": "^2.0.2",
+    "fastify": "^5.3.3",
+    "kysely": "^0.28.2",
+    "pg": "^8.23.1",
+    "zod": "^3.25.48"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.4",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.25.5"
+  }
+}

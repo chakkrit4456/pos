@@ -10,6 +10,7 @@ import { BrandSection } from './BrandSection';
 import { BankSection } from './BankSection';
 import { AuditSection, LicenseSection, RolesSection, StaffSection } from './AdminSections';
 import { BackupSection } from './BackupSection';
+import { CloudSection } from './CloudSection';
 import { CustomFieldsSection } from './CustomFieldsSection';
 import { t } from '@flexpos/shared';
 
@@ -29,6 +30,7 @@ const SECTIONS = [
   { id: 'staff', label: t('พนักงาน'), el: StaffSection },
   { id: 'roles', label: t('บทบาทและสิทธิ์'), el: RolesSection },
   { id: 'fields', label: t('ฟิลด์เพิ่มเติม'), el: CustomFieldsSection },
+  { id: 'cloud', label: t('แดชบอร์ดออนไลน์'), el: CloudSection },
   { id: 'backup', label: t('สำรองข้อมูล'), el: BackupSection },
   { id: 'license', label: 'License', el: LicenseSection },
   { id: 'audit', label: t('บันทึกการใช้งาน'), el: AuditSection },

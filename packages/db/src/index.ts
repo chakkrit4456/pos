@@ -1,3 +1,4 @@
 export * from './types.js';
 export * from './dialect.js';
-export { TABLE_NAMES } from './migrations.js';
+export * from './sync.js';
+export { TABLE_NAMES, TABLE_COLUMNS, migrationProvider, type ColumnKind } from './migrations.js';

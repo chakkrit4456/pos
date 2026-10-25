@@ -331,8 +331,33 @@ export function migrationProvider(dialect: Dialect): MigrationProvider {
         for (const t of [...TABLES_V1].reverse()) await db.schema.dropTable(t.name).ifExists().execute();
       },
     },
+    '0002_sync': {
+      // Change capture for cloud sync: triggers (installed only when a cloud target is set) append
+      // the touched row id here; the sync agent drains it in seq order.
+      async up(db) {
+        await db.schema
+          .createTable('sync_outbox')
+          .ifNotExists()
+          .addColumn('seq', dialect === 'postgres' ? 'bigserial' : dialect === 'mysql' ? 'bigint' : 'integer', (c) => (dialect === 'postgres' ? c.primaryKey() : c.primaryKey().autoIncrement()))
+          .addColumn('tbl', sql`varchar(64)`, (c) => c.notNull())
+          .addColumn('row_id', sql`varchar(64)`, (c) => c.notNull())
+          .execute();
+        await createTable(db, dialect, { name: 'sync_state', cols: [['k', 'short', PK], ['v', 'text']] });
+      },
+      async down(db) {
+        await db.schema.dropTable('sync_outbox').ifExists().execute();
+        await db.schema.dropTable('sync_state').ifExists().execute();
+      },
+    },
   };
   return { getMigrations: async () => migrations };
 }
 
 export const TABLE_NAMES = TABLES_V1.map((t) => t.name);
+
+export type ColumnKind = ColType;
+/** Column names and kinds per table, used to validate replicated rows. */
+export const TABLE_COLUMNS: Record<string, { name: string; kind: ColumnKind; nullable: boolean; default?: number }[]> = Object.fromEntries(
+  TABLES_V1.map((t) => [t.name, t.cols.map(([name, kind, opts = {}]) => ({ name, kind, nullable: !!opts.null, ...(opts.default !== undefined ? { default: opts.default } : {}) }))]),
+);
+

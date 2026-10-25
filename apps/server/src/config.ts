@@ -24,6 +24,21 @@ export interface AppConfig {
   /** random secret for JWT and PIN hashing */
   secret: string;
   installId: string;
+  /** where store data is copied for the web dashboard; absent until chosen */
+  cloud?: CloudConfig;
+}
+
+export interface CloudConfig {
+  /** cloud = FlexPOS Cloud, self = the store's own cloud server, local = this machine only */
+  mode: 'cloud' | 'self' | 'local';
+  url: string | null;
+  /** AES-256-GCM encrypted device token */
+  tokenEnc: string | null;
+  tenantId: string | null;
+  tenantName: string | null;
+  email: string | null;
+  deviceId: string | null;
+  connectedAt: string | null;
 }
 
 export function machineKey(): Buffer {

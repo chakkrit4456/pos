@@ -22,6 +22,8 @@ import { crmRoutes } from './routes/crm.js';
 import { restaurantRoutes } from './routes/restaurant.js';
 import { adminRoutes } from './routes/admin.js';
 import { reportRoutes } from './routes/reports.js';
+import { cloudRoutes } from './routes/cloud.js';
+import { CloudSync } from './services/cloudSync.js';
 import { t } from '@flexpos/shared';
 
 export interface ServerOptions {
@@ -39,6 +41,7 @@ export interface FlexServer {
   license: LicenseService;
   printer: PrintService;
   backup: BackupService;
+  cloud: CloudSync;
   close(): Promise<void>;
 }
 
@@ -55,6 +58,7 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
   const license = new LicenseService(opts.dataDir);
   const printer = new PrintService(ctx, opts.fontsDir);
   const backup = new BackupService(ctx);
+  const cloud = new CloudSync(ctx);
 
   const app = Fastify({
     logger: opts.logger
@@ -86,6 +90,7 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
   restaurantRoutes(app, ctx, printer);
   adminRoutes(app, ctx, printer, backup, license);
   reportRoutes(app, ctx);
+  cloudRoutes(app, ctx, cloud);
 
   /** Live events. Auth by access token in the query string (browsers cannot set WS headers). */
   app.get('/api/ws', { websocket: true }, async (socket, req) => {
@@ -137,6 +142,7 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
   if (opts.workers !== false) {
     printer.start();
     backup.start();
+    await cloud.start().catch((e) => console.warn('[flexpos] cloud sync not started', e));
   }
 
   return {
@@ -145,9 +151,11 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
     license,
     printer,
     backup,
+    cloud,
     async close() {
       printer.stop();
       backup.stop();
+      cloud.stop();
       await app.close();
       await ctx.close();
     },

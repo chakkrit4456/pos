@@ -1,0 +1,11 @@
+# Locally-managed Cloudflare Tunnel (alternative to the token install in install-debian.sh).
+#   cloudflared tunnel login
+#   cloudflared tunnel create flexpos-cloud
+#   cloudflared tunnel route dns flexpos-cloud strata-pos.itdev.in.th
+#   copy this file to /etc/cloudflared/config.yml, then: cloudflared service install
+tunnel: flexpos-cloud
+credentials-file: /etc/cloudflared/<TUNNEL-ID>.json
+ingress:
+  - hostname: strata-pos.itdev.in.th
+    service: http://127.0.0.1:4200
+  - service: http_status:404
