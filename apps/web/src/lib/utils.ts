@@ -49,3 +49,20 @@ export function qtyText(q: number): string {
 }
 
 export const isTouch = () => typeof window !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+
+let audio: AudioContext | null = null;
+/** Short scanner beep: high for a hit, low for an unknown code. */
+export function beep(ok = true) {
+  try {
+    audio ??= new AudioContext();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.frequency.value = ok ? 1800 : 320;
+    gain.gain.value = 0.08;
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + (ok ? 0.07 : 0.25));
+  } catch {
+    // no audio device: stay silent
+  }
+}

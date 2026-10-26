@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Minus, Plus, Search, Trash2, UserPlus } from 'lucide-react';
-import { resolveBasePrice, type Catalog, type CatalogProduct, type Discount, type Permission, t } from '@flexpos/shared';
+import { editionAllows, resolveBasePrice, type Catalog, type CatalogProduct, type Discount, type Permission, t } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { money } from '@/lib/settings';
 import { useSession } from '@/lib/session';
@@ -96,6 +96,21 @@ export function OptionsDialog({ product, catalog, tierId, onClose }: { product: 
       }
     >
       <div className="flex flex-col gap-5 pb-2">
+        {weighted && (
+          <OptionGroup label={t('น้ำหนัก')}>
+            {[0.1, 0.25, 0.5, 1, 2].map((w) => (
+              <OptionButton key={w} active={qty === w} onClick={() => setQty(w)}>
+                <span>{qtyText(w)} {product.unit}</span>
+                <span className="num text-[13px] opacity-75">{money(Math.round(unitPrice * w))}</span>
+              </OptionButton>
+            ))}
+          </OptionGroup>
+        )}
+        {weighted && (
+          <Field label={t('หรือใส่น้ำหนักเป็นกรัม')}>
+            <NumberInput autoFocus value={Math.round(qty * 1000)} onValue={(g) => setQty(Math.max(0, g) / 1000)} className="h-12 text-[18px]" />
+          </Field>
+        )}
         {product.kind === 'open_price' && (
           <Field label={t('ราคา (ราคาเปิด)')}>
             <MoneyInput autoFocus value={openPrice} onValue={setOpenPrice} className="h-12 text-[18px]" />
@@ -135,8 +150,8 @@ export function OptionsDialog({ product, catalog, tierId, onClose }: { product: 
             ))}
           </OptionGroup>
         ))}
-        <Field label={t('หมายเหตุ (ส่งถึงครัว/พิมพ์บนใบเสร็จ)')}>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('เช่น ไม่ใส่น้ำแข็ง')} maxLength={300} />
+        <Field label={editionAllows('restaurant') ? t('หมายเหตุ (ส่งถึงครัว/พิมพ์บนใบเสร็จ)') : t('หมายเหตุ')}>
+          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={editionAllows('restaurant') ? t('เช่น ไม่ใส่น้ำแข็ง') : undefined} maxLength={300} />
         </Field>
       </div>
     </Dialog>

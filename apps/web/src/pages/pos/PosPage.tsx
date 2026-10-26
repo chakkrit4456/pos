@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ChevronDown, PackageSearch, QrCode, Search, Send, UserRound, X, WifiOff, CloudUpload } from 'lucide-react';
-import { effectiveBillDiscount, priceCart, type CatalogProduct, type PromotionRule, type SaleInput, t } from '@flexpos/shared';
+import { ChevronDown, LayoutGrid, List, PackageSearch, QrCode, ScanBarcode, Search, Send, Trash2, UserRound, X, WifiOff, CloudUpload } from 'lucide-react';
+import { effectiveBillDiscount, parseScaleBarcode, priceCart, type CatalogProduct, type PromotionRule, type SaleInput, t } from '@flexpos/shared';
 import { api, errorMessage, registerName } from '@/lib/api';
 import { useBarcodeScanner, useCatalog } from '@/lib/catalog';
 import { useSession } from '@/lib/session';
@@ -11,7 +11,7 @@ import { money, useSettings } from '@/lib/settings';
 import { useLiveStatus, sendLive } from '@/lib/live';
 import { onPendingChange, syncOutbox } from '@/lib/offline';
 import type { PrinterInfo } from '@/lib/print';
-import { cn, qtyText, uuid } from '@/lib/utils';
+import { beep, cn, qtyText, uuid } from '@/lib/utils';
 import { Button, Chip, EmptyState, ErrorState, Kbd, Spinner } from '@/components/ui/core';
 import { useConfirm } from '@/components/ui/dialog';
 import { cart, useCart, type CartOrder, type SentItem } from './cart';
@@ -69,6 +69,9 @@ export default function PosPage() {
   const [pending, setPending] = useState(0);
   const [sending, setSending] = useState(false);
   const [slip, setSlip] = useState(false);
+  /** list layout: show the product grid instead of the cart table */
+  const [browse, setBrowse] = useState(false);
+  const listMode = settings.pos.layout === 'list';
   const searchRef = useRef<HTMLInputElement>(null);
 
   const shift = useQuery({ queryKey: ['shift', 'current'], queryFn: () => api.get<ShiftInfo | null>('/api/shifts/current'), staleTime: 30_000 });
@@ -163,18 +166,50 @@ export default function PosPage() {
     [catalog, tierId, settings.pos.allowNegativeStock],
   );
 
+  /**
+   * Barcode, SKU or label-scale code → cart. "3*CODE" sells 3 at once. Returns false when nothing matched.
+   * Exact codes win over scale codes, so in-store prefix-20 barcodes keep working.
+   */
+  const sellCode = useCallback(
+    (raw: string): boolean => {
+      if (!index) return false;
+      const m = /^(\d+(?:\.\d+)?)\*(.+)$/.exec(raw.trim());
+      const times = m ? Number(m[1]) : 1;
+      const code = (m ? m[2]! : raw).trim();
+      const hit = index.byCode.get(code) ?? index.byCode.get(code.toLowerCase());
+      const scale = hit ? null : parseScaleBarcode(index.catalog.products, code, settings.pos.scaleBarcode);
+      if (!hit && !scale) {
+        if (settings.pos.beep) beep(false);
+        toast.error(t('ไม่พบสินค้าบาร์โค้ด {0}', code), can('products.manage') ? { action: { label: t('เพิ่มสินค้าใหม่'), onClick: () => nav(`/products/new?barcode=${encodeURIComponent(code)}`) } } : undefined);
+        return false;
+      }
+      if (settings.pos.beep) beep(true);
+      if (scale) {
+        const p = scale.product;
+        const price = tierId && p.tierPrices[tierId] !== undefined ? p.tierPrices[tierId]! : p.price;
+        cart.add({ productId: p.id, variantId: null, unitId: null, name: p.name, sku: p.sku, qty: scale.qty, unitPrice: price, priceOverridden: false, modifiers: [], note: '', discount: null, categoryId: p.categoryId, taxable: p.taxable, kind: p.kind });
+        return true;
+      }
+      const before = cart.get().lines.map((l) => [l.id, l.qty] as const);
+      addProduct(hit!.product, { variantId: hit!.variantId, unitId: hit!.unitId });
+      if (times !== 1) {
+        // Quantity prefix: apply it to the line the scan just added or bumped (no-op if a dialog opened instead).
+        const prev = new Map(before);
+        const changed = cart.get().lines.find((l) => prev.get(l.id) !== l.qty);
+        if (changed) cart.setQty(changed.id, (prev.get(changed.id) ?? 0) + times);
+      }
+      return true;
+    },
+    [index, addProduct, settings.pos.scaleBarcode, settings.pos.beep, tierId, can, nav],
+  );
+
   const onScan = useCallback(
     (code: string) => {
       if (!index || dialog || optionsFor) return;
-      const hit = index.byCode.get(code) ?? index.byCode.get(code.toLowerCase());
-      if (!hit) {
-        toast.error(t('ไม่พบสินค้าบาร์โค้ด {0}', code));
-        return;
-      }
-      addProduct(hit.product, { variantId: hit.variantId, unitId: hit.unitId });
+      sellCode(code);
       setQ('');
     },
-    [index, addProduct, dialog, optionsFor],
+    [index, sellCode, dialog, optionsFor],
   );
   useBarcodeScanner(onScan, !!index);
 
@@ -257,6 +292,12 @@ export default function PosPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [settings.pos.hotkeys, settings.modules.members, dialog, optionsFor, cartEmpty, hold, openDrawer]);
 
+  // List layout is scan-first: hand focus back to the scan box whenever no dialog is open.
+  const shiftGate = settings.pos.requireShift && shift.isSuccess && !shift.data;
+  useEffect(() => {
+    if (listMode && !browse && !dialog && !optionsFor && !editLine && !done && !shiftGate) searchRef.current?.focus();
+  }, [listMode, browse, dialog, optionsFor, editLine, done, shiftGate, isLoading]);
+
   const buildLines = (): SaleInput['lines'] => {
     const s = cart.get();
     return [
@@ -296,17 +337,22 @@ export default function PosPage() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 const term = q.trim();
-                const hit = index.byCode.get(term) ?? index.byCode.get(term.toLowerCase());
-                if (hit) {
-                  addProduct(hit.product, { variantId: hit.variantId, unitId: hit.unitId });
+                if (!term) return;
+                if (index.byCode.has(term) || index.byCode.has(term.toLowerCase()) || /^\d+(\.\d+)?\*/.test(term) || /^\d{13}$/.test(term)) {
+                  sellCode(term);
                   setQ('');
                 } else if (products.length === 1) {
                   addProduct(products[0]!);
                   setQ('');
-                }
+                } else if (listMode && products.length > 1) setBrowse(true);
               } else if (e.key === 'Escape') setQ('');
+              else if (e.key === 'Delete' && !q && listMode) {
+                const last = cart.get().lines.at(-1);
+                if (last) cart.remove(last.id);
+              }
             }}
-            placeholder={t('ค้นหาชื่อ, SKU หรือสแกนบาร์โค้ด')}
+            autoFocus={listMode}
+            placeholder={listMode ? t('สแกนบาร์โค้ด หรือพิมพ์ชื่อ/SKU · 3*รหัส = 3 ชิ้น') : t('ค้นหาชื่อ, SKU หรือสแกนบาร์โค้ด')}
             className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
             aria-label={t('ค้นหาสินค้า')}
           />
@@ -318,10 +364,18 @@ export default function PosPage() {
             <Kbd>{settings.pos.hotkeys.search ?? 'F2'}</Kbd>
           )}
         </div>
+        {listMode && (
+          <Button className="h-12 flex-none" icon={browse ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />} onClick={() => setBrowse((b) => !b)}>
+            {browse ? t('รายการในบิล') : t('เลือกสินค้า')}
+          </Button>
+        )}
         <ConnectionPill online={online} pending={pending} />
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {listMode && !browse ? (
+          <CartTable lines={state.lines} onEdit={setEditLine} />
+        ) : (
         <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 md:p-[20px_24px_24px]">
           <div className="scroll-thin flex flex-none gap-2 overflow-x-auto pb-1">
             <Chip active={!cat} onClick={() => setCat(null)} count={catalog.products.filter((p) => p.showInPos).length}>{t('ทั้งหมด')}</Chip>
@@ -333,7 +387,7 @@ export default function PosPage() {
           </div>
           <div className="scroll-thin grid min-h-0 flex-1 content-start gap-3 overflow-y-auto" style={{ gridTemplateColumns: settings.pos.gridColumns ? `repeat(${settings.pos.gridColumns}, minmax(0,1fr))` : 'repeat(auto-fill, minmax(136px, 1fr))' }}>
             {products.map((p) => (
-              <ProductTile key={p.id} p={p} qty={inCart.get(p.id) ?? 0} showImage={settings.pos.showImages} onAdd={() => addProduct(p)} />
+              <ProductTile key={p.id} p={p} qty={inCart.get(p.id) ?? 0} showImage={settings.pos.showImages} onAdd={() => { addProduct(p); if (listMode) { setBrowse(false); setQ(''); } }} />
             ))}
             {products.length === 0 && (
               <div className="col-span-full">
@@ -347,13 +401,14 @@ export default function PosPage() {
             )}
           </div>
         </section>
+        )}
 
         <aside className="flex max-h-[55vh] min-h-0 w-full flex-none flex-col border-t border-line bg-surface md:max-h-none md:w-[320px] md:border-l md:border-t-0 xl:w-[380px]">
           <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-[18px]">
             <button onClick={() => setDialog('bills')} className="flex min-h-[48px] items-center gap-2.5 rounded-xl border border-line-strong bg-sunken px-3 py-1.5 text-left">
               <span className="flex flex-col">
                 <span className="text-[17px] font-semibold leading-tight">{billTitle}</span>
-                <span className="text-[13px] text-muted">{itemCount ? t('{0} รายการ', qtyText(itemCount)) : t('แตะเพื่อเลือกโต๊ะ/บิลที่พักไว้')}</span>
+                <span className="text-[13px] text-muted">{itemCount ? t('{0} รายการ', qtyText(itemCount)) : settings.modules.restaurant ? t('แตะเพื่อเลือกโต๊ะ/บิลที่พักไว้') : t('แตะเพื่อเรียกบิลที่พักไว้')}</span>
               </span>
               <ChevronDown className="h-4 w-4 text-muted" />
             </button>
@@ -406,7 +461,13 @@ export default function PosPage() {
                 <span className="rounded-full bg-soft px-2 py-0.5">{t('ยังไม่ส่งครัว')}</span>
               </div>
             )}
-            {state.lines.map((l) => (
+            {listMode && !browse && !cartEmpty && (
+              <div className="flex flex-col gap-1 py-4 text-[14px] text-muted">
+                <span className="text-[13px]">{t('จำนวนรายการ')}</span>
+                <span className="num text-[28px] font-semibold text-ink">{state.lines.length}</span>
+              </div>
+            )}
+            {(!listMode || browse) && state.lines.map((l) => (
               <div key={l.id} className="flex items-center gap-3 border-b border-line-soft py-3">
                 <button className="flex min-w-0 flex-1 flex-col gap-0.5 text-left" onClick={() => setEditLine(l.id)}>
                   <span className="text-[15px] font-medium">{l.name}</span>
@@ -440,7 +501,7 @@ export default function PosPage() {
             {cartEmpty && (
               <div className="flex flex-col items-center gap-1.5 px-3 py-14 text-center">
                 <span className="text-[16px] font-semibold">{t('ยังไม่มีรายการ')}</span>
-                <span className="text-[14px] text-muted [text-wrap:pretty]">{t('แตะสินค้าทางซ้าย หรือสแกนบาร์โค้ดได้ทันทีโดยไม่ต้องคลิกช่องค้นหา')}</span>
+                <span className="text-[14px] text-muted [text-wrap:pretty]">{listMode ? t('สแกนบาร์โค้ดได้ทันที หรือกด “เลือกสินค้า” เพื่อดูสินค้าทั้งหมด') : t('แตะสินค้าทางซ้าย หรือสแกนบาร์โค้ดได้ทันทีโดยไม่ต้องคลิกช่องค้นหา')}</span>
               </div>
             )}
           </div>
@@ -506,7 +567,7 @@ export default function PosPage() {
           sendLive({ type: 'display.update', register: registerName(), payload: { state: 'done', lines: [], subtotal: 0, discount: 0, total: d.total, qr: null, change: d.change } });
         }}
       />
-      <DoneDialog done={done} printers={printers.data ?? []} onClose={() => (setDone(null), searchRef.current?.focus())} />
+      <DoneDialog done={done} printers={printers.data ?? []} onClose={() => (setDone(null), setBrowse(false), searchRef.current?.focus())} />
       {slip && state.order && <BillSlipDialog orderId={state.order.id} customerId={state.customer?.id} onClose={() => setSlip(false)} />}
       <ApprovalHost />
       {needShift && <OpenShiftGate onOpened={() => void shift.refetch()} />}
@@ -524,6 +585,71 @@ function groupRounds(items: SentItem[]) {
     time: new Date(its[0]!.createdAt).toTimeString().slice(0, 5),
     ready: its.every((i) => i.status === 'ready' || i.status === 'served'),
   }));
+}
+
+/** List layout: the bill as a full-width table, newest line last. */
+function CartTable({ lines, onEdit }: { lines: ReturnType<typeof useCart>['lines']; onEdit: (id: string) => void }) {
+  const end = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'nearest' });
+  }, [lines.length]);
+  if (!lines.length)
+    return (
+      <section className="grid min-h-0 flex-1 place-items-center p-6">
+        <EmptyState icon={<ScanBarcode className="h-6 w-6" />} title={t('พร้อมสแกน')} body={t('ยิงบาร์โค้ดสินค้าหรือบาร์โค้ดจากตาชั่ง รายการจะขึ้นที่นี่')} />
+      </section>
+    );
+  return (
+    <section className="scroll-thin min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:p-[20px_24px_24px]">
+      <table className="w-full border-separate border-spacing-0 text-[15px]">
+        <thead className="sticky top-0 bg-canvas text-left text-[13px] text-muted">
+          <tr>
+            <th className="w-10 py-2 font-medium">#</th>
+            <th className="py-2 font-medium">{t('สินค้า')}</th>
+            <th className="py-2 text-right font-medium">{t('ราคา/หน่วย')}</th>
+            <th className="py-2 text-center font-medium">{t('จำนวน')}</th>
+            <th className="py-2 text-right font-medium">{t('รวม')}</th>
+            <th className="w-12" />
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l, i) => (
+            <tr key={l.id} className={cn('bg-surface', i === lines.length - 1 && 'bg-soft')}>
+              <td className="num border-b border-line-soft py-2.5 pl-2 text-muted">{i + 1}</td>
+              <td className="border-b border-line-soft py-2.5">
+                <button className="flex flex-col text-left" onClick={() => onEdit(l.id)}>
+                  <span className="font-medium">{l.name}</span>
+                  <span className="font-mono text-[12px] text-muted">
+                    {l.sku}
+                    {(l.discount || l.priceOverridden) && <span className="ml-2 font-sans text-warn">{[l.discount && t('ลด {0}', l.discount.kind === 'percent' ? l.discount.value + '%' : money(l.discount.value)), l.priceOverridden && t('แก้ราคา')].filter(Boolean).join(' · ')}</span>}
+                  </span>
+                </button>
+              </td>
+              <td className="num border-b border-line-soft py-2.5 text-right">{money(l.unitPrice)}</td>
+              <td className="border-b border-line-soft py-2.5">
+                {l.kind === 'weighted' ? (
+                  <button onClick={() => onEdit(l.id)} className="num mx-auto block h-10 rounded-[10px] border border-line-strong px-3 text-[14px] font-semibold">{qtyText(l.qty)}</button>
+                ) : (
+                  <div className="mx-auto flex w-fit items-center overflow-hidden rounded-[10px] border border-line-strong">
+                    <button onClick={() => cart.inc(l.id, -1)} className="h-10 w-10 bg-sunken text-[18px]" aria-label={t('ลด {0}', l.name)}>−</button>
+                    <span className="num w-[40px] text-center font-semibold">{qtyText(l.qty)}</span>
+                    <button onClick={() => cart.inc(l.id, 1)} className="h-10 w-10 bg-sunken text-[18px]" aria-label={t('เพิ่ม {0}', l.name)}>+</button>
+                  </div>
+                )}
+              </td>
+              <td className="num border-b border-line-soft py-2.5 text-right font-semibold">{money(Math.round(l.unitPrice * l.qty))}</td>
+              <td className="border-b border-line-soft py-2.5 text-right">
+                <button onClick={() => cart.remove(l.id)} className="grid h-10 w-10 place-items-center text-faint hover:text-danger" aria-label={t('ลบ {0}', l.name)}>
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div ref={end} />
+    </section>
+  );
 }
 
 function SumRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {

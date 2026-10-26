@@ -10,7 +10,7 @@ import { Dialog, useConfirm } from '@/components/ui/dialog';
 import { NumberInput } from '@/components/ui/inputs';
 import { QrImage } from '@/components/PrintDocView';
 import { SaveBar, SectionTitle, useDraft } from './common';
-import { t } from '@flexpos/shared';
+import { editionAllows, t } from '@flexpos/shared';
 import { tn } from '@/lib/i18n';
 
 interface Printer {
@@ -29,7 +29,9 @@ interface Printer {
   lastError: string;
   queued: number;
 }
-const ROLE: Record<Printer['role'], string> = { receipt: t('ใบเสร็จ'), kitchen: t('ครัว'), bar: t('บาร์'), label: t('สติกเกอร์') };
+const ROLE: Partial<Record<Printer['role'], string>> = editionAllows('restaurant')
+  ? { receipt: t('ใบเสร็จ'), kitchen: t('ครัว'), bar: t('บาร์'), label: t('สติกเกอร์') }
+  : { receipt: t('ใบเสร็จ'), label: t('สติกเกอร์') };
 
 export function PrintersSection() {
   const qc = useQueryClient();
@@ -124,7 +126,7 @@ export function PrintersSection() {
             <div className="flex min-w-[200px] flex-1 flex-col gap-0.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[16px] font-semibold">{p.name}</span>
-                <Badge tone="info">{ROLE[p.role]}</Badge>
+                <Badge tone="info">{ROLE[p.role] ?? p.role}</Badge>
                 {!p.active ? <Badge>{t('ปิด')}</Badge> : p.kind === 'network' ? p.online ? <Badge tone="success">{t('พร้อม')}</Badge> : <Badge tone="danger">{tn('ออฟไลน์{0}', p.queued ? t(' · รอ {0}', p.queued) : '')}</Badge> : <Badge>{t('เครื่องพิมพ์ Windows')}</Badge>}
               </div>
               <span className="text-[13px] text-muted">{p.paper}mm · {p.textMode === 'thai' ? t('โหมดข้อความ (CP874)') : t('โหมดภาพ (รองรับภาษาไทยทุกรุ่น)')}{p.categoryIds.length ? ` · ${p.categoryIds.map((c) => cats.data?.find((x) => x.id === c)?.name).filter(Boolean).join(', ')}` : ''}</span>

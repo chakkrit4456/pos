@@ -12,24 +12,24 @@ import { AuditSection, LicenseSection, RolesSection, StaffSection } from './Admi
 import { BackupSection } from './BackupSection';
 import { CloudSection } from './CloudSection';
 import { CustomFieldsSection } from './CustomFieldsSection';
-import { t } from '@flexpos/shared';
+import { editionAllows, t, type EditionFeature } from '@flexpos/shared';
 
-const SECTIONS = [
+const SECTIONS: { id: string; label: string; el: () => JSX.Element | null; module?: 'restaurant' | 'multiBranch'; feature?: EditionFeature }[] = [
   { id: 'store', label: t('ข้อมูลร้าน'), el: StoreSection },
   { id: 'receipt', label: t('ใบเสร็จ'), el: ReceiptSection },
-  { id: 'tax', label: t('ภาษีและค่าบริการ'), el: TaxSection },
+  { id: 'tax', label: editionAllows('restaurant') ? t('ภาษีและค่าบริการ') : t('ภาษี'), el: TaxSection },
   { id: 'banks', label: t('บัญชีรับเงิน'), el: BankSection },
   { id: 'payments', label: t('วิธีชำระเงิน'), el: PaymentsSection },
   { id: 'pos', label: t('หน้าขาย'), el: PosSection },
   { id: 'modules', label: t('โมดูลและฟีเจอร์'), el: ModulesSection },
   { id: 'brand', label: t('หน้าตาและภาษา'), el: BrandSection },
   { id: 'printers', label: t('เครื่องพิมพ์'), el: PrintersSection },
-  { id: 'devices', label: t('อุปกรณ์และเครือข่าย'), el: DevicesSection },
+  { id: 'devices', label: t('อุปกรณ์และเครือข่าย'), el: DevicesSection, feature: 'devices' },
   { id: 'tables', label: t('โต๊ะและโซน'), el: TablesSection, module: 'restaurant' as const },
   { id: 'branches', label: t('สาขา'), el: BranchesSection, module: 'multiBranch' as const },
   { id: 'staff', label: t('พนักงาน'), el: StaffSection },
-  { id: 'roles', label: t('บทบาทและสิทธิ์'), el: RolesSection },
-  { id: 'fields', label: t('ฟิลด์เพิ่มเติม'), el: CustomFieldsSection },
+  { id: 'roles', label: t('บทบาทและสิทธิ์'), el: RolesSection, feature: 'customRoles' },
+  { id: 'fields', label: t('ฟิลด์เพิ่มเติม'), el: CustomFieldsSection, feature: 'customFields' },
   { id: 'cloud', label: t('แดชบอร์ดออนไลน์'), el: CloudSection },
   { id: 'backup', label: t('สำรองข้อมูล'), el: BackupSection },
   { id: 'license', label: 'License', el: LicenseSection },
@@ -40,7 +40,7 @@ export default function SettingsPage() {
   const { section = 'store' } = useParams();
   const nav = useNavigate();
   const settings = useSettings();
-  const visible = SECTIONS.filter((s) => !s.module || settings.modules[s.module]);
+  const visible = SECTIONS.filter((s) => (!s.module || settings.modules[s.module]) && (!s.feature || editionAllows(s.feature)));
   const current = visible.find((s) => s.id === section) ?? visible[0]!;
   const El = current.el;
   return (

@@ -1,5 +1,6 @@
 import type { Discount } from './pricing.js';
 import type { CatalogModifierGroup, CatalogProduct } from './types.js';
+import { ean13CheckDigit } from './format.js';
 import { t } from './i18n.js';
 
 /** Base unit price (satang) for a product/variant/unit at the customer's price tier, before modifiers. */
@@ -63,4 +64,28 @@ export function findByCode(products: CatalogProduct[], code: string) {
     for (const u of p.units) if (u.barcodes.includes(c)) return { product: p, variantId: null, unitId: u.id };
   }
   return null;
+}
+
+export interface ScaleBarcodeConfig {
+  enabled: boolean;
+  prefixes: string[];
+  /** what the 5-digit value carries: weight in grams, or price in satang */
+  value: 'weight' | 'price';
+}
+
+/**
+ * Label-scale barcodes: EAN-13 `PP IIIII VVVVV C` — a 2-digit prefix (21–29; 20 is used for in-store codes), the 5-digit item code
+ * (matched to a weighted product's SKU or barcode), then the weight in grams or the price in satang.
+ * Returns the product and the quantity in the product's unit (kg), or null when the code is not one.
+ */
+export function parseScaleBarcode(products: CatalogProduct[], code: string, cfg: ScaleBarcodeConfig) {
+  const c = code.trim();
+  if (!cfg.enabled || !/^\d{13}$/.test(c) || !cfg.prefixes.includes(c.slice(0, 2))) return null;
+  if (ean13CheckDigit(c) !== Number(c[12])) return null;
+  const item = c.slice(2, 7);
+  const value = Number(c.slice(7, 12));
+  const product = products.find((p) => p.kind === 'weighted' && (p.sku === item || p.barcodes.includes(item) || (/^\d+$/.test(p.sku) && Number(p.sku) === Number(item))));
+  if (!product || value <= 0) return null;
+  const qty = cfg.value === 'weight' ? value / 1000 : product.price > 0 ? Math.round((value / product.price) * 1000) / 1000 : 0;
+  return qty > 0 ? { product, qty } : null;
 }

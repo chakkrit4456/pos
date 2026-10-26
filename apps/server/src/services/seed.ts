@@ -166,6 +166,49 @@ const seeds = (): Record<BusinessType, SeedSet> => ({
       },
     ],
   },
+  grocery: {
+    categories: [
+      {
+        name: t('เครื่องดื่ม'),
+        color: '#d9e8f2',
+        products: [
+          { name: t('น้ำดื่ม 600 มล.'), price: 700, sku: 'G001', cost: 450, stock: 120, barcode: '8850999320014' },
+          { name: t('โค้ก 325 มล.'), price: 1700, sku: 'G002', cost: 1200, stock: 96, barcode: '8851959132012' },
+          { name: t('นมจืด 225 มล.'), price: 1300, sku: 'G003', cost: 950, stock: 48, barcode: '8851234567946' },
+          { name: t('กาแฟกระป๋อง'), price: 1500, sku: 'G004', cost: 1000, stock: 4, barcode: '8851123212014' },
+        ],
+      },
+      {
+        name: t('ของแห้ง'),
+        color: '#f3e3c3',
+        products: [
+          { name: t('ข้าวหอมมะลิ 5 กก.'), price: 22500, sku: 'G101', cost: 18000, stock: 20, barcode: '8851234567953' },
+          { name: t('บะหมี่กึ่งสำเร็จรูป'), price: 700, sku: 'G102', cost: 500, stock: 150, barcode: '8851234567960' },
+          { name: t('น้ำปลา 700 มล.'), price: 3500, sku: 'G103', cost: 2600, stock: 24, barcode: '8851234567977' },
+          { name: t('ไข่ไก่ (แผง 30 ฟอง)'), price: 13500, sku: 'G104', cost: 11000, stock: 10, barcode: '8851234567984' },
+        ],
+      },
+      {
+        name: t('ของใช้'),
+        color: '#e6e1f0',
+        products: [
+          { name: t('สบู่ก้อน'), price: 2500, sku: 'G201', cost: 1600, stock: 30, barcode: '8851234567915' },
+          { name: t('ผงซักฟอก 800 ก.'), price: 5900, sku: 'G202', cost: 4500, stock: 18, barcode: '8851234567991' },
+          { name: t('ทิชชู่ม้วน 6 ม้วน'), price: 8900, sku: 'G203', cost: 6500, stock: 10, barcode: '8851234567939' },
+        ],
+      },
+      {
+        // SKU = 5-digit item code printed by label scales (barcode 2X IIIII VVVVV C)
+        name: t('ผักผลไม้ / ของสด (ชั่งน้ำหนัก)'),
+        color: '#dcebd6',
+        products: [
+          { name: t('หมูสับ'), price: 16000, sku: '00123', cost: 12000, stock: 10, unit: t('กก.'), kind: 'weighted' },
+          { name: t('กล้วยหอม'), price: 6000, sku: '00124', cost: 3500, stock: 20, unit: t('กก.'), kind: 'weighted' },
+          { name: t('มะนาว'), price: 8000, sku: '00125', cost: 5000, stock: 8, unit: t('กก.'), kind: 'weighted' },
+        ],
+      },
+    ],
+  },
   fashion: {
     categories: [
       {

@@ -13,3 +13,18 @@ test-results
 *.tsbuildinfo
 .license-keys/
 apps/desktop/release-build.log
+
+# Stock footage for marketing videos (large, re-downloadable from Pexels)
+docs/video-scripts/footage/
+docs/video-scripts/build/frames/
+docs/video-scripts/build/seg/
+docs/video-scripts/build/check/
+docs/video-scripts/build/sheets/
+docs/video-scripts/build/vo/
+docs/video-scripts/build/*.mp4
+docs/video-scripts/build/*.wav
+docs/video-scripts/build/*.log
+docs/video-scripts/*.mp4
+
+# Built release zips (too large for git)
+delivery/out/

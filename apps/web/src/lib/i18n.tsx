@@ -4,11 +4,15 @@ import { getLanguage, setLanguage, tParts, type Language } from '@flexpos/shared
 // Imported first by main.tsx so module-level t() calls already see the right language.
 const KEY = 'flexpos.lang';
 
+// Editions built with VITE_DEFAULT_LANG=en start in English until the user picks a language.
+const fallback: Language = import.meta.env.VITE_DEFAULT_LANG === 'en' ? 'en' : 'th';
+
 function stored(): Language {
   try {
-    return localStorage.getItem(KEY) === 'en' ? 'en' : 'th';
+    const v = localStorage.getItem(KEY);
+    return v === 'en' || v === 'th' ? v : fallback;
   } catch {
-    return 'th';
+    return fallback;
   }
 }
 

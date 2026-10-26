@@ -5,6 +5,7 @@
 //        --plan pro --devices 5 --branches 3 --days 365 [--key .license-keys/private.pem]
 //
 // --machine "*" issues a floating key (any machine). Omit --days for a perpetual license.
+// --plan lite issues a FlexPOS Lite key: always one machine (a real Machine ID) and one branch.
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
@@ -15,12 +16,17 @@ if (!args.licensee || !args.machine) {
   console.error('ต้องระบุ --licensee และ --machine (ดู Machine ID ได้ที่ ตั้งค่า → License)');
   process.exit(1);
 }
+const lite = args.plan === 'lite';
+if (lite && args.machine === '*') {
+  console.error('FlexPOS Lite ใช้ได้ 1 เครื่องต่อ 1 License: --machine ต้องเป็น Machine ID ของเครื่องนั้น ห้ามใช้ "*"');
+  process.exit(1);
+}
 const keyFile = args.key ?? process.env.FLEXPOS_LICENSE_PRIVATE_KEY ?? '.license-keys/private.pem';
 const payload = {
   licensee: args.licensee,
   plan: args.plan ?? 'standard',
-  maxDevices: Number(args.devices ?? 3),
-  maxBranches: Number(args.branches ?? 1),
+  maxDevices: lite ? 1 : Number(args.devices ?? 3),
+  maxBranches: lite ? 1 : Number(args.branches ?? 1),
   machineId: args.machine,
   issuedAt: new Date().toISOString(),
   expiresAt: args.days ? new Date(Date.now() + Number(args.days) * 86400_000).toISOString() : null,

@@ -11,3 +11,4 @@ export * from './cart.js';
 export * from './banks.js';
 export * from './i18n.js';
 export * from './license.js';
+export * from './edition.js';

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FlexPOS — คู่มือเริ่มต้น</title>
+<style>
+  :root { --ink:#17191c; --muted:#5f6368; --line:#e3e1da; --bg:#f6f5f1; --card:#fff; --accent:#1d7a57; --soft:#e4f2ea; --warn:#fff4dc; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink:#ecebe7; --muted:#a8aaad; --line:#34363a; --bg:#17191c; --card:#202226; --soft:#1d3329; --warn:#3a3020; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.7 "Segoe UI", Tahoma, system-ui, sans-serif; }
+  header { background:#17191c; color:#fff; padding:32px 16px; }
+  header .in, main { max-width:980px; margin:0 auto; }
+  header h1 { margin:0 0 4px; font-size:30px; }
+  header p { margin:0; color:#c9cbce; }
+  nav { max-width:980px; margin:20px auto 0; padding:0 16px; display:flex; flex-wrap:wrap; gap:8px; }
+  nav a { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:6px 14px; color:var(--ink); text-decoration:none; font-size:14px; }
+  main { padding:8px 16px 64px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; margin-top:20px; }
+  h2 { margin:0 0 12px; font-size:22px; }
+  h3 { margin:20px 0 8px; font-size:17px; }
+  ol, ul { padding-left:22px; } li { margin:4px 0; }
+  figure { margin:16px 0; } figure img { width:100%; height:auto; border:1px solid var(--line); border-radius:12px; display:block; }
+  figcaption { color:var(--muted); font-size:14px; margin-top:6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+  .tip { background:var(--soft); border-radius:12px; padding:12px 16px; margin:12px 0; }
+  .warn { background:var(--warn); border-radius:12px; padding:12px 16px; margin:12px 0; }
+  code, kbd { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:14px; }
+  .phone img { max-width:300px; }
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>FlexPOS</h1>
+  <p>ระบบขายหน้าร้านสำหรับร้านอาหาร คาเฟ่ และร้านค้า — คู่มือเริ่มต้น เวอร์ชัน 1.0.0</p>
+</div></header>
+<nav>
+  <a href="#install">1. ติดตั้ง</a><a href="#setup">2. ตั้งค่าร้าน</a><a href="#sell">3. การขาย</a><a href="#tables">4. โต๊ะและครัว</a>
+  <a href="#menu">5. สินค้าและสต็อก</a><a href="#devices">6. อุปกรณ์และเครื่องพิมพ์</a><a href="#online">7. แดชบอร์ดออนไลน์</a><a href="#license">8. License</a>
+</nav>
+<main>
+
+<section id="install">
+  <h2>1. ติดตั้ง</h2>
+  <ol>
+    <li>ดับเบิลคลิก <code>FlexPOS-Setup.exe</code> แล้วทำตามขั้นตอน (ถ้ามี SmartScreen กด <b>More info → Run anyway</b>)</li>
+    <li>เปิด <b>FlexPOS</b> จากไอคอนบนหน้าจอ ตัวช่วยตั้งค่าร้านจะเปิดขึ้นอัตโนมัติ</li>
+  </ol>
+</section>
+
+<section id="setup">
+  <h2>2. ตั้งค่าร้าน (ทำครั้งเดียว)</h2>
+  <div class="grid">
+    <figure><img src="images/01-setup-language.png" alt="เลือกภาษา" /><figcaption>เลือกภาษาไทยหรือ English</figcaption></figure>
+    <figure><img src="images/02-setup-database.png" alt="ฐานข้อมูล" /><figcaption>แนะนำ “เก็บในเครื่องนี้” หรือเชื่อมเครื่อง Host สำหรับจุดขายเพิ่ม</figcaption></figure>
+    <figure><img src="images/03-setup-store.png" alt="ข้อมูลร้าน" /><figcaption>ชื่อร้าน ที่อยู่ เลขผู้เสียภาษี และ PromptPay</figcaption></figure>
+    <figure><img src="images/04-setup-business.png" alt="ประเภทธุรกิจ" /><figcaption>เลือกประเภทธุรกิจ ระบบจะเปิดโมดูลที่เหมาะให้</figcaption></figure>
+    <figure><img src="images/06-setup-owner.png" alt="บัญชีเจ้าของ" /><figcaption>ตั้งรหัสผ่านและ PIN ของเจ้าของร้าน</figcaption></figure>
+    <figure><img src="images/07-setup-sample.png" alt="ข้อมูลตัวอย่าง" /><figcaption>เปิดข้อมูลตัวอย่างเพื่อทดลองใช้</figcaption></figure>
+  </div>
+</section>
+
+<section id="sell">
+  <h2>3. การขาย</h2>
+  <ol>
+    <li>เข้าสู่ระบบด้วย PIN แล้ว <b>เปิดกะ</b> พร้อมนับเงินทอนเริ่มต้น</li>
+    <li>แตะสินค้า หรือยิงบาร์โค้ดได้ทันทีโดยไม่ต้องคลิกช่องค้นหา</li>
+    <li>กด <kbd>F12</kbd> หรือปุ่ม <b>ชำระเงิน</b> เลือกเงินสด PromptPay QR โอน หรือบัตร</li>
+  </ol>
+  <div class="grid">
+    <figure><img src="images/10-pos.png" alt="หน้าขาย" /><figcaption>หน้าขายแบบปุ่มสินค้า</figcaption></figure>
+    <figure><img src="images/11-pos-options.png" alt="ตัวเลือก" /><figcaption>ตัวเลือกสินค้า เช่น ขนาด ความหวาน</figcaption></figure>
+    <figure><img src="images/13-pay-cash.png" alt="รับเงินสด" /><figcaption>รับเงินสด คำนวณเงินทอนอัตโนมัติ</figcaption></figure>
+    <figure><img src="images/14-pay-promptpay.png" alt="PromptPay" /><figcaption>QR PromptPay พร้อมยอดเงิน</figcaption></figure>
+  </div>
+  <div class="tip">ร้านขายของชำหรือมินิมาร์ทเปลี่ยนเป็นหน้าขาย <b>แบบรายการ (สแกนเป็นหลัก)</b> ได้ที่ ตั้งค่า → หน้าขาย</div>
+</section>
+
+<section id="tables">
+  <h2>4. โต๊ะและครัว</h2>
+  <div class="grid">
+    <figure><img src="images/16-tables.png" alt="ผังโต๊ะ" /><figcaption>ผังโต๊ะ แตะโต๊ะเพื่อเปิดบิล</figcaption></figure>
+    <figure><img src="images/18-orders.png" alt="ออเดอร์" /><figcaption>รายการออเดอร์ทั้งหมด</figcaption></figure>
+    <figure><img src="images/20-bill-slip.png" alt="ใบแจ้งยอด" /><figcaption>ใบแจ้งยอดพร้อม QR ให้ลูกค้าสแกนจ่ายที่โต๊ะ</figcaption></figure>
+    <figure><img src="images/21-kitchen.png" alt="จอครัว" /><figcaption>จอครัว (KDS)</figcaption></figure>
+  </div>
+</section>
+
+<section id="menu">
+  <h2>5. สินค้าและสต็อก</h2>
+  <div class="grid">
+    <figure><img src="images/23-products.png" alt="สินค้า" /><figcaption>สินค้า นำเข้าจาก Excel/CSV ได้</figcaption></figure>
+    <figure><img src="images/24-product-editor.png" alt="แก้ไขสินค้า" /><figcaption>ราคา ต้นทุน บาร์โค้ด หน่วยขาย</figcaption></figure>
+    <figure><img src="images/26-stock.png" alt="สต็อก" /><figcaption>รับเข้า ปรับ นับ โอนสต็อก</figcaption></figure>
+    <figure><img src="images/28-promotions.png" alt="โปรโมชั่น" /><figcaption>โปรโมชั่นอัตโนมัติ</figcaption></figure>
+  </div>
+</section>
+
+<section id="devices">
+  <h2>6. อุปกรณ์และเครื่องพิมพ์</h2>
+  <ul>
+    <li>แท็บเล็ตหรือมือถือใน Wi-Fi เดียวกันเปิดลิงก์ที่ ตั้งค่า → อุปกรณ์และเครือข่าย ได้ทันที</li>
+    <li>เพิ่มเครื่องพิมพ์ใบเสร็จ ครัว หรือบาร์ ที่ ตั้งค่า → เครื่องพิมพ์</li>
+  </ul>
+  <div class="grid">
+    <figure><img src="images/40-settings-printers.png" alt="เครื่องพิมพ์" /><figcaption>ตั้งค่าเครื่องพิมพ์</figcaption></figure>
+    <figure><img src="images/41-settings-devices.png" alt="อุปกรณ์" /><figcaption>อุปกรณ์และเครือข่าย</figcaption></figure>
+  </div>
+</section>
+
+<section id="online">
+  <h2>7. แดชบอร์ดออนไลน์</h2>
+  <p>ดูยอดขายผ่านเว็บได้ทุกที่ที่ <a href="https://strata-pos.itdev.in.th">strata-pos.itdev.in.th</a> ข้อมูลที่ขายตอนออฟไลน์จะส่งขึ้นอัตโนมัติเมื่อกลับมาออนไลน์</p>
+  <figure><img src="images/22-dashboard.png" alt="ภาพรวม" /><figcaption>ภาพรวมยอดขายในเครื่อง</figcaption></figure>
+</section>
+
+<section id="license">
+  <h2>8. License</h2>
+  <ul>
+    <li>ทดลองใช้ฟรี 14 วัน จากนั้นใส่ License key ที่ ตั้งค่า → License</li>
+    <li>key เดียวใช้ได้หลายเครื่องในร้านตามแพ็กเกจ และไม่มีวันหมดอายุ</li>
+  </ul>
+  <figure><img src="images/47-settings-license.png" alt="License" /><figcaption>หน้า License แสดง Machine ID และจำนวนเครื่องที่รองรับ</figcaption></figure>
+  <div class="warn">สำรองข้อมูลสม่ำเสมอที่ ตั้งค่า → สำรองข้อมูล</div>
+</section>
+
+</main>
+</body>
+</html>

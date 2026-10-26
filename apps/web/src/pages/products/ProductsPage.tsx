@@ -17,7 +17,7 @@ import { MoneyInput, NumberInput } from '@/components/ui/inputs';
 import { ImportDialog } from './ImportDialog';
 import { CategoriesTab, ModifiersTab, TiersTab } from './CatalogTabs';
 import { LabelsDialog } from './LabelsDialog';
-import { t } from '@flexpos/shared';
+import { editionAllows, t } from '@flexpos/shared';
 import { tn } from '@/lib/i18n';
 
 export interface ProductRow {
@@ -64,7 +64,7 @@ export default function ProductsPage() {
         options={[
           { value: 'products', label: t('สินค้า') },
           { value: 'categories', label: t('หมวดหมู่') },
-          { value: 'modifiers', label: t('ตัวเลือกเสริม') },
+          ...(editionAllows('modifiers') ? [{ value: 'modifiers' as const, label: t('ตัวเลือกเสริม') }] : []),
           { value: 'tiers', label: t('ระดับราคา') },
         ]}
       />

@@ -6,7 +6,7 @@ import { GripVertical, ImagePlus, Plus } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { BUSINESS_TYPE_LABELS, BUSINESS_TYPES, RECEIPT_SECTION_LABELS, RECEIPT_SECTIONS, isValidThaiTaxId, type PrintDoc, type ReceiptSection as RS, t } from '@flexpos/shared';
+import { BUSINESS_TYPE_LABELS, EDITION_BUSINESS_TYPES, LITE_DISABLED_MODULES, IS_LITE, RECEIPT_SECTION_LABELS, RECEIPT_SECTIONS, isValidThaiTaxId, type PrintDoc, type ReceiptSection as RS, t } from '@flexpos/shared';
 import { api, errorMessage, registerName, setRegisterName } from '@/lib/api';
 import { money, useSettings } from '@/lib/settings';
 import { imageToDataUrl } from '@/lib/utils';
@@ -42,7 +42,7 @@ export function StoreSection() {
           <Field label={t('หมายเลข PromptPay')} hint={t('เบอร์มือถือ 10 หลัก หรือเลขผู้เสียภาษี 13 หลัก ใช้สร้าง QR รับเงินอัตโนมัติ')}><Input inputMode="numeric" className="num" value={d.draft.promptPayId} onChange={(e) => d.set('promptPayId', e.target.value.replace(/\D/g, '').slice(0, 15))} /></Field>
           <Field label={t('ประเภทธุรกิจ')} hint={t('เปลี่ยนประเภทไม่ลบข้อมูล ใช้เพื่อการแนะนำเท่านั้น')}>
             <Select value={settings.businessType} onChange={async (e) => { await api.put('/api/settings', { businessType: e.target.value }); toast.success(t('บันทึกแล้ว')); }}>
-              {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{BUSINESS_TYPE_LABELS[t]}</option>)}
+              {EDITION_BUSINESS_TYPES.map((t) => <option key={t} value={t}>{BUSINESS_TYPE_LABELS[t]}</option>)}
             </Select>
           </Field>
         </Card>
@@ -136,7 +136,7 @@ export function TaxSection() {
   const d = useDraft('tax');
   return (
     <>
-      <SectionTitle title={t('ภาษีและค่าบริการ')} sub={t('มีผลกับบิลใหม่ทันที บิลเก่าไม่เปลี่ยน')} />
+      <SectionTitle title={IS_LITE ? t('ภาษี') : t('ภาษีและค่าบริการ')} sub={t('มีผลกับบิลใหม่ทันที บิลเก่าไม่เปลี่ยน')} />
       <Card className="max-w-[720px]">
         <div className="-my-2 flex flex-col">
           <ToggleRow label={t('จดทะเบียนภาษีมูลค่าเพิ่ม (VAT)')} hint={t('ออกใบกำกับภาษี และรายงานภาษีขาย')} checked={d.draft.vatEnabled} onChange={(v) => d.set('vatEnabled', v)} />
@@ -146,7 +146,7 @@ export function TaxSection() {
               <ToggleRow label={t('ราคาสินค้ารวม VAT แล้ว')} hint={d.draft.pricesIncludeVat ? t('ราคา ฿107 = สินค้า ฿100 + VAT ฿7') : t('ราคา ฿100 + VAT ฿7 = จ่าย ฿107')} checked={d.draft.pricesIncludeVat} onChange={(v) => d.set('pricesIncludeVat', v)} />
             </>
           )}
-          <div className="flex items-center gap-4 border-b border-line-soft py-3.5"><span className="flex flex-1 flex-col"><span className="text-[15px] font-medium">{t('ค่าบริการ (Service charge %)')}</span><span className="text-[13px] text-muted">{t('ใช้เมื่อเปิดโหมดร้านอาหาร')}</span></span><NumberInput className="w-24 text-right" decimals={2} value={d.draft.serviceChargeRate} onValue={(v) => d.set('serviceChargeRate', v)} /></div>
+          {!IS_LITE && <div className="flex items-center gap-4 border-b border-line-soft py-3.5"><span className="flex flex-1 flex-col"><span className="text-[15px] font-medium">{t('ค่าบริการ (Service charge %)')}</span><span className="text-[13px] text-muted">{t('ใช้เมื่อเปิดโหมดร้านอาหาร')}</span></span><NumberInput className="w-24 text-right" decimals={2} value={d.draft.serviceChargeRate} onValue={(v) => d.set('serviceChargeRate', v)} /></div>}
           <div className="flex items-center gap-4 py-3.5">
             <span className="flex flex-1 flex-col"><span className="text-[15px] font-medium">{t('ปัดเศษยอดชำระ')}</span><span className="text-[13px] text-muted">{t('แสดงเป็นบรรทัด “ปัดเศษ” บนใบเสร็จ')}</span></span>
             <Select className="w-[180px]" value={String(d.draft.roundingStep)} onChange={(e) => d.set('roundingStep', Number(e.target.value))}>
@@ -254,7 +254,7 @@ export function ModulesSection() {
   return (
     <>
       <SectionTitle title={t('โมดูลและฟีเจอร์')} sub={t('ปิดสิ่งที่ไม่ใช้ เพื่อให้หน้าจอเรียบง่ายสำหรับพนักงาน')} />
-      <Card className="max-w-[720px]"><div className="-my-2 flex flex-col">{MODULES.map((m) => <ToggleRow key={m.key} label={m.label} hint={m.hint} checked={d.draft[m.key]} onChange={(v) => d.set(m.key, v)} />)}</div></Card>
+      <Card className="max-w-[720px]"><div className="-my-2 flex flex-col">{MODULES.filter((m) => !IS_LITE || !(LITE_DISABLED_MODULES as readonly string[]).includes(m.key)).map((m) => <ToggleRow key={m.key} label={m.label} hint={m.hint} checked={d.draft[m.key]} onChange={(v) => d.set(m.key, v)} />)}</div></Card>
       <SaveBar dirty={d.dirty} saving={d.saving} onSave={() => void d.save()} onReset={d.reset} />
     </>
   );
@@ -291,7 +291,14 @@ export function PosSection() {
           <ToggleRow label={t('ต้องเปิดกะก่อนขาย')} hint={t('บังคับนับเงินทอนเริ่มต้นและปิดกะ')} checked={pos.draft.requireShift} onChange={(v) => pos.set('requireShift', v)} />
           <ToggleRow label={t('อนุญาตขายเมื่อสต็อกไม่พอ (ติดลบ)')} checked={pos.draft.allowNegativeStock} onChange={(v) => pos.set('allowNegativeStock', v)} />
           <ToggleRow label={t('แสดงรูปสินค้าในหน้าขาย')} checked={pos.draft.showImages} onChange={(v) => pos.set('showImages', v)} />
+          <ToggleRow label={t('เสียงบี๊ปเมื่อสแกน')} checked={pos.draft.beep} onChange={(v) => pos.set('beep', v)} />
         </div>
+        <Field label={t('รูปแบบหน้าขาย')} hint={t('แบบรายการ: เน้นสแกนบาร์โค้ด ตะกร้าเต็มจอ เหมาะกับร้านขายของชำ')}>
+          <Select value={pos.draft.layout} onChange={(e) => pos.set('layout', e.target.value as 'grid' | 'list')}>
+            <option value="grid">{t('แบบปุ่มสินค้า (กริด)')}</option>
+            <option value="list">{t('แบบรายการ (สแกนเป็นหลัก)')}</option>
+          </Select>
+        </Field>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label={t('ล็อกหน้าจออัตโนมัติ (นาที)')} hint={t('0 = ไม่ล็อก')}><NumberInput value={pos.draft.autoLockMinutes} onValue={(v) => pos.set('autoLockMinutes', Math.max(0, Math.min(240, v)))} /></Field>
           <Field label={t('จำนวนคอลัมน์สินค้า')} hint={t('0 = อัตโนมัติตามขนาดจอ')}><NumberInput value={pos.draft.gridColumns} onValue={(v) => pos.set('gridColumns', Math.max(0, Math.min(8, v)))} /></Field>
@@ -299,6 +306,24 @@ export function PosSection() {
         <Field label={t('ปุ่มธนบัตรลัด (บาท)')} hint={t('คั่นด้วยเครื่องหมายจุลภาค')}>
           <Input value={pos.draft.quickNotes.map((n) => n / 100).join(', ')} onChange={(e) => pos.set('quickNotes', e.target.value.split(',').map((x) => Math.round(Number(x.trim()) * 100)).filter((n) => n > 0).slice(0, 8))} />
         </Field>
+      </Card>
+      <Card className="max-w-[760px]" title={t('บาร์โค้ดจากตาชั่ง')}>
+        <div className="-my-2 flex flex-col">
+          <ToggleRow label={t('อ่านบาร์โค้ดน้ำหนัก/ราคาจากตาชั่ง')} hint={t('EAN-13 แบบ PP IIIII VVVVV C · IIIII = SKU 5 หลักของสินค้าชั่งน้ำหนัก')} checked={pos.draft.scaleBarcode.enabled} onChange={(v) => pos.set('scaleBarcode', { ...pos.draft.scaleBarcode, enabled: v })} />
+        </div>
+        {pos.draft.scaleBarcode.enabled && (
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label={t('รหัสนำหน้า')} hint={t('คั่นด้วยจุลภาค เช่น 21, 22 (20 ใช้กับบาร์โค้ดภายในร้าน)')}>
+              <Input key={pos.draft.scaleBarcode.prefixes.join()} defaultValue={pos.draft.scaleBarcode.prefixes.join(', ')} onBlur={(e) => pos.set('scaleBarcode', { ...pos.draft.scaleBarcode, prefixes: e.target.value.split(',').map((x) => x.trim()).filter((x) => /^\d{2}$/.test(x)) })} />
+            </Field>
+            <Field label={t('ตัวเลข 5 หลักท้ายคือ')}>
+              <Select value={pos.draft.scaleBarcode.value} onChange={(e) => pos.set('scaleBarcode', { ...pos.draft.scaleBarcode, value: e.target.value as 'weight' | 'price' })}>
+                <option value="weight">{t('น้ำหนัก (กรัม)')}</option>
+                <option value="price">{t('ราคา (สตางค์)')}</option>
+              </Select>
+            </Field>
+          </div>
+        )}
       </Card>
       <Card className="max-w-[760px]" title={t('คีย์ลัด')}>
         <div className="grid gap-2 md:grid-cols-2">

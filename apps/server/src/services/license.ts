@@ -2,7 +2,7 @@ import { createHash, createPublicKey, verify } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus, hostname, networkInterfaces } from 'node:os';
 import { join } from 'node:path';
-import { LICENSE_PUBLIC_KEY, type LicensePayload, type LicenseStatus } from '@flexpos/shared';
+import { IS_LITE, LICENSE_PUBLIC_KEY, licenseFitsEdition, type LicensePayload, type LicenseStatus } from '@flexpos/shared';
 import { t } from '@flexpos/shared';
 
 /**
@@ -53,15 +53,15 @@ export class LicenseService {
     const mid = machineId();
     if (existsSync(this.keyFile)) {
       const payload = decodeLicense(readFileSync(this.keyFile, 'utf8'), this.publicKeyPem);
-      if (!payload || (payload.machineId !== '*' && payload.machineId !== mid)) {
+      if (!payload || (payload.machineId !== '*' && payload.machineId !== mid) || !licenseFitsEdition(payload)) {
         return { state: 'invalid', plan: '', maxDevices: 0, maxBranches: 0, daysLeft: null, licensee: null, machineId: mid };
       }
       const daysLeft = payload.expiresAt ? Math.ceil((new Date(payload.expiresAt).getTime() - Date.now()) / 86400_000) : null;
       return {
         state: daysLeft !== null && daysLeft < 0 ? 'expired' : 'active',
         plan: payload.plan,
-        maxDevices: payload.maxDevices,
-        maxBranches: payload.maxBranches,
+        maxDevices: IS_LITE ? 1 : payload.maxDevices,
+        maxBranches: IS_LITE ? 1 : payload.maxBranches,
         daysLeft,
         licensee: payload.licensee,
         machineId: mid,
@@ -72,7 +72,7 @@ export class LicenseService {
     return {
       state: daysLeft >= 0 ? 'trial' : 'expired',
       plan: 'trial',
-      maxDevices: 3,
+      maxDevices: IS_LITE ? 1 : 3,
       maxBranches: 1,
       daysLeft: Math.max(daysLeft, 0),
       licensee: null,
@@ -85,6 +85,8 @@ export class LicenseService {
     if (!payload) throw new Error(t('License key ไม่ถูกต้อง'));
     if (payload.machineId !== '*' && payload.machineId !== machineId())
       throw new Error(t('License key นี้ออกให้เครื่องอื่น กรุณาส่ง Machine ID ของเครื่องนี้ให้ผู้ขาย'));
+    if (!licenseFitsEdition(payload))
+      throw new Error(IS_LITE ? t('License key นี้ไม่ใช่ของ FlexPOS Lite กรุณาขอ key สำหรับ Lite ที่ผูกกับเครื่องนี้') : t('License key นี้เป็นของ FlexPOS Lite ใช้กับ FlexPOS ตัวเต็มไม่ได้'));
     writeFileSync(this.keyFile, key.trim());
     return this.status();
   }

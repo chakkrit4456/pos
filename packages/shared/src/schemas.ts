@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ALL_PERMISSIONS, type Permission } from './permissions.js';
+import { BUSINESS_TYPES } from './settings.js';
 import { t } from './i18n.js';
 
 const id = z.string().min(1).max(64);
@@ -40,7 +41,7 @@ export const setupCompleteSchema = z.object({
     logo: z.string().max(400_000).default(''),
     promptPayId: z.string().max(20).default(''),
   }),
-  businessType: z.enum(['retail', 'restaurant', 'cafe', 'fashion', 'service', 'other']),
+  businessType: z.enum(BUSINESS_TYPES),
   tax: z.object({
     vatEnabled: z.boolean(),
     vatRate: z.number().min(0).max(30),

@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "test": "pnpm -r test",
     "e2e": "playwright test",
-    "desktop:dist": "pnpm build && pnpm --filter @flexpos/desktop dist"
+    "desktop:dist": "pnpm build && pnpm --filter @flexpos/desktop dist",
+    "release": "node tools/release/package.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

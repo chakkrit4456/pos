@@ -62,6 +62,12 @@ test('capture manual screenshots', async ({ page, browser }) => {
   await page.getByLabel(/PIN/).fill('2580');
   await shot(page, '06-setup-owner');
   await next(page);
+  await shot(page, '06b-setup-cloud');
+  // Screenshots run offline: keep data on this machine
+  await page.getByRole('button', { name: rx('เก็บในเครื่องนี้อย่างเดียว') }).click();
+  await page.getByText(L('ฉันเข้าใจ และต้องการเก็บข้อมูลในเครื่องนี้อย่างเดียว')).click();
+  await shot(page, '06c-setup-cloud-local');
+  await next(page);
   await shot(page, '07-setup-sample');
   await page.getByRole('button', { name: L('เริ่มใช้งาน') }).click();
 

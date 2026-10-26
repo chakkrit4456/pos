@@ -1,17 +1,24 @@
 import { z } from 'zod';
-import { t } from './i18n.js';
+import { EDITION_NAME, IS_LITE, lockModules } from './edition.js';
+import { lazyLabels, t } from './i18n.js';
 
-export const BUSINESS_TYPES = ['retail', 'restaurant', 'cafe', 'fashion', 'service', 'other'] as const;
+export const BUSINESS_TYPES = ['retail', 'grocery', 'restaurant', 'cafe', 'fashion', 'service', 'other'] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
+/** Business types offered by this edition's setup wizard (Lite has no restaurant/café). */
+export const EDITION_BUSINESS_TYPES: readonly BusinessType[] = IS_LITE
+  ? ['grocery', 'retail', 'fashion', 'service', 'other']
+  : BUSINESS_TYPES;
 
-export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
-  retail: t('ร้านค้าปลีก / มินิมาร์ท'),
-  restaurant: t('ร้านอาหาร'),
-  cafe: t('คาเฟ่ / ร้านเครื่องดื่ม'),
-  fashion: t('ร้านเสื้อผ้า / แฟชั่น'),
-  service: t('ร้านบริการ'),
-  other: t('อื่นๆ'),
+const BUSINESS_TYPE_KEYS: Record<BusinessType, string> = {
+  retail: 'ร้านค้าปลีก / มินิมาร์ท',
+  grocery: 'ร้านขายของชำ',
+  restaurant: 'ร้านอาหาร',
+  cafe: 'คาเฟ่ / ร้านเครื่องดื่ม',
+  fashion: 'ร้านเสื้อผ้า / แฟชั่น',
+  service: 'ร้านบริการ',
+  other: 'อื่นๆ',
 };
+export const BUSINESS_TYPE_LABELS = lazyLabels(BUSINESS_TYPE_KEYS);
 
 export const RECEIPT_SECTIONS = [
   'logo',
@@ -31,22 +38,22 @@ export const RECEIPT_SECTIONS = [
 ] as const;
 export type ReceiptSection = (typeof RECEIPT_SECTIONS)[number];
 
-export const RECEIPT_SECTION_LABELS: Record<ReceiptSection, string> = {
-  logo: t('โลโก้'),
-  storeName: t('ชื่อร้าน'),
-  address: t('ที่อยู่'),
-  taxId: t('เลขผู้เสียภาษี'),
-  phone: t('เบอร์โทร'),
-  header: t('ข้อความหัวใบเสร็จ'),
-  docInfo: t('เลขที่/วันที่/พนักงาน'),
-  customer: t('ข้อมูลสมาชิก'),
-  items: t('รายการสินค้า'),
-  totals: t('สรุปยอด'),
-  payments: t('การชำระเงิน'),
-  points: t('แต้มสะสม'),
-  promptpay: t('QR PromptPay (สำหรับบิลค้างชำระ)'),
-  footer: t('ข้อความท้ายใบเสร็จ'),
-};
+export const RECEIPT_SECTION_LABELS = lazyLabels<ReceiptSection>({
+  logo: 'โลโก้',
+  storeName: 'ชื่อร้าน',
+  address: 'ที่อยู่',
+  taxId: 'เลขผู้เสียภาษี',
+  phone: 'เบอร์โทร',
+  header: 'ข้อความหัวใบเสร็จ',
+  docInfo: 'เลขที่/วันที่/พนักงาน',
+  customer: 'ข้อมูลสมาชิก',
+  items: 'รายการสินค้า',
+  totals: 'สรุปยอด',
+  payments: 'การชำระเงิน',
+  points: 'แต้มสะสม',
+  promptpay: 'QR PromptPay (สำหรับบิลค้างชำระ)',
+  footer: 'ข้อความท้ายใบเสร็จ',
+});
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/);
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -100,7 +107,7 @@ export const settingsSchema = z.object({
     .default({}),
   brand: z
     .object({
-      appName: z.string().trim().max(40).default('FlexPOS'),
+      appName: z.string().trim().max(40).default(EDITION_NAME),
       /** data URL; empty = use the store logo */
       appLogo: z.string().max(400_000).default(''),
       primary: hex.default('#1d7a57'),
@@ -140,6 +147,17 @@ export const settingsSchema = z.object({
       hotkeys: z.record(z.string(), z.string()).default({}),
       gridColumns: z.number().int().min(0).max(8).default(0),
       showImages: z.boolean().default(true),
+      /** grid = product tiles; list = scan-first checkout with a full-width cart */
+      layout: z.enum(['grid', 'list']).default(IS_LITE ? 'list' : 'grid'),
+      /** Price/weight-embedded EAN-13 from label scales: prefix + 5-digit item code + 5-digit value + check digit */
+      scaleBarcode: z
+        .object({
+          enabled: z.boolean().default(true),
+          prefixes: z.array(z.string().regex(/^\d{2}$/)).default(['21', '22', '23', '24', '25', '26', '27', '28', '29']),
+          value: z.enum(['weight', 'price']).default('weight'),
+        })
+        .default({}),
+      beep: z.boolean().default(true),
     })
     .default({}),
   points: z
@@ -184,7 +202,7 @@ export const settingsSchema = z.object({
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
-export const DEFAULT_SETTINGS: Settings = settingsSchema.parse({});
+export const DEFAULT_SETTINGS: Settings = mergeSettings(settingsSchema.parse({}), {});
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? (T[K] extends unknown[] ? T[K] : DeepPartial<T[K]>) : T[K] };
 export type SettingsPatch = DeepPartial<Settings>;
@@ -200,7 +218,9 @@ export function mergeSettings(base: Settings, patch: SettingsPatch | Record<stri
     for (const [k, v] of Object.entries(b)) out[k] = merge(a[k], v);
     return out;
   };
-  return settingsSchema.parse(merge(base, patch));
+  const s = settingsSchema.parse(merge(base, patch));
+  s.modules = lockModules(s.modules);
+  return s;
 }
 
 export function templateSettings(type: BusinessType): SettingsPatch {
@@ -223,10 +243,11 @@ export function templateSettings(type: BusinessType): SettingsPatch {
     case 'service':
       return { businessType: type, modules: { stock: false, members: true, restaurant: false } };
     case 'retail':
+    case 'grocery':
       return {
         businessType: type,
         modules: { stock: true, members: true, restaurant: false },
-        pos: { allowNegativeStock: false },
+        pos: { allowNegativeStock: false, ...(type === 'grocery' ? { layout: 'list' as const } : {}) },
       };
     default:
       return { businessType: type };

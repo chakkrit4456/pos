@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Copy, KeyRound, Plus } from 'lucide-react';
-import { PERMISSION_GROUPS, PERMISSIONS, initials, type LicenseStatus, type Permission, t } from '@flexpos/shared';
+import { EDITION_NAME, IS_LITE, PERMISSION_GROUPS, PERMISSIONS, initials, type LicenseStatus, type Permission, t } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { useFormatters } from '@/lib/settings';
 import { useSession } from '@/lib/session';
@@ -162,7 +162,7 @@ export function LicenseSection() {
         <Card>
           <div className="flex flex-wrap items-center gap-3">
             <Badge tone={l.state === 'active' ? 'success' : l.state === 'trial' ? 'info' : 'danger'}>{label[l.state]}</Badge>
-            <span className="text-[15px] font-semibold">{tn('{0} · แพ็กเกจ {1}', l.licensee ?? 'FlexPOS', l.plan)}</span>
+            <span className="text-[15px] font-semibold">{tn('{0} · แพ็กเกจ {1}', l.licensee ?? EDITION_NAME, l.plan)}</span>
             {l.daysLeft !== null && <span className="text-[14px] text-muted">{tn('เหลือ {0} วัน', l.daysLeft)}</span>}
           </div>
           <div className="text-[14px] text-ink-2">{tn('รองรับ {0} เครื่อง · {1} สาขา', l.maxDevices, l.maxBranches)}</div>
@@ -173,6 +173,7 @@ export function LicenseSection() {
             <Button size="sm" variant="ghost" className="ml-auto" icon={<Copy className="h-4 w-4" />} onClick={() => void navigator.clipboard?.writeText(l.machineId).then(() => toast.success(t('คัดลอกแล้ว')))}>{t('คัดลอก')}</Button>
           </div>
           <p className="text-[13px] text-muted">{t('ส่ง Machine ID ให้ผู้จำหน่ายเพื่อขอ License key · การตรวจสอบทำในเครื่องโดยไม่ต้องใช้อินเทอร์เน็ต')}</p>
+          {IS_LITE && <p className="text-[13px] text-muted">{t('FlexPOS Lite: 1 License ใช้ได้ 1 เครื่อง และเปิดได้เฉพาะบนเครื่องนี้')}</p>}
         </Card>
       )}
       <Card title={t('ใส่ License key')}>

@@ -14,6 +14,7 @@ await build({
   target: 'node20',
   format: 'esm',
   sourcemap: false,
+  define: { __FLEXPOS_EDITION__: JSON.stringify(process.env.FLEXPOS_EDITION ?? 'full') },
   external: ['better-sqlite3', 'pg', 'mysql2', '@napi-rs/canvas', '@node-rs/argon2', 'bonjour-service', 'exceljs', 'qrcode'],
   banner: { js: "import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);" },
 });

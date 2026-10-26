@@ -17,14 +17,25 @@ cpSync(join(root, 'apps/server/dist'), join(stage, 'server'), { recursive: true 
 cpSync(join(root, 'apps/web/dist'), join(stage, 'web'), { recursive: true });
 
 const electronVersion = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8')).devDependencies.electron.replace('^', '');
+// Editions (e.g. FlexPOS Dine, FlexPOS Lite) override the name, app id, installer file and installer language.
+// A different appId lets FlexPOS Lite install next to FlexPOS; productName keeps their data folders apart.
+const edition = {
+  id: process.env.FLEXPOS_EDITION === 'lite' ? 'lite' : 'full',
+  appId: process.env.FLEXPOS_APP_ID ?? 'app.flexpos.pos',
+  productName: process.env.FLEXPOS_PRODUCT_NAME ?? 'FlexPOS',
+  description: process.env.FLEXPOS_DESCRIPTION ?? 'FlexPOS ระบบขายหน้าร้าน',
+  artifact: process.env.FLEXPOS_ARTIFACT ?? 'FlexPOS-Setup',
+  nsisLanguage: process.env.FLEXPOS_NSIS_LANG ?? '1054',
+};
 const pkg = {
   name: 'flexpos',
-  productName: 'FlexPOS',
+  productName: edition.productName,
   version: JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
-  description: 'FlexPOS ระบบขายหน้าร้าน',
+  description: edition.description,
   author: 'FlexPOS',
   type: 'module',
   main: 'src/main.mjs',
+  flexposEdition: edition.id,
   // Native/runtime modules the bundled server loads.
   dependencies: {
     'better-sqlite3': '^12.2.0',
@@ -38,14 +49,14 @@ const pkg = {
   },
   devDependencies: { electron: electronVersion, 'electron-builder': '^26.0.12' },
   build: {
-    appId: 'app.flexpos.pos',
-    productName: 'FlexPOS',
+    appId: edition.appId,
+    productName: edition.productName,
     directories: { output: '../release' },
     files: ['src/**', 'server/**', 'web/**', 'package.json', 'node_modules/**'],
     asar: false,
     npmRebuild: true,
-    win: { target: 'nsis', icon: 'icon.png', artifactName: 'FlexPOS-Setup.${ext}' },
-    nsis: { oneClick: false, allowToChangeInstallationDirectory: true, createDesktopShortcut: true, shortcutName: 'FlexPOS', language: '1054' },
+    win: { target: 'nsis', icon: 'icon.png', artifactName: `${edition.artifact}.\${ext}` },
+    nsis: { oneClick: false, allowToChangeInstallationDirectory: true, createDesktopShortcut: true, shortcutName: edition.productName, language: edition.nsisLanguage },
   },
 };
 writeFileSync(join(stage, 'package.json'), JSON.stringify(pkg, null, 2));

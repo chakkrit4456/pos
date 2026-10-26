@@ -62,3 +62,13 @@ export function translateDeep<T>(value: T, lang: Language = current): T {
   }
   return value;
 }
+
+/**
+ * A table of labels translated when read, not when the module loads: shared modules load before
+ * the UI applies the saved language, so eager t() calls there would stay in Thai.
+ */
+export function lazyLabels<K extends string>(keys: Record<K, string>): Record<K, string> {
+  const out = {} as Record<K, string>;
+  for (const k of Object.keys(keys) as K[]) Object.defineProperty(out, k, { get: () => t(keys[k]), enumerable: true });
+  return out;
+}

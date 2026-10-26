@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Check, Database, HardDrive, ImagePlus, Network, Search, Server } from 'lucide-react';
-import { BUSINESS_TYPE_LABELS, BUSINESS_TYPES, isValidThaiTaxId, type AuthResponse, type BusinessType, type SetupStatus, t, getLanguage } from '@flexpos/shared';
+import { BUSINESS_TYPE_LABELS, EDITION_BUSINESS_TYPES, EDITION_NAME, editionAllows, IS_LITE, isValidThaiTaxId, type AuthResponse, type BusinessType, type SetupStatus, t, getLanguage } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { cn, imageToDataUrl } from '@/lib/utils';
@@ -26,7 +26,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
   const [hostUrl, setHostUrl] = useState('');
   const [hosts, setHosts] = useState<{ name: string; url: string }[] | null>(null);
   const [store, setStore] = useState({ name: '', branchName: t('สำนักงานใหญ่'), address: '', taxId: '', phone: '', logo: '', promptPayId: '' });
-  const [type, setType] = useState<BusinessType>('retail');
+  const [type, setType] = useState<BusinessType>((EDITION_BUSINESS_TYPES as readonly string[]).includes(import.meta.env.VITE_DEFAULT_BUSINESS ?? '') ? (import.meta.env.VITE_DEFAULT_BUSINESS as BusinessType) : IS_LITE ? 'grocery' : 'retail');
   const [tax, setTax] = useState({ vatEnabled: false, vatRate: 7, pricesIncludeVat: true, serviceChargeRate: 0 });
   const [owner, setOwner] = useState({ name: '', username: 'owner', password: '', password2: '', pin: '' });
   const [sampleData, setSampleData] = useState(true);
@@ -117,7 +117,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-[18px] font-bold text-white">F</div>
           <div>
             <div className="text-[13px] text-muted">{tn('ตัวช่วยตั้งค่าร้าน · ขั้นตอน {0} จาก {1}', step + 1, STEPS.length)}</div>
-            <h1 className="text-[24px] font-semibold">{t('ยินดีต้อนรับสู่ FlexPOS')}</h1>
+            <h1 className="text-[24px] font-semibold">{t('ยินดีต้อนรับสู่ {0}', EDITION_NAME)}</h1>
           </div>
         </div>
         <ol className="flex gap-1.5" aria-label={t('ขั้นตอน')}>
@@ -141,10 +141,10 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
 
           {step === 1 && (
             <StepBody title={t('เก็บข้อมูลไว้ที่ไหน')} sub={t('เลือกได้ตามขนาดร้าน ย้ายภายหลังได้ด้วยการสำรองและกู้คืนข้อมูล')}>
-              <div className="grid gap-3 md:grid-cols-3">
-                <Choice active={dbMode === 'sqlite'} onClick={() => setDbMode('sqlite')} icon={<HardDrive />} title={t('เก็บในเครื่องนี้')} badge={t('แนะนำ')} body={t('ใช้งานออฟไลน์ได้ 100% ไม่ต้องตั้งค่าเพิ่ม เครื่องอื่นในร้านเชื่อมเข้ามาได้')} />
+              <div className={cn('grid gap-3', editionAllows('lanClient') ? 'md:grid-cols-3' : 'md:grid-cols-2')}>
+                <Choice active={dbMode === 'sqlite'} onClick={() => setDbMode('sqlite')} icon={<HardDrive />} title={t('เก็บในเครื่องนี้')} badge={t('แนะนำ')} body={editionAllows('lanClient') ? t('ใช้งานออฟไลน์ได้ 100% ไม่ต้องตั้งค่าเพิ่ม เครื่องอื่นในร้านเชื่อมเข้ามาได้') : t('ใช้งานออฟไลน์ได้ 100% ไม่ต้องตั้งค่าเพิ่ม')} />
                 <Choice active={dbMode === 'external'} onClick={() => setDbMode('external')} icon={<Database />} title={t('ฐานข้อมูลของฉัน')} body={t('PostgreSQL หรือ MySQL/MariaDB บนเซิร์ฟเวอร์ของร้าน')} />
-                <Choice active={dbMode === 'lan'} onClick={() => setDbMode('lan')} icon={<Network />} title={t('เชื่อมเครื่อง Host')} body={t('เครื่องนี้เป็นจุดขายเพิ่ม ใช้ข้อมูลจากเครื่องหลักในวง LAN')} />
+                {editionAllows('lanClient') && <Choice active={dbMode === 'lan'} onClick={() => setDbMode('lan')} icon={<Network />} title={t('เชื่อมเครื่อง Host')} body={t('เครื่องนี้เป็นจุดขายเพิ่ม ใช้ข้อมูลจากเครื่องหลักในวง LAN')} />}
               </div>
               {dbMode === 'external' && (
                 <div className="grid gap-4 rounded-2xl border border-line bg-sunken p-4 md:grid-cols-2">
@@ -223,7 +223,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
           {step === 3 && (
             <StepBody title={t('ประเภทธุรกิจ')} sub={t('ระบบจะเปิดโมดูลและตั้งค่าเริ่มต้นที่เหมาะให้ ปรับเองได้ทุกอย่างภายหลัง')}>
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {BUSINESS_TYPES.map((t) => (
+                {EDITION_BUSINESS_TYPES.map((t) => (
                   <Choice key={t} active={type === t} onClick={() => { setType(t); if (t === 'restaurant') setTax((x) => ({ ...x, serviceChargeRate: 10 })); }} title={BUSINESS_TYPE_LABELS[t]} body={TYPE_HINT[t]} />
                 ))}
               </div>
@@ -240,7 +240,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
                     <Row label={t('ราคาสินค้ารวม VAT แล้ว')} hint={t('ปิดถ้าต้องการบวก VAT เพิ่มตอนคิดเงิน')}><Switch checked={tax.pricesIncludeVat} onChange={(v) => setTax({ ...tax, pricesIncludeVat: v })} label={t('ราคารวม VAT')} /></Row>
                   </>
                 )}
-                <Row label={t('ค่าบริการ (Service charge %)')} hint={t('ใช้กับโหมดร้านอาหาร ใส่ 0 ถ้าไม่เก็บ')}><NumberInput className="w-24 text-right" decimals={2} value={tax.serviceChargeRate} onValue={(v) => setTax({ ...tax, serviceChargeRate: v })} /></Row>
+                {editionAllows('restaurant') && <Row label={t('ค่าบริการ (Service charge %)')} hint={t('ใช้กับโหมดร้านอาหาร ใส่ 0 ถ้าไม่เก็บ')}><NumberInput className="w-24 text-right" decimals={2} value={tax.serviceChargeRate} onValue={(v) => setTax({ ...tax, serviceChargeRate: v })} /></Row>}
               </div>
             </StepBody>
           )}
@@ -303,6 +303,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
 
 const TYPE_HINT: Record<BusinessType, string> = {
   retail: t('สแกนบาร์โค้ด ตัดสต็อก สินค้าชั่งน้ำหนัก'),
+  grocery: t('ขายแบบสแกนรายการ บาร์โค้ดตาชั่ง ขายเชื่อ ตัดสต็อก'),
   restaurant: t('ผังโต๊ะ ส่งครัว ค่าบริการ แอปรับออเดอร์'),
   cafe: t('ตัวเลือกเครื่องดื่ม ขนาด ความหวาน สะสมแต้ม'),
   fashion: t('ไซซ์/สี แยกสต็อก สมาชิก'),

@@ -4,7 +4,7 @@
  * Changing the limits re-signs the key; POS machines pick up the new key on their next sync.
  */
 import { createPrivateKey, createPublicKey, sign, verify } from 'node:crypto';
-import { t, type LicensePayload } from '@flexpos/shared';
+import { LITE_PLAN, t, type LicensePayload } from '@flexpos/shared';
 import type { CloudContext } from './context.js';
 import type { LicensesTable } from './schema.js';
 import { nowIso, uuid } from './auth.js';
@@ -31,6 +31,10 @@ function privateKey(ctx: CloudContext): string {
   return ctx.config.licensePrivateKey;
 }
 
+/** FlexPOS Lite is sold for a single machine and a single branch. */
+const liteLimits = <T extends { plan: string; max_devices: number; max_branches: number }>(row: T): T =>
+  row.plan === LITE_PLAN ? { ...row, max_devices: 1, max_branches: 1 } : row;
+
 const payloadOf = (row: Pick<LicensesTable, 'id' | 'licensee' | 'plan' | 'max_devices' | 'max_branches'>): LicensePayload => ({
   licensee: row.licensee,
   plan: row.plan || 'standard',
@@ -44,7 +48,7 @@ const payloadOf = (row: Pick<LicensesTable, 'id' | 'licensee' | 'plan' | 'max_de
 
 export async function issueLicense(ctx: CloudContext, o: { licensee: string; plan: string; maxDevices: number; maxBranches: number; note?: string }) {
   const pem = privateKey(ctx);
-  const row = { id: uuid(), tenant_id: null, licensee: o.licensee, plan: o.plan, max_devices: o.maxDevices, max_branches: o.maxBranches, note: o.note ?? '', revoked: 0, created_at: nowIso(), updated_at: nowIso() };
+  const row = liteLimits({ id: uuid(), tenant_id: null, licensee: o.licensee, plan: o.plan, max_devices: o.maxDevices, max_branches: o.maxBranches, note: o.note ?? '', revoked: 0, created_at: nowIso(), updated_at: nowIso() });
   const key = signLicense(pem, payloadOf(row));
   await ctx.db.insertInto('licenses').values({ ...row, key }).execute();
   return { ...row, key };
@@ -54,7 +58,7 @@ export async function issueLicense(ctx: CloudContext, o: { licensee: string; pla
 export async function updateLicense(ctx: CloudContext, id: string, patch: Partial<{ licensee: string; plan: string; maxDevices: number; maxBranches: number; note: string; revoked: boolean }>) {
   const cur = await ctx.db.selectFrom('licenses').selectAll().where('id', '=', id).executeTakeFirst();
   if (!cur) return null;
-  const next = {
+  const next = liteLimits({
     ...cur,
     licensee: patch.licensee ?? cur.licensee,
     plan: patch.plan ?? cur.plan,
@@ -63,7 +67,7 @@ export async function updateLicense(ctx: CloudContext, id: string, patch: Partia
     note: patch.note ?? cur.note,
     revoked: patch.revoked === undefined ? cur.revoked : patch.revoked ? 1 : 0,
     updated_at: nowIso(),
-  };
+  });
   const limitsChanged = next.licensee !== cur.licensee || next.plan !== cur.plan || next.max_devices !== cur.max_devices || next.max_branches !== cur.max_branches;
   if (limitsChanged) next.key = signLicense(privateKey(ctx), payloadOf(next));
   await ctx.db.updateTable('licenses').set(next).where('id', '=', id).execute();

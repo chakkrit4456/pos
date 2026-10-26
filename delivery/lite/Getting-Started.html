@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FlexPOS Lite — คู่มือเริ่มต้น</title>
+<style>
+  :root { --ink:#17191c; --muted:#5f6368; --line:#e3e1da; --bg:#f6f5f1; --card:#fff; --accent:#1d7a57; --soft:#e4f2ea; --warn:#fff4dc; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink:#ecebe7; --muted:#a8aaad; --line:#34363a; --bg:#17191c; --card:#202226; --soft:#1d3329; --warn:#3a3020; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.7 "Segoe UI", Tahoma, system-ui, sans-serif; }
+  header { background:#17191c; color:#fff; padding:32px 16px; }
+  header .in, main { max-width:980px; margin:0 auto; }
+  header h1 { margin:0 0 4px; font-size:30px; }
+  header p { margin:0; color:#c9cbce; }
+  nav { max-width:980px; margin:20px auto 0; padding:0 16px; display:flex; flex-wrap:wrap; gap:8px; }
+  nav a { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:6px 14px; color:var(--ink); text-decoration:none; font-size:14px; }
+  main { padding:8px 16px 64px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; margin-top:20px; }
+  h2 { margin:0 0 12px; font-size:22px; }
+  h3 { margin:20px 0 8px; font-size:17px; }
+  ol, ul { padding-left:22px; } li { margin:4px 0; }
+  figure { margin:16px 0; } figure img { width:100%; height:auto; border:1px solid var(--line); border-radius:12px; display:block; }
+  figcaption { color:var(--muted); font-size:14px; margin-top:6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+  .tip { background:var(--soft); border-radius:12px; padding:12px 16px; margin:12px 0; }
+  .warn { background:var(--warn); border-radius:12px; padding:12px 16px; margin:12px 0; }
+  code, kbd { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:14px; }
+  table { border-collapse:collapse; width:100%; font-size:15px; } td, th { border-bottom:1px solid var(--line); padding:8px; text-align:left; vertical-align:top; }
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>FlexPOS Lite</h1>
+  <p>ระบบขายหน้าร้านสำหรับร้านค้าและร้านขายของชำ — คู่มือเริ่มต้น เวอร์ชัน 1.0.0</p>
+</div></header>
+<nav>
+  <a href="#install">1. ติดตั้ง</a><a href="#setup">2. ตั้งค่าร้าน</a><a href="#sell">3. ขายด้วยการสแกน</a><a href="#weigh">4. สินค้าชั่งน้ำหนัก</a>
+  <a href="#pay">5. รับเงิน</a><a href="#products">6. สินค้าและสต็อก</a><a href="#shop">7. หลังร้าน</a><a href="#license">8. License</a>
+</nav>
+<main>
+
+<section id="install">
+  <h2>1. ติดตั้ง</h2>
+  <ol>
+    <li>ดับเบิลคลิก <code>FlexPOS-Lite-Setup.exe</code> แล้วทำตามขั้นตอน (ถ้ามี SmartScreen กด <b>More info → Run anyway</b>)</li>
+    <li>เปิด <b>FlexPOS Lite</b> จากไอคอนบนหน้าจอ</li>
+  </ol>
+  <div class="tip">ติดตั้งคู่กับ FlexPOS ตัวเต็มบนเครื่องเดียวกันได้ ข้อมูลของแต่ละโปรแกรมแยกกัน</div>
+</section>
+
+<section id="setup">
+  <h2>2. ตั้งค่าร้าน (ทำครั้งเดียว)</h2>
+  <div class="grid">
+    <figure><img src="images/02-setup-database.png" alt="ฐานข้อมูล" /><figcaption>เลือก “เก็บในเครื่องนี้” (แนะนำ)</figcaption></figure>
+    <figure><img src="images/03-setup-store.png" alt="ข้อมูลร้าน" /><figcaption>ชื่อร้าน ที่อยู่ และหมายเลข PromptPay</figcaption></figure>
+    <figure><img src="images/04-setup-business.png" alt="ประเภทธุรกิจ" /><figcaption>เลือก “ร้านขายของชำ” หน้าขายจะเป็นแบบสแกนเป็นหลัก</figcaption></figure>
+    <figure><img src="images/06-setup-owner.png" alt="บัญชีเจ้าของ" /><figcaption>ตั้งรหัสผ่านและ PIN ของเจ้าของร้าน</figcaption></figure>
+    <figure><img src="images/07-setup-cloud.png" alt="แดชบอร์ดออนไลน์" /><figcaption>เลือกใช้ FlexPOS Cloud หรือเก็บในเครื่องอย่างเดียว</figcaption></figure>
+    <figure><img src="images/08-setup-sample.png" alt="ข้อมูลตัวอย่าง" /><figcaption>เปิดข้อมูลตัวอย่าง: สินค้ามีบาร์โค้ดและสินค้าชั่งน้ำหนัก</figcaption></figure>
+  </div>
+</section>
+
+<section id="sell">
+  <h2>3. ขายด้วยการสแกน</h2>
+  <ol>
+    <li>เข้าสู่ระบบด้วย PIN แล้ว <b>เปิดกะ</b> พร้อมนับเงินทอนเริ่มต้น</li>
+    <li>ยิงบาร์โค้ดได้ทันที ช่องสแกนพร้อมรับเสมอ รายการใหม่จะขึ้นท้ายตารางพร้อมเสียงบี๊ป</li>
+    <li>หรือพิมพ์ชื่อ/SKU แล้วกด <kbd>Enter</kbd> ถ้าเจอหลายรายการระบบจะแสดงสินค้าให้เลือก</li>
+  </ol>
+  <table>
+    <tr><th>ทำอะไร</th><th>วิธี</th></tr>
+    <tr><td>ขายหลายชิ้นในครั้งเดียว</td><td>พิมพ์ <code>3*</code> แล้วยิงบาร์โค้ด (หรือพิมพ์ <code>3*รหัส</code> แล้ว <kbd>Enter</kbd>)</td></tr>
+    <tr><td>ลบรายการล่าสุด</td><td>กด <kbd>Delete</kbd> ตอนช่องสแกนว่าง หรือกดไอคอนถังขยะ</td></tr>
+    <tr><td>ดูสินค้าทั้งหมด</td><td>ปุ่ม <b>เลือกสินค้า</b> มุมขวาบน</td></tr>
+    <tr><td>เลือกสมาชิก / พักบิล / ส่วนลดบิล</td><td><kbd>F4</kbd> / <kbd>F6</kbd> / <kbd>F8</kbd></td></tr>
+    <tr><td>ชำระเงิน</td><td><kbd>F12</kbd></td></tr>
+  </table>
+  <div class="grid">
+    <figure><img src="images/10-pos-ready.png" alt="พร้อมสแกน" /><figcaption>หน้าขายพร้อมสแกน</figcaption></figure>
+    <figure><img src="images/11-pos-cart.png" alt="ตะกร้า" /><figcaption>ตะกร้าแบบรายการเต็มจอ</figcaption></figure>
+    <figure><img src="images/12-pos-browse.png" alt="เลือกสินค้า" /><figcaption>ดูสินค้าตามหมวดเมื่อไม่มีบาร์โค้ด</figcaption></figure>
+  </div>
+  <div class="tip">สแกนแล้วไม่พบสินค้า? กด <b>เพิ่มสินค้าใหม่</b> บนข้อความแจ้งเตือน ระบบจะเปิดหน้าเพิ่มสินค้าพร้อมกรอกบาร์โค้ดไว้ให้</div>
+</section>
+
+<section id="weigh">
+  <h2>4. สินค้าชั่งน้ำหนัก</h2>
+  <h3>ตาชั่งพิมพ์ฉลากบาร์โค้ด</h3>
+  <p>ตั้ง SKU ของสินค้าชั่งน้ำหนักเป็นรหัส 5 หลักเดียวกับในตาชั่ง (เช่น <code>00123</code>) แล้วยิงฉลากจากตาชั่งได้เลย ระบบอ่านน้ำหนักหรือราคาจากบาร์โค้ด EAN-13 รูปแบบ <code>PP IIIII VVVVV C</code></p>
+  <ul>
+    <li><code>PP</code> รหัสนำหน้า 21–29 (20 ใช้กับบาร์โค้ดภายในร้าน)</li>
+    <li><code>IIIII</code> รหัสสินค้า 5 หลัก · <code>VVVVV</code> น้ำหนักเป็นกรัม หรือราคาเป็นสตางค์</li>
+    <li>ตัวอย่าง <code>2100123015009</code> = หมูสับ 1.500 กก.</li>
+  </ul>
+  <p>ปรับรหัสนำหน้าและชนิดค่า (น้ำหนัก/ราคา) ได้ที่ ตั้งค่า → หน้าขาย → บาร์โค้ดจากตาชั่ง</p>
+  <h3>ชั่งที่หน้าร้าน</h3>
+  <p>แตะสินค้าชั่งน้ำหนัก แล้วเลือกปุ่มน้ำหนักด่วน หรือพิมพ์น้ำหนักเป็นกรัม</p>
+  <div class="grid">
+    <figure><img src="images/13-pos-weigh.png" alt="ชั่งน้ำหนัก" /><figcaption>ปุ่มน้ำหนักด่วนและช่องกรอกกรัม</figcaption></figure>
+    <figure><img src="images/26-settings-scale.png" alt="ตั้งค่าตาชั่ง" /><figcaption>ตั้งค่าบาร์โค้ดจากตาชั่ง</figcaption></figure>
+  </div>
+</section>
+
+<section id="pay">
+  <h2>5. รับเงิน</h2>
+  <div class="grid">
+    <figure><img src="images/14-pay-cash.png" alt="เงินสด" /><figcaption>เงินสด ปุ่มธนบัตรลัด คำนวณเงินทอนอัตโนมัติ</figcaption></figure>
+    <figure><img src="images/15-pay-promptpay.png" alt="PromptPay" /><figcaption>QR PromptPay พร้อมยอดเงิน</figcaption></figure>
+    <figure><img src="images/16-pay-done.png" alt="ชำระเรียบร้อย" /><figcaption>กด <kbd>Enter</kbd> เพื่อเริ่มบิลใหม่</figcaption></figure>
+  </div>
+</section>
+
+<section id="products">
+  <h2>6. สินค้าและสต็อก</h2>
+  <ul>
+    <li>นำเข้าสินค้าจาก Excel/CSV ได้ที่หน้า สินค้า → นำเข้า</li>
+    <li>ตั้งหน่วยขาย เช่น ชิ้น/แพ็ค 6/ลัง พร้อมบาร์โค้ดของแต่ละหน่วย</li>
+    <li>พิมพ์สติกเกอร์บาร์โค้ดสำหรับสินค้าที่ไม่มีบาร์โค้ด</li>
+  </ul>
+  <div class="grid">
+    <figure><img src="images/17-products.png" alt="สินค้า" /><figcaption>รายการสินค้า</figcaption></figure>
+    <figure><img src="images/18-product-new.png" alt="เพิ่มสินค้า" /><figcaption>เพิ่มสินค้าใหม่พร้อมบาร์โค้ด</figcaption></figure>
+    <figure><img src="images/19-stock.png" alt="สต็อก" /><figcaption>สต็อก รับเข้า นับสต็อก</figcaption></figure>
+    <figure><img src="images/20-customers.png" alt="สมาชิก" /><figcaption>สมาชิก แต้มสะสม และลูกหนี้ขายเชื่อ</figcaption></figure>
+  </div>
+</section>
+
+<section id="shop">
+  <h2>7. หลังร้าน</h2>
+  <div class="grid">
+    <figure><img src="images/22-dashboard.png" alt="ภาพรวม" /><figcaption>ภาพรวมยอดขายวันนี้</figcaption></figure>
+    <figure><img src="images/23-reports.png" alt="รายงาน" /><figcaption>รายงานยอดขาย ส่งออก CSV ได้</figcaption></figure>
+    <figure><img src="images/24-shift.png" alt="กะ" /><figcaption>ปิดกะและนับเงิน</figcaption></figure>
+    <figure><img src="images/27-settings-printers.png" alt="เครื่องพิมพ์" /><figcaption>เครื่องพิมพ์ใบเสร็จและสติกเกอร์</figcaption></figure>
+    <figure><img src="images/28-settings-staff.png" alt="พนักงาน" /><figcaption>พนักงาน: เจ้าของ ผู้จัดการ แคชเชียร์</figcaption></figure>
+    <figure><img src="images/29-settings-backup.png" alt="สำรองข้อมูล" /><figcaption>สำรองข้อมูลอัตโนมัติ</figcaption></figure>
+  </div>
+</section>
+
+<section id="license">
+  <h2>8. License: 1 License = 1 เครื่อง</h2>
+  <ul>
+    <li>ทดลองใช้ฟรี 14 วัน</li>
+    <li>ส่ง <b>Machine ID</b> จากหน้า ตั้งค่า → License ให้ผู้จำหน่ายเพื่อรับ License key ของเครื่องนี้ แล้วกด <b>เปิดใช้งาน</b></li>
+    <li>FlexPOS Lite เปิดได้เฉพาะบนเครื่องที่ติดตั้ง แท็บเล็ตหรือเครื่องอื่นในวง LAN เชื่อมเข้ามาไม่ได้</li>
+    <li>เปลี่ยนคอมพิวเตอร์: ติดต่อผู้จำหน่ายเพื่อออก key ให้เครื่องใหม่</li>
+  </ul>
+  <figure><img src="images/30-settings-license.png" alt="License" /><figcaption>หน้า License</figcaption></figure>
+  <div class="warn">ต้องการหลายเครื่อง ผังโต๊ะ จอครัว หรือโปรโมชั่น? อัปเกรดเป็น FlexPOS ตัวเต็ม</div>
+</section>
+
+</main>
+</body>
+</html>

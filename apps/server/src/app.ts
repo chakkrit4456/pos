@@ -24,7 +24,8 @@ import { adminRoutes } from './routes/admin.js';
 import { reportRoutes } from './routes/reports.js';
 import { cloudRoutes } from './routes/cloud.js';
 import { CloudSync } from './services/cloudSync.js';
-import { t } from '@flexpos/shared';
+import { editionAllows, t } from '@flexpos/shared';
+import { editionGuard } from './edition.js';
 
 export interface ServerOptions {
   dataDir: string;
@@ -82,12 +83,13 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
 
   app.get('/api/health', async () => ({ ok: true, db: !!ctx.conn }));
 
+  editionGuard(app);
   setupRoutes(app, ctx, license);
   catalogRoutes(app, ctx);
   salesRoutes(app, ctx, license, printer);
   stockRoutes(app, ctx);
   crmRoutes(app, ctx);
-  restaurantRoutes(app, ctx, printer);
+  if (editionAllows('restaurant')) restaurantRoutes(app, ctx, printer);
   adminRoutes(app, ctx, printer, backup, license);
   reportRoutes(app, ctx);
   cloudRoutes(app, ctx, cloud, license);
@@ -133,6 +135,8 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
     await app.register(fastifyStatic, { root: webDir, prefix: '/', wildcard: false, maxAge: '1h' });
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'not_found', message: t('ไม่พบ API นี้') });
+      // A missing build file must not get the HTML shell: browsers and the service worker would cache it as the script.
+      if (req.url.startsWith('/assets/')) return reply.status(404).header('cache-control', 'no-store').send({ error: 'not_found', message: t('ไม่พบหน้านี้') });
       return reply.type('text/html').header('cache-control', 'no-cache').sendFile('index.html');
     });
   } else {

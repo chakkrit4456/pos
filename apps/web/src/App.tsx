@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { SetupStatus } from '@flexpos/shared';
+import { editionAllows, type SetupStatus } from '@flexpos/shared';
 import { api } from './lib/api';
 import { useSession } from './lib/session';
 import { applyBrand, useSettings, useTheme } from './lib/settings';
@@ -58,16 +58,20 @@ function Authed() {
         <Routes>
           <Route index element={<Home />} />
           <Route path="pos" element={<PosPage />} />
-          <Route path="tables" element={<FloorPage />} />
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="kitchen" element={<KitchenPage />} />
+          {editionAllows('restaurant') && (
+            <>
+              <Route path="tables" element={<FloorPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="kitchen" element={<KitchenPage />} />
+            </>
+          )}
           <Route path="sales" element={<SalesPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/new" element={<ProductEditor />} />
           <Route path="products/:id" element={<ProductEditor />} />
           <Route path="stock/*" element={<StockPage />} />
           <Route path="customers/*" element={<CustomersPage />} />
-          <Route path="promotions" element={<PromotionsPage />} />
+          {editionAllows('promotions') && <Route path="promotions" element={<PromotionsPage />} />}
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="shift" element={<ShiftPage />} />
@@ -96,14 +100,14 @@ export function App() {
     if (status.data?.hasOwner) switchLanguage(status.data.language);
   }, [status.data]);
 
-  if (loc.pathname === '/order' || loc.pathname.startsWith('/order/')) {
+  if (editionAllows('orderApp') && (loc.pathname === '/order' || loc.pathname.startsWith('/order/'))) {
     return (
       <Suspense fallback={<FullSpinner />}>
         <OrderApp />
       </Suspense>
     );
   }
-  if (loc.pathname.startsWith('/display')) {
+  if (editionAllows('devices') && loc.pathname.startsWith('/display')) {
     return (
       <Suspense fallback={<FullSpinner />}>
         <CustomerDisplay />

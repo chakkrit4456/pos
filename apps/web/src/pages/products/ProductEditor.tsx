@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ArrowLeft, Barcode, ImagePlus, Plus, Trash2, Wand2 } from 'lucide-react';
@@ -68,7 +68,9 @@ export default function ProductEditor() {
   const confirm = useConfirm();
   const settings = useSettings();
   const { can } = useSession();
-  const [f, setF] = useState<Form>(blank);
+  const [params] = useSearchParams();
+  // /products/new?barcode=... comes from scanning an unknown code at the POS.
+  const [f, setF] = useState<Form>(() => ({ ...blank(), barcodes: params.get('barcode') ? [params.get('barcode')!] : [] }));
   const [saving, setSaving] = useState(false);
   const [optionDefs, setOptionDefs] = useState<{ name: string; values: string }[]>([{ name: t('ไซซ์'), values: '' }]);
 

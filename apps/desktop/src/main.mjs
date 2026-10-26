@@ -1,4 +1,4 @@
-// FlexPOS desktop shell: runs the API server in-process and shows the web app.
+// FlexPOS / FlexPOS Lite desktop shell: runs the API server in-process and shows the web app.
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -10,17 +10,27 @@ const res = (...p) => (app.isPackaged ? join(process.resourcesPath, ...p) : join
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
+// Set by stage.mjs. Lite runs on one machine only: no LAN client mode, server bound to this computer.
+const lite = (() => {
+  try {
+    return JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8')).flexposEdition === 'lite';
+  } catch {
+    return false;
+  }
+})();
+const appTitle = () => app.getName() || 'FlexPOS';
+
 function freePort(preferred) {
   return new Promise((resolve) => {
     const s = createServer();
     s.once('error', () => {
       const t = createServer();
-      t.listen(0, () => {
+      t.listen(0, lite ? '127.0.0.1' : undefined, () => {
         const { port } = t.address();
         t.close(() => resolve(port));
       });
     });
-    s.listen(preferred, '0.0.0.0', () => s.close(() => resolve(preferred)));
+    s.listen(preferred, lite ? '127.0.0.1' : '0.0.0.0', () => s.close(() => resolve(preferred)));
   });
 }
 
@@ -33,7 +43,7 @@ async function start() {
   const cfgFile = join(dataDir, 'config.json');
   let url;
   const cfg = existsSync(cfgFile) ? JSON.parse(readFileSync(cfgFile, 'utf8')) : null;
-  if (cfg?.mode === 'client' && cfg.hostUrl) {
+  if (!lite && cfg?.mode === 'client' && cfg.hostUrl) {
     url = cfg.hostUrl;
   } else {
     const serverEntry = app.isPackaged ? join(app.getAppPath(), 'server', 'main.js') : join(here, '..', '..', 'server', 'dist', 'main.js');
@@ -46,7 +56,7 @@ async function start() {
       fontsDir: app.isPackaged ? join(app.getAppPath(), 'server', 'fonts') : join(here, '..', '..', 'server', 'dist', 'fonts'),
       logger: false,
     });
-    url = `http://localhost:${port}`;
+    url = `http://${lite ? '127.0.0.1' : 'localhost'}:${port}`;
   }
 
   win = new BrowserWindow({
@@ -55,7 +65,7 @@ async function start() {
     minWidth: 1024,
     minHeight: 700,
     backgroundColor: '#f6f5f1',
-    title: 'FlexPOS',
+    title: appTitle(),
     autoHideMenuBar: true,
     webPreferences: { preload: join(here, 'preload.cjs'), contextIsolation: true, sandbox: true },
   });
@@ -65,7 +75,7 @@ async function start() {
     return { action: 'deny' };
   });
   await win.loadURL(url).catch(async () => {
-    await dialog.showMessageBox({ type: 'error', title: 'FlexPOS', message: `เชื่อมต่อเครื่อง Host ไม่ได้ (${url})`, detail: 'ตรวจสอบว่าเครื่อง Host เปิดอยู่และอยู่ในเครือข่ายเดียวกัน แล้วเปิดโปรแกรมใหม่' });
+    await dialog.showMessageBox({ type: 'error', title: appTitle(), message: `Cannot reach the host computer (${url}) / เชื่อมต่อเครื่อง Host ไม่ได้`, detail: 'Make sure the host computer is on and on the same network, then reopen the app.' });
   });
 }
 
@@ -96,6 +106,6 @@ app.on('window-all-closed', async () => {
 
 Menu.setApplicationMenu(null);
 app.whenReady().then(start).catch(async (e) => {
-  await dialog.showMessageBox({ type: 'error', title: 'FlexPOS', message: 'เปิดโปรแกรมไม่สำเร็จ', detail: String(e?.stack ?? e) });
+  await dialog.showMessageBox({ type: 'error', title: appTitle(), message: 'The app could not start / เปิดโปรแกรมไม่สำเร็จ', detail: String(e?.stack ?? e) });
   app.quit();
 });

@@ -1,37 +1,40 @@
-import { t } from './i18n.js';
-export const PERMISSIONS = {
-  'pos.sell': t('ขายสินค้า'),
-  'pos.discount': t('ให้ส่วนลด'),
-  'pos.price_override': t('แก้ราคาขาย'),
-  'pos.void': t('ยกเลิกบิล'),
-  'pos.refund': t('คืนสินค้า'),
-  'pos.reprint': t('พิมพ์ใบเสร็จซ้ำ'),
-  'pos.open_drawer': t('เปิดลิ้นชักเงิน'),
-  'pos.credit_sale': t('ขายเชื่อ/ค้างชำระ'),
-  'shift.manage': t('เปิด/ปิดกะ และนำเงินเข้าออก'),
-  'tables.manage': t('จัดการโต๊ะและออเดอร์'),
-  'kitchen.view': t('จอครัว'),
-  'products.view': t('ดูสินค้า'),
-  'products.manage': t('จัดการสินค้า'),
-  'stock.view': t('ดูสต็อก'),
-  'stock.manage': t('รับเข้า/ปรับ/นับ/โอนสต็อก'),
-  'customers.view': t('ดูลูกค้า'),
-  'customers.manage': t('จัดการลูกค้า'),
-  'promotions.manage': t('จัดการโปรโมชั่น'),
-  'reports.view': t('ดูรายงาน'),
-  'reports.profit': t('ดูต้นทุนและกำไร'),
-  'users.manage': t('จัดการผู้ใช้และสิทธิ์'),
-  'settings.manage': t('ตั้งค่าระบบ'),
-  'audit.view': t('ดูบันทึกการใช้งาน'),
-  'backup.manage': t('สำรอง/กู้คืนข้อมูล'),
+import { IS_LITE } from './edition.js';
+import { lazyLabels, t } from './i18n.js';
+const PERMISSION_KEYS = {
+  'pos.sell': 'ขายสินค้า',
+  'pos.discount': 'ให้ส่วนลด',
+  'pos.price_override': 'แก้ราคาขาย',
+  'pos.void': 'ยกเลิกบิล',
+  'pos.refund': 'คืนสินค้า',
+  'pos.reprint': 'พิมพ์ใบเสร็จซ้ำ',
+  'pos.open_drawer': 'เปิดลิ้นชักเงิน',
+  'pos.credit_sale': 'ขายเชื่อ/ค้างชำระ',
+  'shift.manage': 'เปิด/ปิดกะ และนำเงินเข้าออก',
+  'tables.manage': 'จัดการโต๊ะและออเดอร์',
+  'kitchen.view': 'จอครัว',
+  'products.view': 'ดูสินค้า',
+  'products.manage': 'จัดการสินค้า',
+  'stock.view': 'ดูสต็อก',
+  'stock.manage': 'รับเข้า/ปรับ/นับ/โอนสต็อก',
+  'customers.view': 'ดูลูกค้า',
+  'customers.manage': 'จัดการลูกค้า',
+  'promotions.manage': 'จัดการโปรโมชั่น',
+  'reports.view': 'ดูรายงาน',
+  'reports.profit': 'ดูต้นทุนและกำไร',
+  'users.manage': 'จัดการผู้ใช้และสิทธิ์',
+  'settings.manage': 'ตั้งค่าระบบ',
+  'audit.view': 'ดูบันทึกการใช้งาน',
+  'backup.manage': 'สำรอง/กู้คืนข้อมูล',
 } as const;
+
+export const PERMISSIONS = lazyLabels<keyof typeof PERMISSION_KEYS>(PERMISSION_KEYS);
 
 export type Permission = keyof typeof PERMISSIONS;
 export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[];
 
 export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   {
-    label: t('หน้าขาย'),
+    get label() { return t('หน้าขาย'); },
     keys: [
       'pos.sell',
       'pos.discount',
@@ -43,11 +46,11 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
       'pos.credit_sale',
     ],
   },
-  { label: t('กะและโต๊ะ'), keys: ['shift.manage', 'tables.manage', 'kitchen.view'] },
-  { label: t('สินค้าและสต็อก'), keys: ['products.view', 'products.manage', 'stock.view', 'stock.manage'] },
-  { label: t('ลูกค้าและโปรโมชั่น'), keys: ['customers.view', 'customers.manage', 'promotions.manage'] },
+  { get label() { return t('กะและโต๊ะ'); }, keys: ['shift.manage', 'tables.manage', 'kitchen.view'] },
+  { get label() { return t('สินค้าและสต็อก'); }, keys: ['products.view', 'products.manage', 'stock.view', 'stock.manage'] },
+  { get label() { return t('ลูกค้าและโปรโมชั่น'); }, keys: ['customers.view', 'customers.manage', 'promotions.manage'] },
   {
-    label: t('ผู้ดูแล'),
+    get label() { return t('ผู้ดูแล'); },
     keys: ['reports.view', 'reports.profit', 'users.manage', 'settings.manage', 'audit.view', 'backup.manage'],
   },
 ];
@@ -72,5 +75,6 @@ export const DEFAULT_ROLES: { code: string; name: string; permissions: Permissio
       'stock.view',
     ],
   },
-  { code: 'kitchen', name: t('พนักงานครัว'), permissions: ['kitchen.view', 'tables.manage'] },
+  // Lite has no kitchen, so no kitchen staff role.
+  ...(IS_LITE ? [] : [{ code: 'kitchen', name: t('พนักงานครัว'), permissions: ['kitchen.view', 'tables.manage'] as Permission[] }]),
 ];

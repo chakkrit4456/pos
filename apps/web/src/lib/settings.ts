@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DEFAULT_SETTINGS, formatDateTime, formatMoney, type Settings } from '@flexpos/shared';
+import { DEFAULT_SETTINGS, EDITION_NAME, formatDateTime, formatMoney, type Settings } from '@flexpos/shared';
 import { api } from './api';
 import { useSession } from './session';
 
@@ -43,7 +43,7 @@ export function applyBrand(b: BrandLook) {
   root.style.setProperty('--rail-muted', lightRail ? '95 99 104' : '180 183 188');
   root.style.setProperty('--rail-faint', lightRail ? '138 141 145' : '107 110 114');
   root.style.setProperty('--rail-hover', lightRail ? '0 0 0' : '255 255 255');
-  document.title = b.appName || 'FlexPOS';
+  document.title = b.appName || EDITION_NAME;
   let icon = document.querySelector<HTMLLinkElement>('link[rel=icon]');
   if (!icon) {
     icon = document.createElement('link');
@@ -76,7 +76,7 @@ export function useTheme(settings: Settings) {
 /** App name + logo for headers (logo falls back to the store logo). */
 export function useBrand() {
   const s = useSettings();
-  return { appName: s.brand.appName || 'FlexPOS', logo: s.brand.appLogo || s.store.logo, poweredBy: s.brand.poweredBy };
+  return { appName: s.brand.appName || EDITION_NAME, logo: s.brand.appLogo || s.store.logo, poweredBy: s.brand.poweredBy };
 }
 
 export const money = (satang: number) => formatMoney(satang);

@@ -33,6 +33,10 @@ describe('license', () => {
     expect(st.maxBranches).toBe(3);
     expect(svc.canSell()).toBe(true);
   });
+  it('full edition refuses FlexPOS Lite keys', () => {
+    const svc = new LicenseService(mkdtempSync(join(tmpdir(), 'lic-')), pem);
+    expect(() => svc.activate(issue(privateKey, { ...base, plan: 'lite', machineId: machineId() }))).toThrow(/Lite/);
+  });
   it('expired keys block selling', () => {
     const svc = new LicenseService(mkdtempSync(join(tmpdir(), 'lic-')), pem);
     svc.activate(issue(privateKey, { ...base, machineId: '*', expiresAt: new Date(Date.now() - 86400_000).toISOString() }));

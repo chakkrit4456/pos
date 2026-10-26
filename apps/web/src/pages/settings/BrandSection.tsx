@@ -4,7 +4,7 @@ import { cn, imageToDataUrl } from '@/lib/utils';
 import { Card, Field, Input, Select, ToggleRow } from '@/components/ui/core';
 import { BrandMark } from '@/components/BrandMark';
 import { SaveBar, SectionTitle, useDraft } from './common';
-import { t } from '@flexpos/shared';
+import { EDITION_NAME, t } from '@flexpos/shared';
 
 const PRESETS: { name: string; primary: string; accent: string; sidebar: string }[] = [
   { name: t('เขียวใบชา'), primary: '#1d7a57', accent: '#2f9e74', sidebar: '#17191c' },
@@ -97,7 +97,7 @@ export function BrandSection() {
               </label>
               <div className="flex flex-1 flex-col gap-3">
                 <Field label={t('ชื่อแอป')} hint={t('แสดงที่แถบเมนู แท็บเบราว์เซอร์ หน้าเข้าสู่ระบบ และแอปพนักงาน')}>
-                  <Input value={b.appName} maxLength={40} onChange={(e) => brand.set('appName', e.target.value)} placeholder="FlexPOS" />
+                  <Input value={b.appName} maxLength={40} onChange={(e) => brand.set('appName', e.target.value)} placeholder={EDITION_NAME} />
                 </Field>
                 <div className="flex flex-wrap gap-2 text-[13px]">
                   {b.appLogo && <button className="text-danger underline" onClick={() => brand.set('appLogo', '')}>{t('ลบโลโก้แอป')}</button>}
@@ -143,7 +143,7 @@ export function BrandSection() {
               <Field label={t('ข้อความรอง')}><Input value={b.loginSubtitle} maxLength={160} onChange={(e) => brand.set('loginSubtitle', e.target.value)} placeholder={t('เช่น ยินดีต้อนรับทีมงาน')} /></Field>
             </div>
             <div className="-my-2 flex flex-col">
-              <ToggleRow label={t('แสดง “ระบบโดย {0}” ท้ายใบเสร็จ', b.appName || 'FlexPOS')} checked={b.poweredBy} onChange={(v) => brand.set('poweredBy', v)} />
+              <ToggleRow label={t('แสดง “ระบบโดย {0}” ท้ายใบเสร็จ', b.appName || EDITION_NAME)} checked={b.poweredBy} onChange={(v) => brand.set('poweredBy', v)} />
             </div>
           </Card>
 
@@ -156,7 +156,7 @@ export function BrandSection() {
           </Card>
         </div>
         <div className="xl:sticky xl:top-4">
-          <Preview appName={b.appName || 'FlexPOS'} logo={logo} primary={b.primary} accent={b.accent} sidebar={b.sidebar} loginTitle={b.loginTitle} loginSubtitle={b.loginSubtitle} storeName={settings.store.name} />
+          <Preview appName={b.appName || EDITION_NAME} logo={logo} primary={b.primary} accent={b.accent} sidebar={b.sidebar} loginTitle={b.loginTitle} loginSubtitle={b.loginSubtitle} storeName={settings.store.name} />
         </div>
       </div>
       <SaveBar dirty={dirty} saving={brand.saving || locale.saving} onSave={() => void brand.save({ locale: locale.draft })} onReset={() => (brand.reset(), locale.reset())} />
