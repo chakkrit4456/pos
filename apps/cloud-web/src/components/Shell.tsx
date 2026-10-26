@@ -23,7 +23,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="ml-auto flex items-center gap-1">
             <button className="h-10 rounded-xl px-3 text-[13px] text-rail-muted hover:text-rail-fg" onClick={() => switchLanguage(getLanguage() === 'th' ? 'en' : 'th')}>{getLanguage() === 'th' ? 'EN' : 'ไทย'}</button>
-            <NavLink to="/account" className={link} title={user?.email}><UserRound className="h-4 w-4" /><span className="hidden max-w-[180px] truncate md:inline">{user?.name}</span></NavLink>
+            <NavLink to="/account" className={link} title={user?.username}><UserRound className="h-4 w-4" /><span className="hidden max-w-[180px] truncate md:inline">{user?.name}</span></NavLink>
             <button className="grid h-10 w-10 place-items-center rounded-xl text-rail-muted hover:text-rail-fg" onClick={() => void logout()} aria-label={t('ออกจากระบบ')} title={t('ออกจากระบบ')}><LogOut className="h-4 w-4" /></button>
           </div>
         </div>

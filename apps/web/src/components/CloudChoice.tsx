@@ -3,44 +3,41 @@ import { AlertTriangle, Check, Cloud, HardDrive, Server } from 'lucide-react';
 import { DEFAULT_CLOUD_URL, t } from '@flexpos/shared';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Checkbox, Field, Input, Segmented } from '@/components/ui/core';
+import { Checkbox, Field, Input, Textarea } from '@/components/ui/core';
 
 export type CloudMode = 'cloud' | 'self' | 'local';
 
 export interface CloudDraft {
   mode: CloudMode;
+  /** FlexPOS Cloud: key from the vendor (blank = use the license already installed) */
+  licenseKey: string;
+  /** own server */
   url: string;
-  account: 'new' | 'existing';
-  name: string;
-  email: string;
+  username: string;
   password: string;
   /** local only: the owner confirmed they understand there is no web dashboard */
   localAck: boolean;
 }
 
-export const emptyCloudDraft = (name = ''): CloudDraft => ({ mode: 'cloud', url: '', account: 'new', name, email: '', password: '', localAck: false });
+export const emptyCloudDraft = (): CloudDraft => ({ mode: 'cloud', licenseKey: '', url: '', username: '', password: '', localAck: false });
 
-export function cloudDraftOk(d: CloudDraft): boolean {
+/** hasLicense: this machine already has an activated license key */
+export function cloudDraftOk(d: CloudDraft, hasLicense: boolean): boolean {
   if (d.mode === 'local') return d.localAck;
-  if (d.mode === 'self' && !/^https?:\/\/\S+/.test(d.url.trim())) return false;
-  if (d.account === 'new' && !d.name.trim()) return false;
-  return /^\S+@\S+\.\S+$/.test(d.email.trim()) && d.password.length >= 8;
+  if (d.mode === 'cloud') return hasLicense || d.licenseKey.trim().length > 20;
+  return /^https?:\/\/\S+/.test(d.url.trim()) && d.username.trim().length >= 3 && d.password.length > 0;
 }
 
 /** Apply the choice on the POS server (which pairs with the cloud on our behalf). */
-export async function applyCloudDraft(d: CloudDraft, tenantId?: string) {
+export async function applyCloudDraft(d: CloudDraft) {
   if (d.mode === 'local') return api.post('/api/cloud/local');
-  return api.post<{ tenantId: string; tenantName: string; email: string }>('/api/cloud/connect', {
-    mode: d.mode,
-    url: d.mode === 'self' ? d.url.trim() : undefined,
-    email: d.email.trim(),
-    password: d.password,
-    createAccount: d.account === 'new' ? { name: d.name.trim() } : undefined,
-    tenantId,
-  });
+  return api.post<{ tenantId: string; tenantName: string }>(
+    '/api/cloud/connect',
+    d.mode === 'cloud' ? { mode: 'cloud', licenseKey: d.licenseKey.trim() || undefined } : { mode: 'self', url: d.url.trim(), username: d.username.trim(), password: d.password },
+  );
 }
 
-export function CloudChoice({ draft, onChange }: { draft: CloudDraft; onChange: (d: CloudDraft) => void }) {
+export function CloudChoice({ draft, onChange, hasLicense }: { draft: CloudDraft; onChange: (d: CloudDraft) => void; hasLicense: boolean }) {
   const set = <K extends keyof CloudDraft>(k: K, v: CloudDraft[K]) => onChange({ ...draft, [k]: v });
   return (
     <div className="flex flex-col gap-4">
@@ -61,32 +58,27 @@ export function CloudChoice({ draft, onChange }: { draft: CloudDraft; onChange: 
           </div>
           <Checkbox checked={draft.localAck} onChange={(v) => set('localAck', v)} label={t('ฉันเข้าใจ และต้องการเก็บข้อมูลในเครื่องนี้อย่างเดียว')} />
         </div>
+      ) : draft.mode === 'cloud' ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-line bg-sunken p-4">
+          <div className="text-[13px] text-muted">
+            {t('เข้าดูแดชบอร์ดได้ที่')} <span className="font-mono text-ink">{DEFAULT_CLOUD_URL}</span>
+          </div>
+          <Field label="License key" required={!hasLicense} hint={hasLicense ? t('เครื่องนี้มี License แล้ว เว้นว่างไว้เพื่อใช้ License เดิม') : t('ร้านจะถูกสร้างบนคลาวด์ครั้งแรกที่ใช้ key นี้ เครื่องต่อไปที่ใช้ key เดียวกันจะเข้าร้านเดิม')}>
+            <Textarea className="min-h-[72px] font-mono text-[12px]" value={draft.licenseKey} placeholder={hasLicense ? t('(ใช้ License ที่ติดตั้งแล้ว)') : ''} onChange={(e) => set('licenseKey', e.target.value)} />
+          </Field>
+          <p className="text-[13px] text-muted">{t('บัญชีผู้จัดการสำหรับเข้าเว็บ ผู้ให้บริการเป็นผู้สร้างให้ เครื่อง POS ยังขายได้ตามปกติแม้อินเทอร์เน็ตหลุด รหัสผ่านและ PIN ของพนักงานไม่ถูกส่งออกจากเครื่อง')}</p>
+        </div>
       ) : (
         <div className="grid gap-4 rounded-2xl border border-line bg-sunken p-4 md:grid-cols-2">
-          {draft.mode === 'self' ? (
-            <Field label={t('ที่อยู่เซิร์ฟเวอร์ของร้าน')} required hint={t('เช่น https://dashboard.myshop.com (ดูวิธีติดตั้งในคู่มือ FlexPOS Cloud)')} className="md:col-span-2">
-              <Input value={draft.url} placeholder="https://" onChange={(e) => set('url', e.target.value)} />
-            </Field>
-          ) : (
-            <div className="text-[13px] text-muted md:col-span-2">
-              {t('เข้าดูแดชบอร์ดได้ที่')} <span className="font-mono text-ink">{DEFAULT_CLOUD_URL}</span>
-            </div>
-          )}
-          <div className="md:col-span-2">
-            <Segmented value={draft.account} onChange={(v) => set('account', v)} options={[{ value: 'new', label: t('สร้างบัญชีผู้จัดการใหม่') }, { value: 'existing', label: t('มีบัญชีอยู่แล้ว') }]} />
-          </div>
-          {draft.account === 'new' && (
-            <Field label={t('ชื่อผู้จัดการ')} required>
-              <Input value={draft.name} onChange={(e) => set('name', e.target.value)} />
-            </Field>
-          )}
-          <Field label={t('อีเมล (ใช้เข้าสู่ระบบบนเว็บ)')} required>
-            <Input type="email" autoComplete="email" value={draft.email} onChange={(e) => set('email', e.target.value)} />
+          <Field label={t('ที่อยู่เซิร์ฟเวอร์ของร้าน')} required hint={t('เช่น https://dashboard.myshop.com (ดูวิธีติดตั้งในคู่มือ FlexPOS Cloud)')} className="md:col-span-2">
+            <Input value={draft.url} placeholder="https://" onChange={(e) => set('url', e.target.value)} />
           </Field>
-          <Field label={t('รหัสผ่านบนเว็บ')} required hint={t('อย่างน้อย 8 ตัวอักษร')} error={draft.password && draft.password.length < 8 ? t('อย่างน้อย 8 ตัวอักษร') : undefined}>
-            <Input type="password" autoComplete={draft.account === 'new' ? 'new-password' : 'current-password'} value={draft.password} onChange={(e) => set('password', e.target.value)} />
+          <Field label={t('ชื่อผู้ใช้ผู้จัดการ')} required hint={t('บัญชีที่ผู้ดูแลเซิร์ฟเวอร์สร้างให้')}>
+            <Input autoComplete="username" value={draft.username} onChange={(e) => set('username', e.target.value)} />
           </Field>
-          <p className="text-[13px] text-muted md:col-span-2">{t('เครื่อง POS ยังขายได้ตามปกติแม้อินเทอร์เน็ตหลุด ข้อมูลจะส่งขึ้นเว็บอัตโนมัติเมื่อกลับมาออนไลน์ รหัสผ่านและ PIN ของพนักงานไม่ถูกส่งออกจากเครื่อง')}</p>
+          <Field label={t('รหัสผ่าน')} required>
+            <Input type="password" autoComplete="current-password" value={draft.password} onChange={(e) => set('password', e.target.value)} />
+          </Field>
         </div>
       )}
     </div>

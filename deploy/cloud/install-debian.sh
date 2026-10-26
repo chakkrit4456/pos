@@ -67,13 +67,18 @@ DATABASE_URL=postgres://$DB_USER:$DB_PASS@127.0.0.1:5432/$DB_NAME
 JWT_SECRET=$JWT
 LOG_FILE=$LOG_DIR/app.log
 FLEXPOS_CLOUD_DATA=$DATA_DIR
-# 1 = a POS may create a new store + manager account when it first connects
-ALLOW_SIGNUP=1
 ENV
   chown root:"$SVC_USER" "$ENV_FILE"
   chmod 640 "$ENV_FILE"
 else
   echo "keeping existing $ENV_FILE"
+fi
+
+LICENSE_PEM=/etc/flexpos-cloud-license.pem
+if [ -n "${LICENSE_KEY_FILE:-}" ]; then
+  say "License signing key"
+  install -o root -g "$SVC_USER" -m 640 "$LICENSE_KEY_FILE" "$LICENSE_PEM"
+  grep -q '^LICENSE_PRIVATE_KEY_FILE=' "$ENV_FILE" || echo "LICENSE_PRIVATE_KEY_FILE=$LICENSE_PEM" >> "$ENV_FILE"
 fi
 
 say "Build"
@@ -170,5 +175,6 @@ Done.
   Service       : systemctl status flexpos-cloud     logs: journalctl -u flexpos-cloud -f  /  $LOG_DIR/app.log
   Settings      : $ENV_FILE
   Backups       : $BACKUP_DIR
+  Licenses      : $( [ -f $LICENSE_PEM ] && echo 'issued from the web (Superadmin → License)' || echo 'off: POS machines sign in with a manager account')
   Superadmin    : re-run with SUPERADMIN_EMAIL=you@example.com to add one or reset its password
 DONE

@@ -88,7 +88,23 @@ export interface CloudRefreshTokensTable {
   revoked: number;
 }
 
+export interface LicensesTable {
+  id: string;
+  tenant_id: string | null;
+  licensee: string;
+  plan: string;
+  max_devices: number;
+  max_branches: number;
+  /** latest signed key; re-signed whenever the limits change */
+  key: string;
+  note: string;
+  revoked: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CloudDB {
+  licenses: LicensesTable;
   tenants: TenantsTable;
   cloud_users: CloudUsersTable;
   memberships: MembershipsTable;
@@ -204,6 +220,25 @@ const migrations: Record<string, Migration> = {
         .addColumn('created_at', ts, (c) => c.notNull())
         .addColumn('revoked', 'integer', (c) => c.notNull().defaultTo(0))
         .execute();
+    },
+  },
+  '0002_licenses': {
+    async up(db: Kysely<unknown>) {
+      await db.schema
+        .createTable('licenses')
+        .addColumn('id', id, (c) => c.primaryKey())
+        .addColumn('tenant_id', id, (c) => c.references('tenants.id').onDelete('set null'))
+        .addColumn('licensee', str, (c) => c.notNull())
+        .addColumn('plan', sql`varchar(32)`, (c) => c.notNull().defaultTo(''))
+        .addColumn('max_devices', 'integer', (c) => c.notNull())
+        .addColumn('max_branches', 'integer', (c) => c.notNull().defaultTo(1))
+        .addColumn('key', 'text', (c) => c.notNull())
+        .addColumn('note', 'text', (c) => c.notNull().defaultTo(''))
+        .addColumn('revoked', 'integer', (c) => c.notNull().defaultTo(0))
+        .addColumn('created_at', ts, (c) => c.notNull())
+        .addColumn('updated_at', ts, (c) => c.notNull())
+        .execute();
+      await db.schema.createIndex('ix_licenses_tenant').on('licenses').columns(['tenant_id']).execute();
     },
   },
 };

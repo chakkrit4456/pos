@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { buildCloud } from './app.js';
 import { CloudContext, configFromEnv } from './context.js';
-import { hashPassword, normEmail, nowIso, uuid } from './auth.js';
+import { hashPassword, normLogin, nowIso, uuid } from './auth.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const config = configFromEnv();
@@ -27,7 +27,7 @@ if (cmd === 'create-superadmin' || cmd === 'reset-password') {
     process.exit(2);
   }
   const ctx = await CloudContext.open(config);
-  const email = normEmail(values.email);
+  const email = normLogin(values.email);
   const existing = await ctx.db.selectFrom('cloud_users').select('id').where('email', '=', email).executeTakeFirst();
   const password_hash = await hashPassword(values.password);
   if (existing) {

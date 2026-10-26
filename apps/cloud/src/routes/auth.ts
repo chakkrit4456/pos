@@ -2,8 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { t } from '@flexpos/shared';
 import type { CloudContext } from '../context.js';
-import { audit, hashPassword, issueTokens, loadSession, normEmail, requireUser, revokeRefresh, rotateRefresh, session, verifyPassword } from '../auth.js';
-import { badRequest, unauthorized } from '../errors.js';
+import { audit, hashPassword, issueTokens, loadSession, loginSchema, normLogin, requireUser, revokeRefresh, rotateRefresh, session, verifyPassword } from '../auth.js';
+import { badRequest, conflict, unauthorized } from '../errors.js';
 
 export function authRoutes(app: FastifyInstance, ctx: CloudContext) {
   const limited = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
@@ -11,13 +11,13 @@ export function authRoutes(app: FastifyInstance, ctx: CloudContext) {
   const me = async (userId: string) => {
     const s = await loadSession(ctx, userId);
     if (!s) throw unauthorized(t('บัญชีนี้ถูกปิดการใช้งาน'));
-    return { id: s.id, email: s.email, name: s.name, isSuperadmin: s.isSuperadmin };
+    return { id: s.id, username: s.email, name: s.name, isSuperadmin: s.isSuperadmin };
   };
 
   app.post('/api/auth/login', limited, async (req, reply) => {
-    const b = z.object({ email: z.string().min(3), password: z.string().min(1) }).parse(req.body);
-    const u = await ctx.db.selectFrom('cloud_users').selectAll().where('email', '=', normEmail(b.email)).executeTakeFirst();
-    if (!u || !(await verifyPassword(u.password_hash, b.password))) throw unauthorized(t('อีเมลหรือรหัสผ่านไม่ถูกต้อง'));
+    const b = z.object({ username: z.string().min(3), password: z.string().min(1) }).parse(req.body);
+    const u = await ctx.db.selectFrom('cloud_users').selectAll().where('email', '=', normLogin(b.username)).executeTakeFirst();
+    if (!u || !(await verifyPassword(u.password_hash, b.password))) throw unauthorized(t('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'));
     if (u.disabled === 1) throw unauthorized(t('บัญชีนี้ถูกปิดการใช้งาน'));
     const tokens = await issueTokens(ctx, reply, u.id);
     req.cloudUser = { id: u.id, email: u.email, name: u.name, isSuperadmin: u.is_superadmin === 1, memberships: new Map() };
@@ -40,6 +40,19 @@ export function authRoutes(app: FastifyInstance, ctx: CloudContext) {
   });
 
   app.get('/api/auth/me', { preHandler: requireUser(ctx) }, async (req) => me(session(req).id));
+
+  /** Everyone may change their own sign-in name (confirmed with the current password). */
+  app.put('/api/auth/username', { preHandler: requireUser(ctx), ...limited }, async (req) => {
+    const b = z.object({ username: loginSchema, password: z.string().min(1) }).parse(req.body);
+    const s = session(req);
+    const u = await ctx.db.selectFrom('cloud_users').select('password_hash').where('id', '=', s.id).executeTakeFirstOrThrow();
+    if (!(await verifyPassword(u.password_hash, b.password))) throw badRequest(t('รหัสผ่านปัจจุบันไม่ถูกต้อง'));
+    const login = normLogin(b.username);
+    if (await ctx.db.selectFrom('cloud_users').select('id').where('email', '=', login).where('id', '!=', s.id).executeTakeFirst()) throw conflict(t('ชื่อผู้ใช้นี้ถูกใช้แล้ว กรุณาตั้งชื่อผู้ใช้อื่น เช่น เติมชื่อร้านต่อท้าย'));
+    await ctx.db.updateTable('cloud_users').set({ email: login }).where('id', '=', s.id).execute();
+    await audit(ctx, req, 'auth.username', 'user', s.id, { from: s.email, to: login });
+    return me(s.id);
+  });
 
   app.put('/api/auth/password', { preHandler: requireUser(ctx), ...limited }, async (req) => {
     const b = z.object({ current: z.string().min(1), next: z.string().min(8) }).parse(req.body);

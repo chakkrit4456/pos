@@ -31,6 +31,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
   const [owner, setOwner] = useState({ name: '', username: 'owner', password: '', password2: '', pin: '' });
   const [sampleData, setSampleData] = useState(true);
   const [cloud, setCloud] = useState(emptyCloudDraft());
+  const hasLicense = status.license.state === 'active';
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -106,10 +107,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
   };
   const ownerOk = owner.name.trim() && owner.password.length >= 8 && owner.password === owner.password2 && /^\d{4,6}$/.test(owner.pin) && !ownerErrors.username;
 
-  const next = () => {
-    if (step === 5 && !cloud.name) setCloud((c) => ({ ...c, name: owner.name }));
-    setStep((s) => s + 1);
-  };
+  const next = () => setStep((s) => s + 1);
   const back = () => setStep((s) => Math.max(status.configured ? 2 : 0, s - 1));
 
   return (
@@ -261,7 +259,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
 
           {step === 6 && (
             <StepBody title={t('ดูข้อมูลร้านผ่านหน้าเว็บ')} sub={t('เลือกว่าจะเก็บสำเนาข้อมูลไว้ที่ไหนเพื่อดูแดชบอร์ดออนไลน์ เปลี่ยนภายหลังได้ที่หน้าตั้งค่า')}>
-              <CloudChoice draft={cloud} onChange={setCloud} />
+              <CloudChoice draft={cloud} onChange={setCloud} hasLicense={hasLicense} />
             </StepBody>
           )}
 
@@ -293,7 +291,7 @@ export default function SetupWizard({ status }: { status: SetupStatus }) {
             ) : step === STEPS.length - 1 ? (
               <Button variant="primary" size="lg" loading={busy} onClick={finish}>{t('เริ่มใช้งาน')}</Button>
             ) : (
-              <Button variant="primary" size="lg" onClick={next} disabled={(step === 2 && !storeOk) || (step === 5 && !ownerOk) || (step === 6 && !cloudDraftOk(cloud))}>{t('ถัดไป')}</Button>
+              <Button variant="primary" size="lg" onClick={next} disabled={(step === 2 && !storeOk) || (step === 5 && !ownerOk) || (step === 6 && !cloudDraftOk(cloud, hasLicense))}>{t('ถัดไป')}</Button>
             )}
           </div>
         </div>

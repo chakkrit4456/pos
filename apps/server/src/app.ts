@@ -58,7 +58,7 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
   const license = new LicenseService(opts.dataDir);
   const printer = new PrintService(ctx, opts.fontsDir);
   const backup = new BackupService(ctx);
-  const cloud = new CloudSync(ctx);
+  const cloud = new CloudSync(ctx, license);
 
   const app = Fastify({
     logger: opts.logger
@@ -90,7 +90,7 @@ export async function buildServer(opts: ServerOptions): Promise<FlexServer> {
   restaurantRoutes(app, ctx, printer);
   adminRoutes(app, ctx, printer, backup, license);
   reportRoutes(app, ctx);
-  cloudRoutes(app, ctx, cloud);
+  cloudRoutes(app, ctx, cloud, license);
 
   /** Live events. Auth by access token in the query string (browsers cannot set WS headers). */
   app.get('/api/ws', { websocket: true }, async (socket, req) => {

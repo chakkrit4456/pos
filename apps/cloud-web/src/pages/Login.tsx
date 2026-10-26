@@ -8,7 +8,7 @@ import { useSession } from '~/lib/session';
 
 export default function Login() {
   const { login } = useSession();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -17,7 +17,7 @@ export default function Login() {
     setBusy(true);
     setError('');
     try {
-      await login(email, password);
+      await login(username, password);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -34,11 +34,11 @@ export default function Login() {
             <p className="text-[14px] text-muted">{t('แดชบอร์ดร้านค้าออนไลน์')}</p>
           </div>
         </div>
-        <Field label={t('อีเมล')}><Input type="email" autoComplete="username" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+        <Field label={t('ชื่อผู้ใช้')}><Input autoComplete="username" autoCapitalize="none" autoFocus required value={username} onChange={(e) => setUsername(e.target.value)} /></Field>
         <Field label={t('รหัสผ่าน')}><Input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
         {error && <p className="rounded-xl bg-danger-soft px-3 py-2.5 text-[14px] text-danger" role="alert">{error}</p>}
         <Button type="submit" variant="primary" size="lg" loading={busy}>{t('เข้าสู่ระบบ')}</Button>
-        <p className="text-[13px] text-muted">{t('ใช้อีเมลและรหัสผ่านที่ตั้งตอนเชื่อมต่อเครื่อง POS กับแดชบอร์ดออนไลน์ หรือบัญชีที่ผู้จัดการร้านเพิ่มให้')}</p>
+        <p className="text-[13px] text-muted">{t('ผู้จัดการร้านใช้บัญชีที่ผู้ให้บริการสร้างให้ พนักงานใช้บัญชีที่ผู้จัดการร้านเพิ่มให้')}</p>
         <button type="button" className="self-center text-[13px] text-muted underline" onClick={() => switchLanguage(getLanguage() === 'th' ? 'en' : 'th')}>{getLanguage() === 'th' ? 'English' : 'ภาษาไทย'}</button>
       </form>
     </div>

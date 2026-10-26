@@ -13,6 +13,7 @@ import { AppError, badRequest } from '../errors.js';
 import { audit } from '../auth.js';
 import { nowIso } from '../util.js';
 import { VERSION } from '../context.js';
+import type { LicenseService } from './license.js';
 
 const INTERVAL_MS = 30_000;
 const MAX_BACKOFF_MS = 5 * 60_000;
@@ -27,7 +28,7 @@ export interface CloudStatus {
   connected: boolean;
   tenantId: string | null;
   tenantName: string | null;
-  email: string | null;
+  account: string | null;
   pending: number;
   lastPushAt: string | null;
   lastOkAt: string | null;
@@ -68,7 +69,10 @@ export class CloudSync {
     if (DATA_EVENTS.has(e.type)) this.schedule(2000);
   };
 
-  constructor(private readonly ctx: AppContext) {}
+  constructor(
+    private readonly ctx: AppContext,
+    private readonly license: LicenseService,
+  ) {}
 
   get cfg(): CloudConfig | undefined {
     return this.ctx.config.cloud;
@@ -126,7 +130,7 @@ export class CloudSync {
       connected: this.connected,
       tenantId: c?.tenantId ?? null,
       tenantName: c?.tenantName ?? null,
-      email: c?.email ?? null,
+      account: c?.account ?? null,
       pending,
       lastPushAt: this.lastPushAt,
       lastOkAt: this.lastOkAt,
@@ -163,21 +167,27 @@ export class CloudSync {
     return data as T;
   }
 
-  /** Pair this POS with a store on the cloud, then queue the whole history for upload. */
-  async connect(o: { mode: 'cloud' | 'self'; url: string; email: string; password: string; createAccount?: { name: string }; tenantId?: string; deviceName: string; machineId: string }) {
+  /**
+   * Pair this POS with a store on the cloud, then queue the whole history for upload.
+   * FlexPOS Cloud identifies the store by the license key; a store's own server by a manager account.
+   */
+  async connect(o: { mode: 'cloud' | 'self'; url: string; licenseKey?: string; username?: string; password?: string; tenantId?: string; deviceName: string; machineId: string }) {
     if (!this.ctx.conn) throw badRequest(t('ยังไม่ได้ตั้งค่าฐานข้อมูล'));
     const url = o.url.trim().replace(/\/+$/, '');
     if (!/^https?:\/\/[^\s/]+/.test(url)) throw badRequest(t('ที่อยู่เซิร์ฟเวอร์ไม่ถูกต้อง ต้องขึ้นต้นด้วย https://'));
-    let r: { deviceToken: string; deviceId: string; tenantId: string; tenantName: string; email: string };
+    let r: { deviceToken: string; deviceId: string; tenantId: string; tenantName: string; licenseKey: string | null };
+    const device = { storeName: this.ctx.settings.store.name || 'FlexPOS', deviceName: o.deviceName, machineId: o.machineId, appVersion: VERSION };
+    const body = o.mode === 'cloud' ? { licenseKey: o.licenseKey, ...device } : { username: o.username, password: o.password, tenantId: o.tenantId, ...device };
     try {
-      r = await this.request('POST', '/api/sync/register', { email: o.email, password: o.password, createAccount: o.createAccount, tenantId: o.tenantId, storeName: this.ctx.settings.store.name || 'FlexPOS', deviceName: o.deviceName, machineId: o.machineId, appVersion: VERSION }, { url, token: null });
+      r = await this.request('POST', '/api/sync/register', body, { url, token: null });
     } catch (e) {
       if (e instanceof CloudSyncError) throw new AppError(e.status === 0 ? 502 : e.status, 'cloud', e.message, e.details);
       throw e;
     }
     this.stop();
-    this.ctx.config.cloud = { mode: o.mode, url, tokenEnc: encryptSecret(r.deviceToken), tenantId: r.tenantId, tenantName: r.tenantName, email: r.email, deviceId: r.deviceId, connectedAt: nowIso() };
+    this.ctx.config.cloud = { mode: o.mode, url, tokenEnc: encryptSecret(r.deviceToken), tenantId: r.tenantId, tenantName: r.tenantName, account: o.mode === 'self' ? (o.username ?? null) : null, deviceId: r.deviceId, connectedAt: nowIso() };
     this.ctx.store.save(this.ctx.config);
+    this.applyLicense(r.licenseKey);
     // Triggers first, then a full snapshot: nothing written in between can be missed.
     await installSyncTriggers(this.ctx.conn);
     await this.ctx.db.deleteFrom('sync_outbox').execute();
@@ -185,13 +195,13 @@ export class CloudSync {
     this.failures = 0;
     this.lastError = null;
     await this.start();
-    return { tenantId: r.tenantId, tenantName: r.tenantName, email: r.email };
+    return { tenantId: r.tenantId, tenantName: r.tenantName };
   }
 
   /** Keep data on this machine only. */
   async setLocal(): Promise<void> {
     this.stop();
-    this.ctx.config.cloud = { mode: 'local', url: null, tokenEnc: null, tenantId: null, tenantName: null, email: null, deviceId: null, connectedAt: null };
+    this.ctx.config.cloud = { mode: 'local', url: null, tokenEnc: null, tenantId: null, tenantName: null, account: null, deviceId: null, connectedAt: null };
     this.ctx.store.save(this.ctx.config);
     if (this.ctx.conn) {
       await dropSyncTriggers(this.ctx.conn);
@@ -223,7 +233,7 @@ export class CloudSync {
       await this.pullCommands();
       if (!pushed) {
         const pending = (await this.status()).pending;
-        await this.request('POST', '/api/sync/heartbeat', { pending, appVersion: VERSION });
+        this.applyLicense((await this.request<{ licenseKey?: string | null }>('POST', '/api/sync/heartbeat', { pending, appVersion: VERSION })).licenseKey);
       }
       this.failures = 0;
       this.lastError = null;
@@ -271,10 +281,21 @@ export class CloudSync {
       }
       const left = await db.selectFrom('sync_outbox').select((eb) => eb.fn.countAll<number>().as('n')).where('seq', '>', maxSeq).executeTakeFirst();
       body.pending = Number(left?.n ?? 0);
-      await this.request('POST', '/api/sync/push', body);
+      this.applyLicense((await this.request<{ licenseKey?: string | null }>('POST', '/api/sync/push', body)).licenseKey);
       await db.deleteFrom('sync_outbox').where('seq', '<=', maxSeq).execute();
       this.lastPushAt = nowIso();
       return entries.length === take;
+    }
+  }
+
+  /** The superadmin changed the license (e.g. more devices): install the re-signed key. */
+  private applyLicense(key: string | null | undefined) {
+    if (!key || key === this.license.key()) return;
+    try {
+      this.license.activate(key);
+      this.ctx.emit({ type: 'settings.changed' });
+    } catch (e) {
+      console.warn('[flexpos] cloud license key rejected', e);
     }
   }
 

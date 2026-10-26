@@ -6,7 +6,7 @@ import { SYNC_TABLES, TABLE_COLUMNS, type DB } from '@flexpos/db';
 import { adjustmentsReport, dashboard, salesReport, vatReport } from '@flexpos/reports';
 import type { Kysely } from 'kysely';
 import { ONLINE_MS, type CloudContext } from '../context.js';
-import { audit, hashPassword, normEmail, nowIso, requireUser, session, tenantFor, uuid, type Role } from '../auth.js';
+import { audit, hashPassword, loginSchema, normLogin, nowIso, requireUser, session, tenantFor, uuid, type Role } from '../auth.js';
 import { badRequest, conflict, forbidden, notFound } from '../errors.js';
 import { cleanRow, deleteRows, isEditable, pkOf, upsertRows } from '../replica.js';
 
@@ -185,30 +185,47 @@ export function storeRoutes(app: FastifyInstance, ctx: CloudContext) {
   });
 
   // ---- members ----
+  // Managers manage only the view-only staff accounts of their own store. Manager accounts are
+  // created and changed by the superadmin.
   const roleSchema = z.enum(['manager', 'viewer']);
 
   app.get('/api/stores/:tid/members', user, async (req) => {
     const { tid } = P.parse(req.params);
     await tenantFor(ctx, req, tid, 'manager');
     const rows = await ctx.db.selectFrom('memberships').innerJoin('cloud_users', 'cloud_users.id', 'memberships.user_id').select(['cloud_users.id', 'cloud_users.email', 'cloud_users.name', 'cloud_users.disabled', 'cloud_users.last_login_at', 'memberships.role', 'memberships.created_at']).where('memberships.tenant_id', '=', tid).orderBy('memberships.created_at').execute();
-    return { members: rows.map((r) => ({ id: r.id, email: r.email, name: r.name, disabled: r.disabled === 1, lastLoginAt: r.last_login_at, role: r.role, addedAt: r.created_at })) };
+    const me = session(req).id;
+    return { members: rows.map((r) => ({ id: r.id, username: r.email, name: r.name, disabled: r.disabled === 1, lastLoginAt: r.last_login_at, role: r.role, addedAt: r.created_at, me: r.id === me })) };
   });
+
+  /** A staff account a manager may change: a viewer of this store. exclusive = belongs to no other store. */
+  const ownStaff = async (tid: string, uid: string) => {
+    const ms = await ctx.db.selectFrom('memberships').select(['tenant_id', 'role']).where('user_id', '=', uid).execute();
+    const here = ms.find((m) => m.tenant_id === tid);
+    if (!here) throw notFound(t('ผู้ใช้'));
+    if (here.role !== 'viewer') throw forbidden(t('บัญชีผู้จัดการแก้ไขได้โดยผู้ดูแลระบบเท่านั้น'));
+    const u = await ctx.db.selectFrom('cloud_users').select(['is_superadmin']).where('id', '=', uid).executeTakeFirstOrThrow();
+    return { exclusive: ms.length === 1 && u.is_superadmin !== 1 };
+  };
 
   app.post('/api/stores/:tid/members', user, async (req) => {
     const { tid } = P.parse(req.params);
-    const b = z.object({ email: z.string().email(), name: z.string().min(1).max(120), password: z.string().min(8).optional(), role: roleSchema.default('viewer') }).parse(req.body);
-    await tenantFor(ctx, req, tid, 'manager');
-    const email = normEmail(b.email);
-    let u = await ctx.db.selectFrom('cloud_users').select(['id']).where('email', '=', email).executeTakeFirst();
+    const b = z.object({ username: loginSchema, name: z.string().min(1).max(120), password: z.string().min(8).optional(), role: roleSchema.default('viewer') }).parse(req.body);
+    const tn = await tenantFor(ctx, req, tid, 'manager');
+    if (b.role === 'manager' && tn.role !== 'superadmin') throw forbidden(t('เพิ่มบัญชีผู้จัดการได้โดยผู้ดูแลระบบเท่านั้น'));
+    const login = normLogin(b.username);
+    let u = await ctx.db.selectFrom('cloud_users').select(['id']).where('email', '=', login).executeTakeFirst();
     if (!u) {
       if (!b.password) throw badRequest(t('บัญชีใหม่ต้องตั้งรหัสผ่านอย่างน้อย 8 ตัวอักษร'));
       u = { id: uuid() };
-      await ctx.db.insertInto('cloud_users').values({ id: u.id, email, name: b.name, password_hash: await hashPassword(b.password), is_superadmin: 0, disabled: 0, created_at: nowIso(), last_login_at: null }).execute();
+      await ctx.db.insertInto('cloud_users').values({ id: u.id, email: login, name: b.name, password_hash: await hashPassword(b.password), is_superadmin: 0, disabled: 0, created_at: nowIso(), last_login_at: null }).execute();
+    } else if (tn.role !== 'superadmin') {
+      // Usernames are global; a manager can't attach someone else's account.
+      throw conflict(t('ชื่อผู้ใช้นี้ถูกใช้แล้ว กรุณาตั้งชื่อผู้ใช้อื่น เช่น เติมชื่อร้านต่อท้าย'));
     }
     const exists = await ctx.db.selectFrom('memberships').select('id').where('user_id', '=', u.id).where('tenant_id', '=', tid).executeTakeFirst();
     if (exists) throw conflict(t('บัญชีนี้เป็นสมาชิกของร้านอยู่แล้ว'));
     await ctx.db.insertInto('memberships').values({ id: uuid(), user_id: u.id, tenant_id: tid, role: b.role, created_at: nowIso() }).execute();
-    await audit(ctx, req, 'member.add', 'user', u.id, { email, role: b.role }, tid);
+    await audit(ctx, req, 'member.add', 'user', u.id, { username: login, role: b.role }, tid);
     return { ok: true, userId: u.id };
   });
 
@@ -219,20 +236,39 @@ export function storeRoutes(app: FastifyInstance, ctx: CloudContext) {
 
   app.patch('/api/stores/:tid/members/:uid', user, async (req) => {
     const { tid, uid } = P.extend({ uid: z.string().uuid() }).parse(req.params);
-    const b = z.object({ role: roleSchema }).parse(req.body);
-    await tenantFor(ctx, req, tid, 'manager');
-    if (b.role === 'viewer' && (await managersLeft(tid, uid)) === 0) throw badRequest(t('ร้านต้องมีผู้จัดการอย่างน้อย 1 คน'));
-    await ctx.db.updateTable('memberships').set({ role: b.role as Role }).where('tenant_id', '=', tid).where('user_id', '=', uid).execute();
-    await audit(ctx, req, 'member.role', 'user', uid, { role: b.role }, tid);
+    const b = z.object({ role: roleSchema.optional(), name: z.string().min(1).max(120).optional(), username: loginSchema.optional(), password: z.string().min(8).optional(), disabled: z.boolean().optional() }).parse(req.body);
+    const tn = await tenantFor(ctx, req, tid, 'manager');
+    const su = tn.role === 'superadmin';
+    if (b.role) {
+      if (!su) throw forbidden(t('เปลี่ยนสิทธิ์ผู้จัดการได้โดยผู้ดูแลระบบเท่านั้น'));
+      if (b.role === 'viewer' && (await managersLeft(tid, uid)) === 0) throw badRequest(t('ร้านต้องมีผู้จัดการอย่างน้อย 1 คน'));
+      await ctx.db.updateTable('memberships').set({ role: b.role as Role }).where('tenant_id', '=', tid).where('user_id', '=', uid).execute();
+    }
+    const set: Record<string, unknown> = {};
+    if (b.name) set.name = b.name;
+    if (b.username) set.email = normLogin(b.username);
+    if (b.password) set.password_hash = await hashPassword(b.password);
+    if (b.disabled !== undefined) set.disabled = b.disabled ? 1 : 0;
+    if (Object.keys(set).length) {
+      if (!su && !(await ownStaff(tid, uid)).exclusive) throw forbidden(t('บัญชีนี้ใช้กับร้านอื่นด้วย แก้ไขได้โดยผู้ดูแลระบบเท่านั้น'));
+      if (set.email && (await ctx.db.selectFrom('cloud_users').select('id').where('email', '=', set.email as string).where('id', '!=', uid).executeTakeFirst())) throw conflict(t('ชื่อผู้ใช้นี้ถูกใช้แล้ว กรุณาตั้งชื่อผู้ใช้อื่น เช่น เติมชื่อร้านต่อท้าย'));
+      await ctx.db.updateTable('cloud_users').set(set).where('id', '=', uid).execute();
+      if (b.password || b.disabled) await ctx.db.updateTable('cloud_refresh_tokens').set({ revoked: 1 }).where('user_id', '=', uid).execute();
+    }
+    await audit(ctx, req, 'member.update', 'user', uid, { ...b, password: b.password ? '(changed)' : undefined }, tid);
     return { ok: true };
   });
 
   app.delete('/api/stores/:tid/members/:uid', user, async (req) => {
     const { tid, uid } = P.extend({ uid: z.string().uuid() }).parse(req.params);
-    await tenantFor(ctx, req, tid, 'manager');
-    if ((await managersLeft(tid, uid)) === 0) throw badRequest(t('ร้านต้องมีผู้จัดการอย่างน้อย 1 คน'));
+    const tn = await tenantFor(ctx, req, tid, 'manager');
+    let removeAccount = false;
+    if (tn.role !== 'superadmin') removeAccount = (await ownStaff(tid, uid)).exclusive;
+    else if ((await managersLeft(tid, uid)) === 0) throw badRequest(t('ร้านต้องมีผู้จัดการอย่างน้อย 1 คน'));
     await ctx.db.deleteFrom('memberships').where('tenant_id', '=', tid).where('user_id', '=', uid).execute();
-    await audit(ctx, req, 'member.remove', 'user', uid, {}, tid);
+    // A staff account exists only for this store: remove it entirely.
+    if (removeAccount) await ctx.db.deleteFrom('cloud_users').where('id', '=', uid).execute();
+    await audit(ctx, req, 'member.remove', 'user', uid, { deletedAccount: removeAccount }, tid);
     return { ok: true };
   });
 

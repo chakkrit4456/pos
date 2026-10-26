@@ -4,10 +4,11 @@ import { z } from 'zod';
 import { sql, type Kysely } from 'kysely';
 import { t } from '@flexpos/shared';
 import type { CloudContext } from '../context.js';
-import { audit, hashPassword, normEmail, nowIso, requireSuperadmin, session, uuid } from '../auth.js';
+import { audit, hashPassword, loginSchema, normLogin, nowIso, requireSuperadmin, session, uuid } from '../auth.js';
 import { badRequest, conflict, notFound } from '../errors.js';
 import { cleanRow, isEditable } from '../replica.js';
 import { createTenant, deleteTenant } from '../tenants.js';
+import { issueLicense, updateLicense } from '../licenses.js';
 import { isOnline, queueChange } from './store.js';
 
 const SECRET_COL = /(password_hash|token_hash|pin_hash)$/;
@@ -54,10 +55,10 @@ export function adminRoutes(app: FastifyInstance, ctx: CloudContext) {
   });
 
   app.post('/api/admin/tenants', su, async (req) => {
-    const b = z.object({ name: z.string().min(1).max(200), plan: z.string().max(32).default(''), managerEmail: z.string().email().optional(), managerName: z.string().max(120).optional(), managerPassword: z.string().min(8).optional() }).parse(req.body);
+    const b = z.object({ name: z.string().min(1).max(200), plan: z.string().max(32).default(''), managerUsername: loginSchema.optional(), managerName: z.string().max(120).optional(), managerPassword: z.string().min(8).optional() }).parse(req.body);
     let managerId: string | null = null;
-    if (b.managerEmail) {
-      const email = normEmail(b.managerEmail);
+    if (b.managerUsername) {
+      const email = normLogin(b.managerUsername);
       const u = await ctx.db.selectFrom('cloud_users').select('id').where('email', '=', email).executeTakeFirst();
       if (u) managerId = u.id;
       else {
@@ -67,7 +68,7 @@ export function adminRoutes(app: FastifyInstance, ctx: CloudContext) {
       }
     }
     const tn = await createTenant(ctx, { name: b.name, managerId, plan: b.plan });
-    await audit(ctx, req, 'tenant.create', 'tenant', tn.id, { name: b.name, managerEmail: b.managerEmail }, tn.id);
+    await audit(ctx, req, 'tenant.create', 'tenant', tn.id, { name: b.name, managerUsername: b.managerUsername }, tn.id);
     return { id: tn.id };
   });
 
@@ -87,19 +88,47 @@ export function adminRoutes(app: FastifyInstance, ctx: CloudContext) {
     return { ok: true };
   });
 
+  // ---- licenses ----
+  app.get('/api/admin/licenses', su, async () => {
+    const rows = await ctx.db.selectFrom('licenses').leftJoin('tenants', 'tenants.id', 'licenses.tenant_id').selectAll('licenses').select('tenants.name as tenant_name').orderBy('licenses.created_at', 'desc').execute();
+    const used = await ctx.db.selectFrom('devices').select(['tenant_id', (eb) => eb.fn.countAll<number>().as('n')]).where('revoked', '=', 0).groupBy('tenant_id').execute();
+    return {
+      enabled: !!ctx.config.licensePrivateKey,
+      licenses: rows.map((r) => ({ id: r.id, key: r.key, licensee: r.licensee, plan: r.plan, maxDevices: r.max_devices, maxBranches: r.max_branches, note: r.note, revoked: r.revoked === 1, createdAt: r.created_at, updatedAt: r.updated_at, tenantId: r.tenant_id, tenantName: r.tenant_name, devicesUsed: Number(used.find((u) => u.tenant_id === r.tenant_id)?.n ?? 0) })),
+    };
+  });
+
+  const licenseBody = z.object({ licensee: z.string().min(1).max(200), plan: z.string().max(32).default('standard'), maxDevices: z.number().int().min(1).max(1000), maxBranches: z.number().int().min(1).max(1000).default(1), note: z.string().max(5000).default('') });
+
+  app.post('/api/admin/licenses', su, async (req) => {
+    const b = licenseBody.parse(req.body);
+    const lic = await issueLicense(ctx, b);
+    await audit(ctx, req, 'license.issue', 'license', lic.id, { licensee: b.licensee, maxDevices: b.maxDevices });
+    return { id: lic.id, key: lic.key };
+  });
+
+  app.patch('/api/admin/licenses/:id', su, async (req) => {
+    const { id } = ID.parse(req.params);
+    const b = licenseBody.partial().extend({ revoked: z.boolean().optional() }).parse(req.body);
+    const next = await updateLicense(ctx, id, b);
+    if (!next) throw notFound('License');
+    await audit(ctx, req, 'license.update', 'license', id, b, next.tenant_id);
+    return { ok: true, key: next.key };
+  });
+
   // ---- users ----
   app.get('/api/admin/users', su, async () => {
     const users = await ctx.db.selectFrom('cloud_users').select(['id', 'email', 'name', 'is_superadmin', 'disabled', 'created_at', 'last_login_at']).orderBy('created_at', 'desc').execute();
     const ms = await ctx.db.selectFrom('memberships').innerJoin('tenants', 'tenants.id', 'memberships.tenant_id').select(['memberships.user_id', 'memberships.tenant_id', 'memberships.role', 'tenants.name']).execute();
     return {
-      users: users.map((u) => ({ id: u.id, email: u.email, name: u.name, isSuperadmin: u.is_superadmin === 1, disabled: u.disabled === 1, createdAt: u.created_at, lastLoginAt: u.last_login_at, stores: ms.filter((m) => m.user_id === u.id).map((m) => ({ tenantId: m.tenant_id, name: m.name, role: m.role })) })),
+      users: users.map((u) => ({ id: u.id, username: u.email, name: u.name, isSuperadmin: u.is_superadmin === 1, disabled: u.disabled === 1, createdAt: u.created_at, lastLoginAt: u.last_login_at, stores: ms.filter((m) => m.user_id === u.id).map((m) => ({ tenantId: m.tenant_id, name: m.name, role: m.role })) })),
     };
   });
 
   app.post('/api/admin/users', su, async (req) => {
-    const b = z.object({ email: z.string().email(), name: z.string().min(1).max(120), password: z.string().min(8), isSuperadmin: z.boolean().default(false) }).parse(req.body);
-    const email = normEmail(b.email);
-    if (await ctx.db.selectFrom('cloud_users').select('id').where('email', '=', email).executeTakeFirst()) throw conflict(t('อีเมลนี้มีบัญชีอยู่แล้ว'));
+    const b = z.object({ username: loginSchema, name: z.string().min(1).max(120), password: z.string().min(8), isSuperadmin: z.boolean().default(false) }).parse(req.body);
+    const email = normLogin(b.username);
+    if (await ctx.db.selectFrom('cloud_users').select('id').where('email', '=', email).executeTakeFirst()) throw conflict(t('ชื่อผู้ใช้นี้ถูกใช้แล้ว'));
     const id = uuid();
     await ctx.db.insertInto('cloud_users').values({ id, email, name: b.name, password_hash: await hashPassword(b.password), is_superadmin: b.isSuperadmin ? 1 : 0, disabled: 0, created_at: nowIso(), last_login_at: null }).execute();
     await audit(ctx, req, 'user.create', 'user', id, { email, isSuperadmin: b.isSuperadmin });
@@ -108,11 +137,11 @@ export function adminRoutes(app: FastifyInstance, ctx: CloudContext) {
 
   app.patch('/api/admin/users/:id', su, async (req) => {
     const { id } = ID.parse(req.params);
-    const b = z.object({ email: z.string().email().optional(), name: z.string().min(1).max(120).optional(), password: z.string().min(8).optional(), disabled: z.boolean().optional(), isSuperadmin: z.boolean().optional() }).parse(req.body);
+    const b = z.object({ username: loginSchema.optional(), name: z.string().min(1).max(120).optional(), password: z.string().min(8).optional(), disabled: z.boolean().optional(), isSuperadmin: z.boolean().optional() }).parse(req.body);
     const me = session(req);
     if (id === me.id && (b.disabled === true || b.isSuperadmin === false)) throw badRequest(t('ไม่สามารถปิดหรือลดสิทธิ์บัญชีของตัวเองได้'));
     const set: Record<string, unknown> = {};
-    if (b.email) set.email = normEmail(b.email);
+    if (b.username) set.email = normLogin(b.username);
     if (b.name) set.name = b.name;
     if (b.password) set.password_hash = await hashPassword(b.password);
     if (b.disabled !== undefined) set.disabled = b.disabled ? 1 : 0;

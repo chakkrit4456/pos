@@ -5,7 +5,8 @@ import { api, auth, type User } from './api';
 interface SessionValue {
   user: User | null;
   loading: boolean;
-  login(email: string, password: string): Promise<void>;
+  login(username: string, password: string): Promise<void>;
+  setUser(u: User): void;
   logout(): Promise<void>;
 }
 
@@ -32,8 +33,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => void off();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const r = await api.post<{ accessToken: string; refreshToken: string; user: User }>('/api/auth/login', { email, password });
+  const login = useCallback(async (username: string, password: string) => {
+    const r = await api.post<{ accessToken: string; refreshToken: string; user: User }>('/api/auth/login', { username, password });
     auth.set({ accessToken: r.accessToken, refreshToken: r.refreshToken });
     qc.clear();
     setUser(r.user);
@@ -46,7 +47,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, [qc]);
 
-  return <Ctx.Provider value={{ user, loading, login, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, logout, setUser }}>{children}</Ctx.Provider>;
 }
 
 export function useSession() {

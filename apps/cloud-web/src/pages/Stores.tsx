@@ -32,7 +32,7 @@ export default function Stores() {
   if (stores?.length === 1 && !user?.isSuperadmin) return <Navigate to={`/s/${stores[0]!.id}`} replace />;
   return (
     <>
-      <PageHeader title={t('ร้านของฉัน')} sub={user?.email} />
+      <PageHeader title={t('ร้านของฉัน')} sub={user?.username} />
       {!stores ? (
         <SkeletonRows />
       ) : !stores.length ? (

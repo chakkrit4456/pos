@@ -1,7 +1,8 @@
 # FlexPOS Cloud + PostgreSQL 17 on a store's own server.
 #   1) set POSTGRES_PASSWORD and JWT_SECRET below (JWT_SECRET: 40+ random characters)
 #   2) docker compose -f docker-compose.cloud.yml up -d
-#   3) docker compose -f docker-compose.cloud.yml exec cloud node main.js create-superadmin --email you@shop.com --password '...'
+#   3) docker compose -f docker-compose.cloud.yml exec cloud node main.js create-superadmin --email admin --password '...'
+#      then sign in on the web and create the manager account(s); POS machines connect with them
 #   4) put HTTPS in front (Cloudflare Tunnel, nginx, Caddy) and enter that https:// address on the POS
 services:
   db:
@@ -28,7 +29,6 @@ services:
     environment:
       DATABASE_URL: postgres://flexpos_cloud:change-me@db:5432/flexpos_cloud
       JWT_SECRET: change-me-to-a-long-random-secret-at-least-40-chars
-      ALLOW_SIGNUP: '1'
     ports:
       - '4200:4200'
     volumes:

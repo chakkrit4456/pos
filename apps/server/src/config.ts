@@ -36,7 +36,8 @@ export interface CloudConfig {
   tokenEnc: string | null;
   tenantId: string | null;
   tenantName: string | null;
-  email: string | null;
+  /** web account that paired this machine (own-server mode) */
+  account: string | null;
   deviceId: string | null;
   connectedAt: string | null;
 }

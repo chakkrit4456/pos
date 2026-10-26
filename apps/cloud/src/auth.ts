@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { t } from '@flexpos/shared';
 import type { CloudContext } from './context.js';
 import type { DevicesTable, TenantsTable } from './schema.js';
@@ -36,7 +37,9 @@ export const sha256 = (s: string) => createHash('sha256').update(s).digest('hex'
 export const hashPassword = (pw: string) => hash(pw, { memoryCost: 19456, timeCost: 2, parallelism: 1 });
 export const verifyPassword = (h: string, pw: string) => verify(h, pw).catch(() => false);
 export const newToken = () => randomBytes(32).toString('base64url');
-export const normEmail = (e: string) => e.trim().toLowerCase();
+/** Sign-in name: an email or a plain username (e.g. the same one used on the POS). */
+export const normLogin = (e: string) => e.trim().toLowerCase();
+export const loginSchema = z.string().trim().min(3).max(120).regex(/^[^\s]+$/, 'ชื่อผู้ใช้ต้องไม่มีช่องว่าง');
 
 export async function loadSession(ctx: CloudContext, userId: string): Promise<CloudSession | null> {
   const u = await ctx.db.selectFrom('cloud_users').select(['id', 'email', 'name', 'is_superadmin', 'disabled']).where('id', '=', userId).executeTakeFirst();

@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { CloudOff, ExternalLink, RefreshCw } from 'lucide-react';
 import { t } from '@flexpos/shared';
 import { api, errorMessage } from '@/lib/api';
-import { useFormatters, useSettings } from '@/lib/settings';
+import { useFormatters } from '@/lib/settings';
 import { tn } from '@/lib/i18n';
 import { Badge, Button, Card, Spinner } from '@/components/ui/core';
 import { useConfirm } from '@/components/ui/dialog';
@@ -16,23 +16,23 @@ interface CloudStatus {
   url: string | null;
   connected: boolean;
   tenantName: string | null;
-  email: string | null;
+  account: string | null;
   pending: number;
   lastPushAt: string | null;
   lastOkAt: string | null;
   lastError: string | null;
   online: boolean;
   defaultUrl: string;
+  license: { state: string; licensee: string | null; maxDevices: number; hasKey: boolean };
 }
 
 export function CloudSection() {
   const qc = useQueryClient();
   const f = useFormatters();
-  const settings = useSettings();
   const confirm = useConfirm();
   const q = useQuery({ queryKey: ['cloud-status'], queryFn: () => api.get<CloudStatus>('/api/cloud/status'), refetchInterval: 10_000 });
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(emptyCloudDraft(settings.store.name));
+  const [draft, setDraft] = useState(emptyCloudDraft());
   const [busy, setBusy] = useState(false);
   const s = q.data;
 
@@ -77,7 +77,7 @@ export function CloudSection() {
             </div>
             <dl className="grid gap-3 text-[14px] md:grid-cols-2">
               <Item label={t('เว็บแดชบอร์ด')} value={<a className="inline-flex items-center gap-1 text-primary underline" href={webUrl ?? '#'} target="_blank" rel="noreferrer">{webUrl}<ExternalLink className="h-3.5 w-3.5" /></a>} />
-              <Item label={t('บัญชีผู้จัดการ')} value={s.email ?? '-'} />
+              {s.mode === 'cloud' ? <Item label="License" value={`${s.license.licensee ?? '-'} · ${tn('{0} เครื่อง', s.license.maxDevices)}`} /> : <Item label={t('บัญชีผู้จัดการ')} value={s.account ?? '-'} />}
               <Item label={t('ส่งข้อมูลล่าสุด')} value={s.lastPushAt ? f.dateTime(s.lastPushAt) : s.lastOkAt ? f.dateTime(s.lastOkAt) : '-'} />
               <Item label={t('รายการรอส่ง')} value={tn('{0} รายการ', s.pending)} />
             </dl>
@@ -100,10 +100,10 @@ export function CloudSection() {
       {editing && (
         <Card title={t('ตั้งค่าแดชบอร์ดออนไลน์')}>
           <div className="flex flex-col gap-4">
-            <CloudChoice draft={draft} onChange={setDraft} />
+            <CloudChoice draft={draft} onChange={setDraft} hasLicense={!!s?.license.hasKey && s.license.state === 'active'} />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setEditing(false)}>{t('ยกเลิก')}</Button>
-              <Button variant="primary" loading={busy} disabled={!cloudDraftOk(draft)} onClick={save}>{draft.mode === 'local' ? t('บันทึก') : t('เชื่อมต่อ')}</Button>
+              <Button variant="primary" loading={busy} disabled={!cloudDraftOk(draft, !!s?.license.hasKey && s.license.state === 'active')} onClick={save}>{draft.mode === 'local' ? t('บันทึก') : t('เชื่อมต่อ')}</Button>
             </div>
           </div>
         </Card>

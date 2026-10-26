@@ -13,8 +13,9 @@ import { useSession } from '~/lib/session';
 import { Tabs } from '~/components/Shell';
 import { DataTable, RowEditor, type Column } from '~/components/DataTable';
 import { roleLabel } from './Stores';
+import { LicensesAdmin } from './Licenses';
 
-type Tab = 'overview' | 'stores' | 'users' | 'db' | 'logs';
+type Tab = 'overview' | 'licenses' | 'stores' | 'users' | 'db' | 'logs';
 
 export default function Admin() {
   const [tab, setTab] = useState<Tab>('overview');
@@ -22,8 +23,8 @@ export default function Admin() {
   return (
     <>
       <PageHeader title={t('ผู้ดูแลระบบ')} sub="Superadmin" />
-      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'overview', label: t('ภาพรวมระบบ') }, { id: 'stores', label: t('ร้านทั้งหมด') }, { id: 'users', label: t('บัญชีผู้ใช้') }, { id: 'db', label: t('ฐานข้อมูล') }, { id: 'logs', label: 'Logs' }]} />
-      {tab === 'overview' ? <Overview /> : tab === 'stores' ? <StoresAdmin /> : tab === 'users' ? <UsersAdmin /> : tab === 'db' ? <DbBrowser /> : <Logs />}
+      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'overview', label: t('ภาพรวมระบบ') }, { id: 'licenses', label: 'License' }, { id: 'stores', label: t('ร้านทั้งหมด') }, { id: 'users', label: t('บัญชีผู้ใช้') }, { id: 'db', label: t('ฐานข้อมูล') }, { id: 'logs', label: 'Logs' }]} />
+      {tab === 'overview' ? <Overview /> : tab === 'licenses' ? <LicensesAdmin /> : tab === 'stores' ? <StoresAdmin /> : tab === 'users' ? <UsersAdmin /> : tab === 'db' ? <DbBrowser /> : <Logs />}
     </>
   );
 }
@@ -70,13 +71,13 @@ function StoresAdmin() {
   const qc = useQueryClient();
   const confirm = useConfirm();
   const q = useQuery({ queryKey: ['admin', 'tenants'], queryFn: () => api.get<{ tenants: TenantRow[] }>('/api/admin/tenants') });
-  const [edit, setEdit] = useState<Partial<TenantRow> & { managerEmail?: string; managerName?: string; managerPassword?: string } | null>(null);
+  const [edit, setEdit] = useState<Partial<TenantRow> & { managerUsername?: string; managerName?: string; managerPassword?: string } | null>(null);
   const refresh = () => void qc.invalidateQueries({ queryKey: ['admin'] });
   const save = async () => {
     if (!edit) return;
     const ok = edit.id
       ? await run(() => api.patch(`/api/admin/tenants/${edit.id}`, { name: edit.name, status: edit.status, plan: edit.plan, note: edit.note }), t('บันทึกแล้ว'))
-      : await run(() => api.post('/api/admin/tenants', { name: edit.name, plan: edit.plan ?? '', managerEmail: edit.managerEmail || undefined, managerName: edit.managerName || undefined, managerPassword: edit.managerPassword || undefined }), t('สร้างร้านแล้ว'));
+      : await run(() => api.post('/api/admin/tenants', { name: edit.name, plan: edit.plan ?? '', managerUsername: edit.managerUsername || undefined, managerName: edit.managerName || undefined, managerPassword: edit.managerPassword || undefined }), t('สร้างร้านแล้ว'));
     if (ok) {
       setEdit(null);
       refresh();
@@ -119,7 +120,7 @@ function StoresAdmin() {
               </>
             ) : (
               <>
-                <Field label={t('อีเมลผู้จัดการ')} hint={t('ถ้ามีบัญชีอยู่แล้วจะถูกเพิ่มเป็นผู้จัดการร้านนี้')}><Input type="email" value={edit.managerEmail ?? ''} onChange={(e) => setEdit({ ...edit, managerEmail: e.target.value })} /></Field>
+                <Field label={t('ชื่อผู้ใช้ผู้จัดการ')} hint={t('ถ้ามีบัญชีอยู่แล้วจะถูกเพิ่มเป็นผู้จัดการร้านนี้')}><Input autoCapitalize="none" value={edit.managerUsername ?? ''} onChange={(e) => setEdit({ ...edit, managerUsername: e.target.value })} /></Field>
                 <Field label={t('ชื่อผู้จัดการ')}><Input value={edit.managerName ?? ''} onChange={(e) => setEdit({ ...edit, managerName: e.target.value })} /></Field>
                 <Field label={t('รหัสผ่าน (บัญชีใหม่)')}><Input type="password" autoComplete="new-password" value={edit.managerPassword ?? ''} onChange={(e) => setEdit({ ...edit, managerPassword: e.target.value })} /></Field>
               </>
@@ -131,7 +132,7 @@ function StoresAdmin() {
   );
 }
 
-interface UserRow { id: string; email: string; name: string; isSuperadmin: boolean; disabled: boolean; createdAt: string; lastLoginAt: string | null; stores: { tenantId: string; name: string; role: string }[] }
+interface UserRow { id: string; username: string; name: string; isSuperadmin: boolean; disabled: boolean; createdAt: string; lastLoginAt: string | null; stores: { tenantId: string; name: string; role: string }[] }
 
 function UsersAdmin() {
   const qc = useQueryClient();
@@ -145,8 +146,8 @@ function UsersAdmin() {
   const save = async () => {
     if (!edit) return;
     const ok = edit.id
-      ? await run(() => api.patch(`/api/admin/users/${edit.id}`, { name: edit.name, email: edit.email, password: edit.password || undefined, disabled: edit.disabled, isSuperadmin: edit.isSuperadmin }), t('บันทึกแล้ว'))
-      : await run(() => api.post('/api/admin/users', { name: edit.name, email: edit.email, password: edit.password, isSuperadmin: !!edit.isSuperadmin }), t('สร้างบัญชีแล้ว'));
+      ? await run(() => api.patch(`/api/admin/users/${edit.id}`, { name: edit.name, username: edit.username, password: edit.password || undefined, disabled: edit.disabled, isSuperadmin: edit.isSuperadmin }), t('บันทึกแล้ว'))
+      : await run(() => api.post('/api/admin/users', { name: edit.name, username: edit.username, password: edit.password, isSuperadmin: !!edit.isSuperadmin }), t('สร้างบัญชีแล้ว'));
     if (ok) {
       setEdit(null);
       refresh();
@@ -160,18 +161,18 @@ function UsersAdmin() {
   };
   return (
     <>
-      <div className="flex justify-end"><Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setEdit({ name: '', email: '', password: '' })}>{t('สร้างบัญชี')}</Button></div>
+      <div className="flex justify-end"><Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setEdit({ name: '', username: '', password: '' })}>{t('สร้างบัญชี')}</Button></div>
       <Card pad={false}>
         {!q.data ? <div className="p-5"><SkeletonRows /></div> : q.data.users.map((u) => (
           <div key={u.id} className="flex flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3 last:border-0">
             <div className="flex min-w-0 flex-1 flex-col">
-              <span className="font-medium">{u.name} <span className="text-[13px] font-normal text-muted">{u.email}</span></span>
+              <span className="font-medium">{u.name} <span className="text-[13px] font-normal text-muted">{u.username}</span></span>
               <span className="truncate text-[13px] text-muted">{u.stores.map((s) => `${s.name} (${roleLabel(s.role)})`).join(', ') || t('ไม่มีร้าน')} · {t('เข้าระบบล่าสุด {0}', ago(u.lastLoginAt))}</span>
             </div>
             {u.isSuperadmin && <Badge tone="dark">Superadmin</Badge>}
             {u.disabled && <Badge tone="danger">{t('ปิดใช้งาน')}</Badge>}
             <Button size="sm" onClick={() => setEdit(u)}>{t('แก้ไข')}</Button>
-            {u.id !== me?.id && <Button size="sm" variant="ghost" onClick={async () => { const c = await confirm({ title: t('ลบบัญชี {0}?', u.email), danger: true, confirmText: t('ลบ') }); if (c.ok && (await run(() => api.del(`/api/admin/users/${u.id}`)))) refresh(); }}>{t('ลบ')}</Button>}
+            {u.id !== me?.id && <Button size="sm" variant="ghost" onClick={async () => { const c = await confirm({ title: t('ลบบัญชี {0}?', u.username), danger: true, confirmText: t('ลบ') }); if (c.ok && (await run(() => api.del(`/api/admin/users/${u.id}`)))) refresh(); }}>{t('ลบ')}</Button>}
           </div>
         ))}
       </Card>
@@ -179,7 +180,7 @@ function UsersAdmin() {
         {edit && (
           <div className="grid gap-3 md:grid-cols-2">
             <Field label={t('ชื่อ')}><Input value={edit.name ?? ''} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
-            <Field label={t('อีเมล')}><Input type="email" value={edit.email ?? ''} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Field>
+            <Field label={t('ชื่อผู้ใช้')} hint={t('ใช้เข้าสู่ระบบ เป็นอีเมลหรือชื่อก็ได้')}><Input autoCapitalize="none" value={edit.username ?? ''} onChange={(e) => setEdit({ ...edit, username: e.target.value })} /></Field>
             <Field label={edit.id ? t('ตั้งรหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)') : t('รหัสผ่าน')}><Input type="password" autoComplete="new-password" value={edit.password ?? ''} onChange={(e) => setEdit({ ...edit, password: e.target.value })} /></Field>
             <div className="flex flex-col gap-2">
               <label className="flex items-center justify-between rounded-xl border border-line px-3 py-2.5 text-[14px]">Superadmin<Switch checked={!!edit.isSuperadmin} onChange={(v) => setEdit({ ...edit, isSuperadmin: v })} label="superadmin" /></label>

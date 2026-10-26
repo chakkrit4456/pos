@@ -2,7 +2,7 @@ import { createHash, createPublicKey, verify } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus, hostname, networkInterfaces } from 'node:os';
 import { join } from 'node:path';
-import type { LicenseStatus } from '@flexpos/shared';
+import { LICENSE_PUBLIC_KEY, type LicensePayload, type LicenseStatus } from '@flexpos/shared';
 import { t } from '@flexpos/shared';
 
 /**
@@ -10,20 +10,7 @@ import { t } from '@flexpos/shared';
  * The vendor signs keys with the private key (tools/license/issue.mjs); the app only holds the public key.
  * Swap this module to change the licensing method.
  */
-export const LICENSE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEA9k0NAwHSPaHeJ3o9W6GawY3qAWEjNxVrjjHSUAXNfOE=
------END PUBLIC KEY-----`;
-
-export interface LicensePayload {
-  licensee: string;
-  plan: string;
-  maxDevices: number;
-  maxBranches: number;
-  /** machine id or "*" for floating licenses */
-  machineId: string;
-  issuedAt: string;
-  expiresAt: string | null;
-}
+export { LICENSE_PUBLIC_KEY, type LicensePayload };
 
 const TRIAL_DAYS = 14;
 
@@ -100,6 +87,11 @@ export class LicenseService {
       throw new Error(t('License key นี้ออกให้เครื่องอื่น กรุณาส่ง Machine ID ของเครื่องนี้ให้ผู้ขาย'));
     writeFileSync(this.keyFile, key.trim());
     return this.status();
+  }
+
+  /** The installed key as entered, or null on trial. */
+  key(): string | null {
+    return existsSync(this.keyFile) ? readFileSync(this.keyFile, 'utf8').trim() : null;
   }
 
   canSell(): boolean {

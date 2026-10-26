@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,10 +9,17 @@ export interface Caller {
   <T = unknown>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, body?: unknown, token?: string): Promise<{ status: number; body: T }>;
 }
 
-export async function createCloud(): Promise<{ server: CloudServer; call: Caller; close(): Promise<void> }> {
+/** A throwaway license signing key pair (the real vendor key never appears in tests). */
+export function licenseKeys() {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  return { privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(), publicKey: publicKey.export({ type: 'spki', format: 'pem' }).toString() };
+}
+
+export async function createCloud(opts: { licenses?: boolean } = {}): Promise<{ server: CloudServer; call: Caller; keys: ReturnType<typeof licenseKeys>; close(): Promise<void> }> {
+  const keys = licenseKeys();
   const dir = mkdtempSync(join(tmpdir(), 'flexpos-cloud-'));
   const server = await buildCloud(
-    { port: 0, host: '127.0.0.1', databaseUrl: 'pglite:memory', jwtSecret: 'x'.repeat(40), webDir: null, logFile: null, allowSignup: true, dataDir: dir },
+    { port: 0, host: '127.0.0.1', databaseUrl: 'pglite:memory', jwtSecret: 'x'.repeat(40), webDir: null, logFile: null, licensePrivateKey: opts.licenses === false ? null : keys.privateKey, licensePublicKey: keys.publicKey, dataDir: dir },
     { watchers: false },
   );
   const call: Caller = async (method, url, body, token) => {
@@ -27,6 +35,7 @@ export async function createCloud(): Promise<{ server: CloudServer; call: Caller
   return {
     server,
     call,
+    keys,
     async close() {
       await server.close();
       rmSync(dir, { recursive: true, force: true });

@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Kysely, Migrator, PostgresDialect, sql } from 'kysely';
 import { migrationProvider, type DB } from '@flexpos/db';
+import { LICENSE_PUBLIC_KEY } from '@flexpos/shared';
 import { cloudMigrations, type CloudDB } from './schema.js';
 import { pgliteKysely } from './pglite.js';
 
@@ -15,8 +16,13 @@ export interface CloudConfig {
   jwtSecret: string;
   webDir: string | null;
   logFile: string | null;
-  /** POS machines may create a new store + manager account on first connect */
-  allowSignup: boolean;
+  /**
+   * Ed25519 private key (PEM) for issuing license keys. When set (the vendor's FlexPOS Cloud),
+   * a POS joins/creates its store with a license key; without it (a store's own server), a POS
+   * signs in with a manager account the superadmin created.
+   */
+  licensePrivateKey: string | null;
+  licensePublicKey: string;
   dataDir: string;
 }
 
@@ -38,7 +44,8 @@ export function configFromEnv(env = process.env): CloudConfig {
     jwtSecret,
     webDir: env.WEB_DIR ?? null,
     logFile: env.LOG_FILE ?? null,
-    allowSignup: (env.ALLOW_SIGNUP ?? '1') !== '0',
+    licensePrivateKey: env.LICENSE_PRIVATE_KEY ?? (env.LICENSE_PRIVATE_KEY_FILE ? readFileSync(env.LICENSE_PRIVATE_KEY_FILE, 'utf8') : null),
+    licensePublicKey: env.LICENSE_PUBLIC_KEY ?? LICENSE_PUBLIC_KEY,
     dataDir,
   };
 }

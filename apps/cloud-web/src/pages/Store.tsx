@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, RefreshCw, Search, WifiOff } from 'lucide-react';
 import { t } from '@flexpos/shared';
-import { Badge, Button, Card, ErrorState, Field, Input, PageHeader, Pagination, Segmented, Select, SkeletonRows } from '@/components/ui/core';
+import { Badge, Button, Card, ErrorState, Field, Input, PageHeader, Pagination, Segmented, Select, SkeletonRows, Switch } from '@/components/ui/core';
 import { Dialog, useConfirm } from '@/components/ui/dialog';
 import { DashboardView, type Dash, type DashRange } from '@/components/DashboardView';
 import { tn } from '@/lib/i18n';
@@ -44,7 +44,7 @@ export default function StorePage() {
     { id: 'dashboard', label: t('ภาพรวม') },
     { id: 'reports', label: t('รายงาน') },
     { id: 'data', label: t('ข้อมูลร้าน') },
-    ...(canManage ? [{ id: 'members' as const, label: t('ผู้ใช้เว็บ') }, { id: 'devices' as const, label: t('เครื่อง POS') }] : []),
+    ...(canManage ? [{ id: 'members' as const, label: t('พนักงานดูเว็บ') }, { id: 'devices' as const, label: t('เครื่อง POS') }] : []),
     { id: 'activity', label: t('การแก้ไขจากเว็บ') },
   ];
   return (
@@ -227,30 +227,31 @@ function DataTab({ info }: { info: Info }) {
   );
 }
 
+/** Managers add, edit and delete view-only staff accounts. Manager accounts belong to the superadmin. */
 function MembersTab({ info }: { info: Info }) {
   const qc = useQueryClient();
   const confirm = useConfirm();
-  type M = { id: string; email: string; name: string; disabled: boolean; lastLoginAt: string | null; role: 'manager' | 'viewer'; addedAt: string };
+  const su = info.role === 'superadmin';
+  type M = { id: string; username: string; name: string; disabled: boolean; lastLoginAt: string | null; role: 'manager' | 'viewer'; addedAt: string; me: boolean };
+  type Form = { id?: string; username: string; name: string; password: string; disabled: boolean; role: 'manager' | 'viewer' };
   const q = useQuery({ queryKey: ['store', info.id, 'members'], queryFn: () => api.get<{ members: M[] }>(`/api/stores/${info.id}/members`) });
-  const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ email: '', name: '', password: '', role: 'viewer' as 'manager' | 'viewer' });
+  // POS staff, to reuse their name and username for a web account
+  const posStaff = useQuery({ queryKey: ['store', info.id, 'data', 'users', 'all'], queryFn: () => api.get<{ rows: { id: string; name: string; username: string; active: number }[] }>(`/api/stores/${info.id}/data/users`, { limit: 500 }) });
+  const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
   const refresh = () => void qc.invalidateQueries({ queryKey: ['store', info.id, 'members'] });
-  const act = async (fn: () => Promise<unknown>) => {
-    try {
-      await fn();
-      refresh();
-    } catch (e) {
-      toast.error(errorMessage(e));
-    }
-  };
-  const add = async () => {
+  const save = async () => {
+    if (!form) return;
     setBusy(true);
     try {
-      await api.post(`/api/stores/${info.id}/members`, { ...form, password: form.password || undefined });
-      toast.success(t('เพิ่มผู้ใช้แล้ว แจ้งอีเมลและรหัสผ่านให้ผู้ใช้เพื่อเข้าสู่ระบบ'));
-      setAdding(false);
-      setForm({ email: '', name: '', password: '', role: 'viewer' });
+      if (form.id) {
+        await api.patch(`/api/stores/${info.id}/members/${form.id}`, { name: form.name, username: form.username, password: form.password || undefined, disabled: form.disabled, ...(su ? { role: form.role } : {}) });
+        toast.success(t('บันทึกแล้ว'));
+      } else {
+        await api.post(`/api/stores/${info.id}/members`, { username: form.username, name: form.name, password: form.password || undefined, role: su ? form.role : 'viewer' });
+        toast.success(t('เพิ่มพนักงานแล้ว แจ้งชื่อผู้ใช้และรหัสผ่านให้พนักงานเพื่อเข้าดูแดชบอร์ด'));
+      }
+      setForm(null);
       refresh();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -258,38 +259,69 @@ function MembersTab({ info }: { info: Info }) {
       setBusy(false);
     }
   };
+  const remove = async (m: M) => {
+    const c = await confirm({ title: t('ลบ {0}?', m.name), body: t('พนักงานจะเข้าดูแดชบอร์ดของร้านไม่ได้อีก'), danger: true, confirmText: t('ลบ') });
+    if (!c.ok) return;
+    try {
+      await api.del(`/api/stores/${info.id}/members/${m.id}`);
+      refresh();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
+  const editable = (m: M) => su || (m.role === 'viewer' && !m.me);
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[14px] text-muted">{t('เพิ่มบัญชีให้คนอื่นดูแดชบอร์ดของร้านนี้ได้ ผู้ดูข้อมูลดูได้อย่างเดียว ผู้จัดการแก้ไขข้อมูลและเพิ่มผู้ใช้ได้')}</p>
-        <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setAdding(true)}>{t('เพิ่มผู้ใช้')}</Button>
+        <p className="text-[14px] text-muted">{t('เพิ่มบัญชีให้พนักงานเข้าดูแดชบอร์ดและรายงานของร้านนี้ได้ (ดูอย่างเดียว) ใช้ชื่อผู้ใช้และรหัสผ่านเดียวกับที่เครื่อง POS ก็ได้ บัญชีผู้จัดการเพิ่มได้โดยผู้ให้บริการเท่านั้น')}</p>
+        <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setForm({ username: '', name: '', password: '', disabled: false, role: 'viewer' })}>{t('เพิ่มพนักงาน')}</Button>
       </div>
       <Card pad={false}>
         {!q.data ? <div className="p-5"><SkeletonRows /></div> : (
           <div className="flex flex-col">
             {q.data.members.map((m) => (
               <div key={m.id} className="flex flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3 last:border-0">
-                <div className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{m.name}</span><span className="truncate text-[13px] text-muted">{m.email} · {t('เข้าระบบล่าสุด {0}', ago(m.lastLoginAt))}</span></div>
+                <div className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{m.name}{m.me && <span className="ml-2 text-[13px] text-muted">{t('(คุณ)')}</span>}</span><span className="truncate text-[13px] text-muted">{m.username} · {t('เข้าระบบล่าสุด {0}', ago(m.lastLoginAt))}</span></div>
+                <Badge tone={m.role === 'manager' ? 'info' : 'neutral'}>{roleLabel(m.role)}</Badge>
                 {m.disabled && <Badge tone="danger">{t('ปิดใช้งาน')}</Badge>}
-                <Select value={m.role} onChange={(e) => void act(() => api.patch(`/api/stores/${info.id}/members/${m.id}`, { role: e.target.value }))} className="h-10 w-auto">
-                  <option value="manager">{roleLabel('manager')}</option>
-                  <option value="viewer">{roleLabel('viewer')}</option>
-                </Select>
-                <Button size="sm" variant="ghost" onClick={async () => { const c = await confirm({ title: t('นำ {0} ออกจากร้าน?', m.name), danger: true, confirmText: t('นำออก') }); if (c.ok) void act(() => api.del(`/api/stores/${info.id}/members/${m.id}`)); }}>{t('นำออก')}</Button>
+                {editable(m) && (
+                  <>
+                    <Button size="sm" onClick={() => setForm({ id: m.id, username: m.username, name: m.name, password: '', disabled: m.disabled, role: m.role })}>{t('แก้ไข')}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => void remove(m)}>{t('ลบ')}</Button>
+                  </>
+                )}
               </div>
             ))}
           </div>
         )}
       </Card>
-      <Dialog open={adding} onOpenChange={setAdding} title={t('เพิ่มผู้ใช้เว็บ')} description={t('ถ้าอีเมลนี้มีบัญชีอยู่แล้ว ไม่ต้องตั้งรหัสผ่าน')} footer={<><Button variant="ghost" onClick={() => setAdding(false)}>{t('ยกเลิก')}</Button><Button variant="primary" loading={busy} disabled={!form.email || !form.name} onClick={() => void add()}>{t('เพิ่ม')}</Button></>}>
-        <div className="grid gap-3">
-          <Field label={t('อีเมล')} required><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
-          <Field label={t('ชื่อ')} required><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-          <Field label={t('รหัสผ่านเริ่มต้น')} hint={t('อย่างน้อย 8 ตัวอักษร ผู้ใช้เปลี่ยนเองได้ภายหลัง')}><Input type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
-          <Field label={t('สิทธิ์')}>
-            <Segmented value={form.role} onChange={(role) => setForm({ ...form, role })} options={[{ value: 'viewer', label: roleLabel('viewer') }, { value: 'manager', label: roleLabel('manager') }]} />
-          </Field>
-        </div>
+      <Dialog
+        open={!!form}
+        onOpenChange={(v) => !v && setForm(null)}
+        title={form?.id ? t('แก้ไขพนักงาน') : t('เพิ่มพนักงาน')}
+        footer={<><Button variant="ghost" onClick={() => setForm(null)}>{t('ยกเลิก')}</Button><Button variant="primary" loading={busy} disabled={!form || form.username.trim().length < 3 || !form.name.trim() || (!form.id && form.password.length < 8)} onClick={() => void save()}>{t('บันทึก')}</Button></>}
+      >
+        {form && (
+          <div className="grid gap-3">
+            {!form.id && !!posStaff.data?.rows.length && (
+              <Field label={t('ดึงจากพนักงานในเครื่อง POS')} hint={t('ใส่ชื่อและชื่อผู้ใช้ให้อัตโนมัติ แล้วตั้งรหัสผ่าน (จะใช้รหัสเดียวกับที่เครื่อง POS ก็ได้)')}>
+                <Select value="" onChange={(e) => { const p = posStaff.data?.rows.find((r) => r.id === e.target.value); if (p) setForm({ ...form, name: p.name, username: p.username }); }} className="h-11">
+                  <option value="">{t('เลือกพนักงาน…')}</option>
+                  {posStaff.data.rows.filter((r) => r.active).map((r) => <option key={r.id} value={r.id}>{r.name} ({r.username})</option>)}
+                </Select>
+              </Field>
+            )}
+            <Field label={t('ชื่อ')} required><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+            <Field label={t('ชื่อผู้ใช้')} required hint={t('ใช้เข้าสู่ระบบ ห้ามซ้ำกับร้านอื่น ถ้าซ้ำให้เติมชื่อร้านต่อท้าย')}><Input autoCapitalize="none" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /></Field>
+            <Field label={form.id ? t('ตั้งรหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)') : t('รหัสผ่าน')} required={!form.id} hint={t('อย่างน้อย 8 ตัวอักษร')}><Input type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
+            {form.id && <label className="flex items-center justify-between rounded-xl border border-line px-3 py-2.5 text-[14px]">{t('ปิดใช้งาน')}<Switch checked={form.disabled} onChange={(v) => setForm({ ...form, disabled: v })} label={t('ปิดใช้งาน')} /></label>}
+            {su && (
+              <Field label={t('สิทธิ์')}>
+                <Segmented value={form.role} onChange={(role) => setForm({ ...form, role })} options={[{ value: 'viewer', label: roleLabel('viewer') }, { value: 'manager', label: roleLabel('manager') }]} />
+              </Field>
+            )}
+          </div>
+        )}
       </Dialog>
     </>
   );
